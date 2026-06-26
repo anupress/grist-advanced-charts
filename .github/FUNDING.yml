@@ -1,0 +1,6 @@
+# Shows a "Sponsor" button on the GitHub repo. Uncomment a line and add your handle/URL.
+# (All lines are comments right now, so nothing is shown until you fill these in.)
+
+# buy_me_a_coffee: your-buymeacoffee-username
+# github: [anupress]                         # requires GitHub Sponsors to be enabled on your account
+# custom: ["https://www.paypal.me/yourname", "https://revolut.me/yourname"]

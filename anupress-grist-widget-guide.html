@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<!-- ===================== SEO (standalone). In WordPress, set Title/Description in Yoast or
+     Rank Math instead — these head tags are ignored when you paste only the body. ===================== -->
+<title>Advanced Charts for Grist by ANUPRESS — No-Code Dashboard Widget (2025)</title>
+<meta name="description" content="Advanced Charts is a free Grist custom widget by ANUPRESS. Turn any Grist table into a website-style dashboard — KPI cards, charts, group breakdowns and maps — with no code. Full step-by-step guide." />
+<link rel="canonical" href="https://anupress.com/advanced-charts-grist-widget-guide/" />
+<meta property="og:type" content="article" />
+<meta property="og:title" content="Advanced Charts for Grist by ANUPRESS — No-Code Dashboard Widget (2025)" />
+<meta property="og:description" content="Turn any Grist table into a website-style dashboard with KPI cards, charts, breakdowns and maps — no code, your data stays in Grist." />
+<meta property="og:url" content="https://anupress.com/advanced-charts-grist-widget-guide/" />
+<meta name="twitter:card" content="summary_large_image" />
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "name": "Advanced Charts for Grist by ANUPRESS",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web (Grist custom widget)",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "description": "A free, no-code custom widget that turns a Grist table into a website-style dashboard with KPI cards, charts, group breakdowns and maps. Your data never leaves your Grist document.",
+      "author": { "@type": "Organization", "name": "ANUPRESS", "url": "https://anupress.com" }
+    },
+    {
+      "@type": "HowTo",
+      "name": "Add the ANUPRESS dashboard widget to a Grist document",
+      "step": [
+        { "@type": "HowToStep", "name": "Add a Custom widget", "text": "In your Grist document, add a widget and choose the Custom type." },
+        { "@type": "HowToStep", "name": "Paste the URL", "text": "Paste the ANUPRESS widget URL into the Enter Custom URL field." },
+        { "@type": "HowToStep", "name": "Click Edit", "text": "Click the Edit button, accept the ANUPRESS consent screen, and grant full document access." },
+        { "@type": "HowToStep", "name": "Build and publish", "text": "Add stat cards, charts, breakdowns and maps, then click Save & Publish." }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "Is the ANUPRESS Grist widget free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. It is a free, open static web page you load into Grist by URL. There is no account and no paid tier." } },
+        { "@type": "Question", "name": "Does ANUPRESS see my data?", "acceptedAnswer": { "@type": "Answer", "text": "No. Everything runs in your browser. ANUPRESS has no server and never receives, stores or transmits your data; it stays inside your Grist document." } },
+        { "@type": "Question", "name": "Why does it ask for full document access?", "acceptedAnswer": { "@type": "Answer", "text": "Full access lets the widget read any table you want to chart and create one ANUPRESS_Config table to save your design. You can revoke access anytime from the widget settings." } },
+        { "@type": "Question", "name": "The Value column or chart shows no columns. Why?", "acceptedAnswer": { "@type": "Answer", "text": "Make sure you granted full document access and picked the right Data table. Stat cards list every column (use Count for text columns); charts offer all columns and grey out chart types that do not fit your selection." } }
+      ]
+    }
+  ]
+}
+</script>
+
+<style>
+/* All styles are scoped under .apw so they are safe to paste into a WordPress block. */
+.apw { --apw-ink:#1f2233; --apw-soft:#5b6076; --apw-mute:#8a90a6; --apw-bg:#ffffff; --apw-panel:#f6f7fb;
+  --apw-line:#e6e8f0; --apw-brand:#6d5efc; --apw-accent:#16c4a6; --apw-warn:#ff8a5b;
+  --apw-grad:linear-gradient(135deg,#6d5efc,#16c4a6); --apw-radius:16px;
+  color:var(--apw-ink); font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+  line-height:1.65; font-size:17px; max-width:980px; margin:0 auto; padding:0 18px 80px; }
+.apw *{ box-sizing:border-box; }
+.apw h1,.apw h2,.apw h3,.apw h4{ line-height:1.2; letter-spacing:-.01em; scroll-margin-top:20px; }
+.apw h1{ font-size:clamp(30px,5vw,44px); margin:.2em 0 .3em; }
+.apw h2{ font-size:clamp(24px,3.5vw,32px); margin:1.8em 0 .5em; padding-top:.3em; }
+.apw h3{ font-size:20px; margin:1.4em 0 .4em; }
+.apw p,.apw li{ color:var(--apw-soft); }
+.apw a{ color:var(--apw-brand); }
+.apw code{ background:var(--apw-panel); border:1px solid var(--apw-line); border-radius:6px; padding:1px 6px; font-size:.9em; font-family:ui-monospace,Consolas,monospace; color:#3a2fb0; }
+.apw .apw-lede{ font-size:20px; color:var(--apw-soft); }
+.apw-hero{ background:var(--apw-grad); color:#fff; border-radius:22px; padding:clamp(26px,5vw,52px); margin:24px 0 8px; position:relative; overflow:hidden; }
+.apw-hero::after{ content:""; position:absolute; inset:0; background:radial-gradient(120% 130% at 100% 0%,rgba(255,255,255,.22),transparent 55%); }
+.apw-hero h1,.apw-hero p{ color:#fff; position:relative; z-index:1; }
+.apw-hero p{ opacity:.95; max-width:60ch; font-size:19px; }
+.apw-eyebrow{ text-transform:uppercase; letter-spacing:.12em; font-size:13px; font-weight:700; opacity:.9; position:relative; z-index:1; }
+.apw-cta{ display:flex; gap:12px; flex-wrap:wrap; margin-top:22px; position:relative; z-index:1; }
+.apw-btn{ display:inline-flex; align-items:center; gap:8px; font-weight:700; font-size:15px; text-decoration:none; padding:12px 20px; border-radius:999px; }
+.apw-btn--light{ background:#fff; color:#4b3fd6; }
+.apw-btn--ghost{ background:rgba(255,255,255,.16); color:#fff; border:1px solid rgba(255,255,255,.4); }
+.apw-meta{ color:var(--apw-mute); font-size:14px; margin:6px 0 0; }
+.apw-toc{ background:var(--apw-panel); border:1px solid var(--apw-line); border-radius:var(--apw-radius); padding:18px 22px; margin:26px 0; }
+.apw-toc strong{ color:var(--apw-ink); display:block; margin-bottom:8px; font-size:14px; text-transform:uppercase; letter-spacing:.06em; }
+.apw-toc ol{ columns:2; gap:24px; margin:0; padding-left:20px; }
+.apw-toc a{ text-decoration:none; }
+.apw-demo{ position:relative; border:1px solid var(--apw-line); border-radius:var(--apw-radius); overflow:hidden; box-shadow:0 18px 50px rgba(31,34,51,.12); background:var(--apw-panel); }
+.apw-demo iframe{ width:100%; height:740px; border:0; display:block; }
+.apw-demo .apw-demobar{ display:flex; align-items:center; gap:8px; padding:10px 14px; background:#fff; border-bottom:1px solid var(--apw-line); font-size:13px; color:var(--apw-mute); }
+.apw-dot{ width:10px; height:10px; border-radius:50%; background:#e0506a; box-shadow:18px 0 #f0b429,36px 0 #14a06f; margin-right:30px; }
+.apw-note,.apw-tip,.apw-warn{ border-radius:12px; padding:14px 18px; margin:18px 0; border:1px solid; font-size:16px; }
+.apw-note{ background:#eef0fb; border-color:#d7d9f5; }
+.apw-tip{ background:#e9f9f3; border-color:#bce8d8; }
+.apw-warn{ background:#fff3ec; border-color:#ffd9c2; }
+.apw-note b,.apw-tip b,.apw-warn b{ color:var(--apw-ink); }
+.apw-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; margin:18px 0; }
+.apw-card{ background:var(--apw-bg); border:1px solid var(--apw-line); border-radius:var(--apw-radius); padding:18px 20px; }
+.apw-card h3{ margin:0 0 6px; font-size:17px; color:var(--apw-ink); }
+.apw-card p{ margin:0; font-size:15px; }
+.apw-steps{ counter-reset:apw; list-style:none; padding:0; margin:18px 0; }
+.apw-steps>li{ position:relative; padding:4px 0 18px 52px; }
+.apw-steps>li::before{ counter-increment:apw; content:counter(apw); position:absolute; left:0; top:0; width:34px; height:34px; border-radius:50%; background:var(--apw-grad); color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.apw-steps>li strong{ color:var(--apw-ink); }
+.apw table{ width:100%; border-collapse:collapse; margin:18px 0; font-size:15px; }
+.apw th,.apw td{ text-align:left; padding:10px 12px; border-bottom:1px solid var(--apw-line); vertical-align:top; }
+.apw th{ color:var(--apw-ink); font-size:13px; text-transform:uppercase; letter-spacing:.04em; background:var(--apw-panel); }
+.apw td code{ white-space:nowrap; }
+.apw details{ border:1px solid var(--apw-line); border-radius:12px; padding:2px 16px; margin:10px 0; background:var(--apw-bg); }
+.apw summary{ cursor:pointer; font-weight:700; color:var(--apw-ink); padding:12px 0; list-style:none; }
+.apw summary::-webkit-details-marker{ display:none; }
+.apw summary::before{ content:"+"; display:inline-block; width:20px; color:var(--apw-brand); font-weight:800; }
+.apw details[open] summary::before{ content:"–"; }
+.apw-pill{ display:inline-block; background:var(--apw-panel); border:1px solid var(--apw-line); border-radius:999px; padding:2px 10px; font-size:13px; font-weight:600; color:var(--apw-soft); margin:2px; }
+.apw-wpforms{ border:2px dashed var(--apw-brand); border-radius:var(--apw-radius); padding:22px; background:#f7f6ff; }
+.apw-related{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:16px 0; }
+.apw-related a{ display:block; border:1px solid var(--apw-line); border-radius:12px; padding:14px 16px; text-decoration:none; background:var(--apw-bg); }
+.apw-related a span{ display:block; color:var(--apw-mute); font-size:13px; margin-top:2px; }
+.apw-foot{ margin-top:50px; padding-top:22px; border-top:1px solid var(--apw-line); color:var(--apw-mute); font-size:14px; }
+@media (max-width:640px){ .apw-toc ol{ columns:1; } .apw-related{ grid-template-columns:1fr; } .apw-demo iframe{ height:620px; } }
+</style>
+</head>
+
+<body>
+<article class="apw">
+
+  <!-- ===================== HERO ===================== -->
+  <header class="apw-hero">
+    <div class="apw-eyebrow">Advanced Charts · A free Grist widget by ANUPRESS</div>
+    <h1>Turn a Grist table into a website‑style dashboard — no code</h1>
+    <p><b>Advanced Charts</b> is a free custom widget for Grist by ANUPRESS. Point it at any Grist table and
+       build a polished page of KPI cards, charts, group breakdowns and maps — edited in place, like a page
+       builder. Your data never leaves your Grist document.</p>
+    <div class="apw-cta">
+      <a class="apw-btn apw-btn--light" href="#quick-start">Get started in 5 steps ↓</a>
+      <a class="apw-btn apw-btn--ghost" href="#live-demo">See the live demo</a>
+    </div>
+  </header>
+  <p class="apw-meta">Last updated: 2026 · Reading time ~12 min · Beginner friendly</p>
+
+  <!-- ===================== TOC ===================== -->
+  <nav class="apw-toc" aria-label="Contents">
+    <strong>What's on this page</strong>
+    <ol>
+      <li><a href="#what">What it is &amp; why use it</a></li>
+      <li><a href="#live-demo">Live, interactive demo</a></li>
+      <li><a href="#quick-start">Quick start (5 steps)</a></li>
+      <li><a href="#privacy">Permissions &amp; privacy</a></li>
+      <li><a href="#editor">The editor at a glance</a></li>
+      <li><a href="#blocks">Building blocks</a></li>
+      <li><a href="#stat">› Stat cards</a></li>
+      <li><a href="#charts">› Charts</a></li>
+      <li><a href="#breakdown">› Breakdowns</a></li>
+      <li><a href="#map">› Maps</a></li>
+      <li><a href="#text">› Text</a></li>
+      <li><a href="#subtitles">Dynamic subtitles</a></li>
+      <li><a href="#hero">Hero &amp; slider</a></li>
+      <li><a href="#pages">Pages &amp; menu</a></li>
+      <li><a href="#theme">Theme &amp; dark mode</a></li>
+      <li><a href="#design">Global design</a></li>
+      <li><a href="#saving">Saving &amp; publishing</a></li>
+      <li><a href="#faq">FAQ &amp; troubleshooting</a></li>
+      <li><a href="#feedback">Request a feature</a></li>
+    </ol>
+  </nav>
+
+  <!-- ===================== WHAT ===================== -->
+  <h2 id="what">What it is &amp; why use it</h2>
+  <p><a href="https://www.getgrist.com" target="_blank" rel="noopener">Grist</a> is a modern spreadsheet‑database.
+     A <em>custom widget</em> is simply a web page you embed inside a Grist document. ANUPRESS is that web page —
+     except instead of showing one chart, it gives you a whole mini‑site: a header with your logo and menu,
+     a body of cards and charts organised into tabs, and a footer.</p>
+  <p>If you can fill in a form, you can build a dashboard with it. There is nothing to install, no account to
+     create, and no server in the middle.</p>
+  <div class="apw-grid">
+    <div class="apw-card"><h3>📊 Every chart type</h3><p>Bar, column, line, area, pie, doughnut, treemap, funnel, radar, scatter and gauge — powered by Apache ECharts.</p></div>
+    <div class="apw-card"><h3>🔢 Works with any table</h3><p>Sales, people, inventory, samples — text, choice, date, number and yes/no columns are all supported.</p></div>
+    <div class="apw-card"><h3>🗺️ Maps &amp; breakdowns</h3><p>Plot latitude/longitude points, and show group‑wise counts as a list or a chart.</p></div>
+    <div class="apw-card"><h3>🎨 Fully designable</h3><p>Colour palettes, fonts, dark mode, corners, spacing — a global design panel, like a page builder.</p></div>
+    <div class="apw-card"><h3>🔒 Private by design</h3><p>No ANUPRESS server. Everything runs in your browser; your data stays inside Grist.</p></div>
+    <div class="apw-card"><h3>💸 Free</h3><p>Load it by URL. No licence, no sign‑up, no usage limits.</p></div>
+  </div>
+
+  <!-- ===================== LIVE DEMO ===================== -->
+  <h2 id="live-demo">Live, interactive demo</h2>
+  <p>This is the real widget running on sample data — the same thing you'll get on first load. It cycles through
+     the tabs on its own; <b>click anything</b> to take over and explore. Try the <b>moon/sun</b> icon for dark
+     mode and the <b>Edit</b> button to see the builder (it stays in demo mode here, so nothing is saved).</p>
+  <div class="apw-demo">
+    <div class="apw-demobar"><span class="apw-dot"></span> anupress.github.io/grist-advanced-charts — live demo</div>
+    <!-- If you connect a custom domain later, change this src to match. -->
+    <iframe src="https://anupress.github.io/grist-advanced-charts/?demo=1&amp;tour=7" loading="lazy"
+      title="ANUPRESS Grist widget live demo" referrerpolicy="no-referrer"></iframe>
+  </div>
+  <p class="apw-meta">Tip: the demo includes one of every feature — stat cards, all chart types, a breakdown shown
+     both as a list and a donut, a clustered map, an image hero slider, and a multi‑page menu.</p>
+
+  <!-- ===================== QUICK START ===================== -->
+  <h2 id="quick-start">Quick start — 5 steps</h2>
+  <ol class="apw-steps">
+    <li><strong>Open the widget panel in Grist.</strong> In your document, add a new widget (or convert a section)
+        and choose the <b>Custom</b> widget type.</li>
+    <li><strong>Paste the URL.</strong> In the panel settings, find <b>Enter Custom URL</b> and paste:
+        <br><code>https://anupress.github.io/grist-advanced-charts/</code></li>
+    <li><strong>Look around the demo.</strong> The widget loads with sample data so you can see what's possible
+        before connecting your own.</li>
+    <li><strong>Click <b>Edit</b> → Accept → Allow full access.</strong> ANUPRESS shows a consent screen
+        (explained <a href="#privacy">below</a>), then Grist asks you to grant <b>full document access</b>.
+        This lets it read your tables and save your design.</li>
+    <li><strong>Build &amp; publish.</strong> Add blocks, pick your table and columns, then click
+        <b>Save &amp; Publish</b>. Your dashboard reloads automatically next time anyone opens the document.</li>
+  </ol>
+  <div class="apw-tip"><b>No data yet?</b> You can still explore the whole editor without Grist: open
+     <code>https://anupress.github.io/grist-advanced-charts/?demo=1</code> in a browser tab.</div>
+
+  <!-- ===================== PRIVACY ===================== -->
+  <h2 id="privacy">Permissions &amp; privacy</h2>
+  <p>The first time you click <b>Edit</b>, ANUPRESS shows a short consent screen. It explains, in plain language,
+     exactly what happens next:</p>
+  <ul>
+    <li><b>One table is created</b> — <code>ANUPRESS_Config</code> — to store your design (layout, colours, logo).</li>
+    <li><b>Your tables are read</b> so you can chart any column from any table.</li>
+    <li><b>Your design is saved</b> back into that table, so it reloads next time.</li>
+    <li><b>Nothing leaves Grist</b> — there is no ANUPRESS server, no analytics, and no third‑party calls.</li>
+  </ul>
+  <p>After you accept, <b>Grist itself</b> asks you to grant <b>full document access</b>. That is required so the
+     widget can read every table (not just one) and create the config table. You can change or revoke this any
+     time from the widget's settings panel in Grist.</p>
+  <div class="apw-note"><b>The one exception:</b> if you add a <a href="#map">map</a>, your browser fetches map
+     tiles from public tile servers (OpenStreetMap / Esri). Those servers see the map's view area and your IP —
+     never your Grist data, which is turned into points in your browser.</div>
+
+  <!-- ===================== EDITOR ===================== -->
+  <h2 id="editor">The editor at a glance</h2>
+  <p>In edit mode a dark bar appears at the top with everything you need:</p>
+  <table>
+    <tr><th>Button</th><th>What it does</th></tr>
+    <tr><td><b>Theme</b></td><td>Colour palettes, custom primary/accent colours, font pairing, light/dark.</td></tr>
+    <tr><td><b>Design</b></td><td>Site‑wide corners, density, content width, shadows and text size.</td></tr>
+    <tr><td><b>Pages</b></td><td>Add/rename/reorder tabs (drag the grip handle), per‑page hero, and URL menu links.</td></tr>
+    <tr><td><b>Header</b></td><td>Upload a logo, set the site title and slogan.</td></tr>
+    <tr><td><b>Done</b></td><td>Leave edit mode and return to the live view.</td></tr>
+    <tr><td><b>Save &amp; Publish</b></td><td>Write your design into your Grist document.</td></tr>
+  </table>
+  <p>While editing, hover any block to reveal its <b>drag</b>, <b>edit</b> and <b>delete</b> buttons. Click the
+     header, footer or hero to edit those directly. An <b>Add a block</b> tile sits at the end of every tab.</p>
+
+  <!-- ===================== BLOCKS ===================== -->
+  <h2 id="blocks">Building blocks</h2>
+  <p>The body of every page is a grid of blocks. Click <b>Add a block</b> and choose one of five types. Each opens
+     a side panel with a <b>live preview</b> so you see the result as you change settings.</p>
+
+  <h3 id="stat">① Stat card (a single KPI)</h3>
+  <p>A big number with an optional trend and a sparkline — e.g. <em>Total Revenue</em>, <em>Headcount</em>.</p>
+  <ul>
+    <li><b>Value column</b> — the column to measure. Every column is listed; text columns are marked <code>(text)</code>.</li>
+    <li><b>Summarize by</b> — Sum, Average, Count, Distinct count, Min, Max, Median or Std. deviation. Pick a text
+        column and it switches to <b>Count</b> automatically (great for "number of samples").</li>
+    <li><b>Compare over</b> — optional. Pick a date/order column and the card shows the % change vs the previous period.</li>
+    <li><b>Icon</b> — choose a built‑in icon or <b>upload your own</b> (stored for reuse).</li>
+    <li><b>Number format</b> — compact (1.2K, 3.4M) and a currency symbol.</li>
+  </ul>
+  <div class="apw-tip"><b>Example:</b> Value = <code>Revenue</code>, Summarize = Sum, Compare over = <code>Month</code>,
+     Currency = <code>$</code>, Compact on → <em>$905.48K ▼ 12% vs prev. period</em>.</div>
+
+  <h3 id="charts">② Charts</h3>
+  <p>One Chart block, every chart type inside it. You pick the data first, and incompatible chart types grey out
+     automatically — so you can't build something that doesn't make sense.</p>
+  <ul>
+    <li><b>Categories</b> — the groups along the axis (e.g. <code>Region</code>, <code>Month</code>).</li>
+    <li><b>Values</b> — the numbers to plot (e.g. <code>Revenue</code>). Add a second category to split into series.</li>
+    <li><b>Summarize by</b> — the same aggregations as stat cards.</li>
+    <li><b>Chart type</b> — a grid with a ★ on the recommended type for your columns:</li>
+  </ul>
+  <table>
+    <tr><th>Type</th><th>Best for</th><th>Needs</th></tr>
+    <tr><td>Column / Bar</td><td>Comparing categories</td><td>1 category + 1&#43; value</td></tr>
+    <tr><td>Line / Area</td><td>Trends over time</td><td>a date/category + value(s)</td></tr>
+    <tr><td>Pie / Doughnut</td><td>Share of a whole</td><td>1 category + 1 value</td></tr>
+    <tr><td>Treemap / Funnel</td><td>Composition / stages</td><td>1 category + 1 value</td></tr>
+    <tr><td>Radar</td><td>Comparing several measures</td><td>several values or categories</td></tr>
+    <tr><td>Scatter</td><td>Correlation between two numbers</td><td>2 number columns</td></tr>
+    <tr><td>Gauge</td><td>A single value vs a target</td><td>1 number column</td></tr>
+  </table>
+  <p>Extra options appear per type: <b>Stack series</b>, <b>Smooth curve</b>, <b>Sort by value</b>, and
+     <b>custom colours</b> (or inherit the theme palette).</p>
+  <div class="apw-tip"><b>Example (scatter):</b> Values = <code>Age</code> and <code>Salary</code>,
+     Categories = <code>Department</code> → each point is a person, coloured by department.</div>
+
+  <h3 id="breakdown">③ Breakdown (group‑wise counts)</h3>
+  <p>Counts each distinct value of a column and shows the split with coloured dots, counts and percentages —
+     like "Individual Sex: Male 1,108 (47%) · Female 1,178 (50%) · Empty 29 (1%)". Empty/blank values get their
+     own row, so it doubles as a quick data‑quality check.</p>
+  <ul>
+    <li><b>Group by column</b> — any column.</li>
+    <li><b>Show as</b> — <b>List</b> (the count rows) or a <b>Donut / Pie / Bar / Column</b> chart of the same counts.</li>
+    <li><b>Max rows</b> — anything beyond the limit is rolled into an "Other" row.</li>
+  </ul>
+
+  <h3 id="map">④ Map (latitude / longitude)</h3>
+  <p>Plots a pin for every row that has coordinates, on an interactive Leaflet map with marker clustering and
+     Street / Satellite / Terrain layers.</p>
+  <ul>
+    <li><b>Latitude / Longitude columns</b> — auto‑detected by name (e.g. <code>sample_latitude</code>), or pick them.</li>
+    <li><b>Popup title</b> — the bold line in each pin's popup (e.g. a name or code).</li>
+    <li><b>Colour points by</b> — optional category; the legend lists the colours.</li>
+    <li><b>Tooltip fields</b> — choose up to <b>4 columns</b> to show in the popup (raw lat/long is never shown).</li>
+  </ul>
+
+  <h3 id="text">⑤ Text</h3>
+  <p>A heading and a block of text (basic HTML allowed) — for intros, notes or context between charts.</p>
+
+  <!-- ===================== AGGREGATIONS ===================== -->
+  <h3>Aggregations in plain English</h3>
+  <table>
+    <tr><th>Option</th><th>Meaning</th></tr>
+    <tr><td>Sum</td><td>Adds the numbers up.</td></tr>
+    <tr><td>Average</td><td>The mean.</td></tr>
+    <tr><td>Count</td><td>How many rows (works on any column — even text).</td></tr>
+    <tr><td>Distinct count</td><td>How many <em>different</em> values.</td></tr>
+    <tr><td>Min / Max</td><td>Smallest / largest.</td></tr>
+    <tr><td>Median</td><td>The middle value.</td></tr>
+    <tr><td>Std. deviation</td><td>How spread out the numbers are.</td></tr>
+  </table>
+
+  <!-- ===================== SUBTITLES ===================== -->
+  <h2 id="subtitles">Dynamic subtitles (write your own, with live numbers)</h2>
+  <p>Every chart, breakdown and map block has a <b>Subtitle</b> field. Type whatever you like, and drop in
+     placeholders that fill in automatically. Click the small <b>(i)</b> next to the field to see which
+     placeholders that block supports.</p>
+  <table>
+    <tr><th>Block</th><th>Placeholders</th><th>Example template → result</th></tr>
+    <tr><td>Map</td><td><code>%count</code> <code>%missing</code> <code>%total</code></td><td><code>%count mapped · %missing without coordinates</code> → "36 mapped · 0 without coordinates"</td></tr>
+    <tr><td>Breakdown</td><td><code>%total</code> <code>%groups</code> <code>%top</code> <code>%topcount</code> <code>%empty</code></td><td><code>%groups departments</code> → "6 departments"</td></tr>
+    <tr><td>Chart</td><td><code>%count</code> <code>%groups</code> <code>%total</code></td><td><code>%count rows across %groups groups</code> → "192 rows across 4 groups"</td></tr>
+  </table>
+
+  <!-- ===================== HERO ===================== -->
+  <h2 id="hero">Hero &amp; slider</h2>
+  <p>Each page can start with a hero — either a gradient banner with your headline, or a full‑width
+     <b>image slideshow</b> (up to 340px tall). The text is fully designable, WordPress‑style:</p>
+  <p>
+    <span class="apw-pill">Show / hide per page</span>
+    <span class="apw-pill">Alignment: left / center / right</span>
+    <span class="apw-pill">Vertical: top / middle / bottom</span>
+    <span class="apw-pill">Headline size S–XL</span>
+    <span class="apw-pill">Font: serif / sans / display / mono</span>
+    <span class="apw-pill">Text colour</span>
+  </p>
+  <p>Add images to turn the banner into a slider, give each slide its own caption, and set auto‑play speed.
+     Edit a hero by clicking it, or from <b>Pages → ✦</b> next to a page.</p>
+
+  <!-- ===================== PAGES ===================== -->
+  <h2 id="pages">Pages &amp; menu</h2>
+  <p>Your dashboard can have multiple pages (tabs). The menu switches between them instantly — no page reload.</p>
+  <ul>
+    <li><b>Add / rename / delete pages</b>, and <b>drag the grip handle</b> to reorder them.</li>
+    <li><b>Per‑page hero</b> — every page has its own headline/slider.</li>
+    <li><b>URL menu links</b> — add external links (label + URL) that appear in the menu and open in a new tab,
+        e.g. a link back to your website or docs.</li>
+  </ul>
+
+  <!-- ===================== THEME ===================== -->
+  <h2 id="theme">Theme &amp; dark mode</h2>
+  <ul>
+    <li><b>Colour templates</b> — 10 ready‑made palettes; or set your own <b>primary</b> and <b>accent</b> colours.</li>
+    <li><b>Font pairing</b> — several heading/body combinations.</li>
+    <li><b>Light / Dark</b> — toggle from the Theme panel, or with the <b>moon/sun</b> icon in the header.
+        A viewer's own choice is remembered on their device.</li>
+  </ul>
+
+  <!-- ===================== DESIGN ===================== -->
+  <h2 id="design">Global design panel</h2>
+  <p>The <b>Design</b> button gives you site‑wide controls that apply across both light and dark themes:</p>
+  <p>
+    <span class="apw-pill">Corners: sharp → round</span>
+    <span class="apw-pill">Density: compact → roomy</span>
+    <span class="apw-pill">Content width: narrow → full</span>
+    <span class="apw-pill">Shadows: flat / soft / bold</span>
+    <span class="apw-pill">Text size: small / normal / large</span>
+  </p>
+
+  <!-- ===================== SAVING ===================== -->
+  <h2 id="saving">Saving &amp; publishing</h2>
+  <p>Click <b>Save &amp; Publish</b> to write your design into the <code>ANUPRESS_Config</code> table in your
+     document (a single row of settings). Anyone who opens the document then sees your published dashboard
+     instead of the demo. <b>Done</b> leaves edit mode. Delete the <code>ANUPRESS_Config</code> table and the
+     widget simply falls back to the demo.</p>
+
+  <!-- ===================== FAQ ===================== -->
+  <h2 id="faq">FAQ &amp; troubleshooting</h2>
+  <details><summary>Is it really free, and is there a catch?</summary>
+    <p>It's free and there's no catch. It's a static web page you load by URL — no account, no licence, no limits.
+       The only credit is a small "Built with ANUPRESS" link in the footer.</p></details>
+  <details><summary>Can ANUPRESS or anyone else see my data?</summary>
+    <p>No. There is no ANUPRESS server. The widget runs entirely in your browser and talks only to your Grist
+       document. The single exception is map tiles (see <a href="#privacy">Permissions &amp; privacy</a>).</p></details>
+  <details><summary>The column dropdown is empty / my chart has no data.</summary>
+    <p>Check three things: you granted <b>full document access</b>, you selected the correct <b>Data table</b>, and —
+       for charts — that your columns suit the chart type (incompatible types are greyed). Stat cards list every
+       column; for text columns use <b>Count</b>.</p></details>
+  <details><summary>My map is blank.</summary>
+    <p>Make sure the <b>Latitude</b> and <b>Longitude</b> columns hold numbers in valid ranges (lat −90…90,
+       lon −180…180). Rows without both are counted as "without coordinates".</p></details>
+  <details><summary>Does it work on a self‑hosted Grist?</summary>
+    <p>Yes. Any Grist that supports custom widgets by URL works — Grist's hosted service or your own instance.</p></details>
+  <details><summary>How do I update or remove my dashboard?</summary>
+    <p>Click <b>Edit</b> again to change it, then <b>Save &amp; Publish</b>. To reset, delete the
+       <code>ANUPRESS_Config</code> table in Grist.</p></details>
+
+  <!-- ===================== FEEDBACK / WPFORMS ===================== -->
+  <h2 id="feedback">Request a feature or send feedback</h2>
+  <p>Found a bug, or want a new chart type or option? Tell us — this widget grows from real requests.</p>
+  <div class="apw-wpforms">
+    <h3 style="margin-top:0;color:var(--apw-ink)">💡 Suggest a feature</h3>
+    <p>Replace this box with your WPForms form. In the WordPress editor, add a <b>WPForms</b> block (or paste the
+       shortcode) right here:</p>
+    <p><code>[wpforms id="1234"]</code></p>
+  </div>
+  <p style="margin-top:18px">Advanced Charts is free and open source. If it saves you time and you'd like to help
+     cover the running costs, you can <a href="https://buymeacoffee.com/REPLACE-ME" target="_blank" rel="noopener">buy
+     me a coffee ☕</a> — entirely optional, and hugely appreciated.</p>
+
+  <!-- ===================== ABOUT / RELATED ===================== -->
+  <h2>About ANUPRESS</h2>
+  <p>ANUPRESS builds practical, no‑nonsense tools and honest reviews for people who run their own sites and data.
+     If you found this useful, you might like our other hands‑on guides:</p>
+  <div class="apw-related">
+    <a href="https://anupress.com/siteground-hosting-review-2025-performance-security-value-unpacked/">
+      SiteGround Hosting Review 2025 <span>Performance, security &amp; value, unpacked</span></a>
+    <a href="https://anupress.com/hostinger-review-2025-is-it-still-the-best-web-host-for-your-site/">
+      Hostinger Review 2025 <span>Is it still the best web host for your site?</span></a>
+  </div>
+
+  <footer class="apw-foot">
+    <p>ANUPRESS for Grist is a free, open custom widget. Your data stays in your Grist document.
+       © 2026 ANUPRESS.</p>
+  </footer>
+
+</article>
+</body>
+</html>

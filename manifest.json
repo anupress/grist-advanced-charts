@@ -1,0 +1,10 @@
+[
+  {
+    "widgetId": "advanced-charts-anupress",
+    "name": "Advanced Charts: Grist widget by ANUPRESS",
+    "url": "index.html",
+    "description": "Turn a Grist table into a website-style dashboard — KPI cards, every chart type, group breakdowns and maps — edited in place. Your design saves into your own Grist document and your data never leaves Grist.",
+    "authors": [{ "name": "ANUPRESS", "url": "https://anupress.com" }],
+    "requiredAccess": "full"
+  }
+]

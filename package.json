@@ -1,0 +1,17 @@
+{
+  "name": "advanced-charts-grist",
+  "version": "1.0.0",
+  "description": "Advanced Charts — a custom widget for Grist by ANUPRESS. A website-style dashboard (KPI cards, every ECharts chart type, group breakdowns and maps) edited in-place and saved into the user's own Grist document.",
+  "type": "module",
+  "private": true,
+  "author": "ANUPRESS",
+  "license": "MIT",
+  "scripts": {
+    "build": "node build.mjs",
+    "clean": "node -e \"import('node:fs').then(fs=>fs.rmSync('dist',{recursive:true,force:true}))\""
+  },
+  "devDependencies": {
+    "esbuild": "^0.23.0",
+    "javascript-obfuscator": "^4.1.0"
+  }
+}

@@ -1,0 +1,72 @@
+/* Design tokens. The theme engine overrides the --ap-* custom properties at runtime
+   (theme/apply.js) from the active palette + font pair. Defaults below = "Aurora" theme. */
+:root {
+  /* Brand palette (overridden by user themes) */
+  --ap-primary:   #6d5efc;
+  --ap-primary-2: #b06bff;
+  --ap-accent:    #16c4a6;
+  --ap-warn:      #ff8a5b;
+  --ap-series-1:  #6d5efc;
+  --ap-series-2:  #16c4a6;
+  --ap-series-3:  #ff8a5b;
+  --ap-series-4:  #ffd166;
+  --ap-series-5:  #ef476f;
+  --ap-series-6:  #4cc9f0;
+  --ap-series-7:  #b06bff;
+  --ap-series-8:  #06d6a0;
+
+  /* Surfaces & text (light mode defaults) */
+  --ap-bg:        #f6f7fb;
+  --ap-bg-soft:   #eef0f7;
+  --ap-surface:   #ffffff;
+  --ap-surface-2: #fbfbfe;
+  --ap-border:    #e6e8f0;
+  --ap-text:      #1f2233;
+  --ap-text-soft: #5b6076;
+  --ap-text-mute: #8a90a6;
+  --ap-on-primary:#ffffff;
+  /* Fixed dark "chrome" (edit bar, toasts) — stays dark in BOTH themes so white
+     text on it is always legible. Not overridden in dark mode. */
+  --ap-chrome:    #1b1e2c;
+
+  /* Typography */
+  --ap-font-head: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --ap-font-body: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --ap-fs-xs: 12px; --ap-fs-sm: 13px; --ap-fs-md: 15px;
+  --ap-fs-lg: 18px; --ap-fs-xl: 24px; --ap-fs-2xl: 34px; --ap-fs-3xl: 46px;
+
+  /* Shape & depth */
+  --ap-radius-sm: 8px;
+  --ap-radius:    14px;
+  --ap-radius-lg: 22px;
+  --ap-shadow-sm: 0 1px 2px rgba(20,22,40,.06), 0 1px 1px rgba(20,22,40,.04);
+  --ap-shadow:    0 8px 24px rgba(31,34,51,.08), 0 2px 6px rgba(31,34,51,.05);
+  --ap-shadow-lg: 0 24px 60px rgba(31,34,51,.16), 0 8px 20px rgba(31,34,51,.08);
+  --ap-ring:      0 0 0 3px color-mix(in srgb, var(--ap-primary) 30%, transparent);
+
+  /* Motion & spacing */
+  --ap-ease: cubic-bezier(.22,.61,.36,1);
+  --ap-gap: 18px;
+  --ap-pad: 22px;
+  --ap-maxw: 1180px;
+
+  /* Decorative gradient derived from palette */
+  --ap-grad: linear-gradient(135deg,
+              color-mix(in srgb, var(--ap-primary) 92%, #fff) 0%,
+              color-mix(in srgb, var(--ap-accent) 78%, var(--ap-primary)) 100%);
+}
+
+/* Dark mode token overrides (theme.mode = 'dark') */
+.ap-root[data-mode="dark"] {
+  --ap-bg:        #11131c;
+  --ap-bg-soft:   #161927;
+  --ap-surface:   #1a1d2b;
+  --ap-surface-2: #20243558;
+  --ap-border:    #2a2f44;
+  --ap-text:      #eef0fa;
+  --ap-text-soft: #b6bbd2;
+  --ap-text-mute: #828aa6;
+  --ap-shadow-sm: 0 1px 2px rgba(0,0,0,.5);
+  --ap-shadow:    0 10px 30px rgba(0,0,0,.45);
+  --ap-shadow-lg: 0 30px 70px rgba(0,0,0,.6);
+}
