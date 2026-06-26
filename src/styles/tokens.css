@@ -56,8 +56,12 @@
               color-mix(in srgb, var(--ap-accent) 78%, var(--ap-primary)) 100%);
 }
 
-/* Dark mode token overrides (theme.mode = 'dark') */
-.ap-root[data-mode="dark"] {
+/* Dark mode token overrides (theme.mode = 'dark').
+   Match on either .ap-root (the widget shell) or :root (set on <html>) so the
+   dark variables also reach overlays appended to <body> — the side drawer,
+   the consent modal and toasts. */
+.ap-root[data-mode="dark"],
+:root[data-mode="dark"] {
   --ap-bg:        #11131c;
   --ap-bg-soft:   #161927;
   --ap-surface:   #1a1d2b;

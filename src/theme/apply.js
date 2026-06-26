@@ -19,6 +19,9 @@ export function applyTheme(theme = {}, rootEl) {
   set(style, '--ap-font-body', fonts.body);
 
   root.setAttribute('data-mode', mode);
+  // Also flip mode on <html> so dark vars cascade to overlays appended to <body>
+  // (drawer, consent modal, toasts) — they live outside .ap-root.
+  document.documentElement.setAttribute('data-mode', mode);
   // expose the active series list for the chart engine
   root._apSeries = pal.series || [];
 }
