@@ -67,7 +67,7 @@
 .ap-swatch { width: 30px; height: 30px; border-radius: 9px; border: 2px solid transparent; cursor: pointer; box-shadow: var(--ap-shadow-sm); transition: transform .12s; position: relative; }
 .ap-swatch:hover { transform: scale(1.08); }
 .ap-swatch.is-active { border-color: var(--ap-text); }
-.ap-palette-card { display: flex; gap: 4px; padding: 8px; border-radius: 12px; border: 2px solid var(--ap-border); cursor: pointer; transition: border-color .15s, transform .12s; align-items: center; }
+.ap-palette-card { appearance: none; -webkit-appearance: none; background: var(--ap-surface); color: var(--ap-text); font: inherit; display: flex; gap: 4px; padding: 8px; border-radius: 12px; border: 2px solid var(--ap-border); cursor: pointer; transition: border-color .15s, transform .12s; align-items: center; }
 .ap-palette-card:hover { transform: translateY(-2px); }
 .ap-palette-card.is-active { border-color: var(--ap-primary); }
 .ap-palette-card__dots { display: flex; gap: 3px; }
@@ -76,7 +76,7 @@
 
 /* chart type picker grid */
 .ap-typegrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.ap-typecell { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 10px 4px; border-radius: 12px; border: 1.5px solid var(--ap-border); background: var(--ap-surface); cursor: pointer; transition: all .14s var(--ap-ease); }
+.ap-typecell { appearance: none; -webkit-appearance: none; color: var(--ap-text); font: inherit; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 10px 4px; border-radius: 12px; border: 1.5px solid var(--ap-border); background: var(--ap-surface); cursor: pointer; transition: all .14s var(--ap-ease); }
 .ap-typecell svg { width: 26px; height: 26px; color: var(--ap-text-soft); }
 .ap-typecell span { font-size: 10px; font-weight: 700; color: var(--ap-text-soft); text-align: center; line-height: 1.1; }
 .ap-typecell:hover { border-color: var(--ap-primary); transform: translateY(-2px); }
@@ -89,7 +89,7 @@
 
 /* column pill multi-select */
 .ap-collist { display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow: auto; padding: 2px; }
-.ap-colpill { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--ap-border); cursor: pointer; font-size: var(--ap-fs-sm); transition: all .12s; }
+.ap-colpill { appearance: none; -webkit-appearance: none; background: var(--ap-surface); color: var(--ap-text); font: inherit; font-size: var(--ap-fs-sm); display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--ap-border); cursor: pointer; transition: all .12s; }
 .ap-colpill:hover { border-color: var(--ap-primary); }
 .ap-colpill.is-on { background: color-mix(in srgb, var(--ap-primary) 12%, var(--ap-surface)); border-color: var(--ap-primary); color: var(--ap-primary); font-weight: 600; }
 .ap-coltype { margin-left: auto; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; padding: 2px 6px; border-radius: 5px; background: var(--ap-bg-soft); color: var(--ap-text-mute); }
@@ -106,8 +106,13 @@
 .ap-drag-handle { cursor: grab; }
 .ap-sortable-ghost { opacity: .4; }
 .ap-sortable-chosen { box-shadow: var(--ap-shadow-lg); }
-.ap-addblock { display: grid; place-items: center; min-height: 120px; border: 2px dashed var(--ap-border); border-radius: var(--ap-radius); color: var(--ap-text-mute); cursor: pointer; font-weight: 700; gap: 6px; transition: all .15s; }
-.ap-addblock:hover { border-color: var(--ap-primary); color: var(--ap-primary); background: color-mix(in srgb, var(--ap-primary) 5%, transparent); }
+/* Reset <button> defaults so transparent shows in dark mode. */
+.ap-addblock { appearance: none; -webkit-appearance: none; background: transparent; font: inherit; font-weight: 700;
+  display: grid; place-items: center; min-height: 120px; border: 2px dashed var(--ap-border); border-radius: var(--ap-radius); color: var(--ap-text-mute); cursor: pointer; gap: 6px; transition: all .15s; text-align: left; }
+.ap-addblock:hover { border-color: var(--ap-primary); color: var(--ap-primary); background: color-mix(in srgb, var(--ap-primary) 8%, transparent); }
+.ap-addblock:focus-visible { outline: none; box-shadow: var(--ap-ring); }
+/* When used as a block-type chooser tile: make the title brighter than the description. */
+.ap-addblock > div > div:first-child { color: var(--ap-text); }
 
 /* tab editor row */
 .ap-tabedit { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--ap-border); border-radius: 10px; margin-bottom: 8px; background: var(--ap-surface); }

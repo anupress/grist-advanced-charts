@@ -114,8 +114,8 @@ function chooseNewBlock(tabId) {
     [ el('div', { class: 'ap-stat__icon' }, [icon(ic)]), el('div', {}, [ el('div', { style: { fontWeight: '700' }, text: title }), el('div', { class: 'ap-muted', style: { fontWeight: '400', fontSize: '12px' }, text: desc }) ]) ]);
   openDrawer({ title: 'Add a block', body: [
     el('div', { style: { display: 'grid', gap: '10px' } }, [
-      opt('stat', 'Stat card', 'A single KPI number with trend', 'stat'),
-      opt('column', 'Chart', 'Bar, line, pie, scatter and more', 'chart'),
+      opt('trending', 'Stat card', 'A single KPI number with trend', 'stat'),
+      opt('barchart', 'Chart', 'Bar, line, pie, scatter and more', 'chart'),
       opt('database', 'Breakdown', 'Group-wise counts with % and colored dots', 'breakdown'),
       opt('globe', 'Map', 'Plot lat/long points on a map', 'map'),
       opt('type', 'Text', 'A heading and rich text', 'text'),

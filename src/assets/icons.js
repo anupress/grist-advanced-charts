@@ -39,6 +39,7 @@ export const ICONS = {
   copy: S('<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>'),
   // stat glyphs
   trending: S('<path d="M3 17 9 11l4 4 8-8M21 7v5M21 7h-5"/>'),
+  barchart: S('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>'),
   coins: S('<ellipse cx="9" cy="7" rx="6" ry="3"/><path d="M3 7v5c0 1.6 2.7 3 6 3M15 13v4c0 1.6-2.7 3-6 3s-6-1.4-6-3v-4"/><ellipse cx="15" cy="13" rx="6" ry="3"/>'),
   users: S('<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0M16 5.2a3.2 3.2 0 0 1 0 6.2M18 20a5.5 5.5 0 0 0-3-4.9"/>'),
   cart: S('<circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M3 4h2l2.2 11.2a1 1 0 0 0 1 .8h8.4a1 1 0 0 0 1-.8L20 8H6"/>'),
