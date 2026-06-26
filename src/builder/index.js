@@ -110,13 +110,18 @@ function defaultBlock(type, tabId) {
 }
 
 function chooseNewBlock(tabId) {
-  const opt = (ic, title, desc, type) => el('button', { class: 'ap-addblock', style: { minHeight: '92px' }, onClick: () => { closeDrawer(); addBlock(tabId, type); } },
-    [ el('div', { class: 'ap-stat__icon' }, [icon(ic)]), el('div', {}, [ el('div', { style: { fontWeight: '700' }, text: title }), el('div', { class: 'ap-muted', style: { fontWeight: '400', fontSize: '12px' }, text: desc }) ]) ]);
+  const opt = (ic, title, desc, type) => el('button', { class: 'ap-addtile', onClick: () => { closeDrawer(); addBlock(tabId, type); } }, [
+    el('span', { class: 'ap-addtile__icon' }, [icon(ic)]),
+    el('span', { class: 'ap-addtile__text' }, [
+      el('span', { class: 'ap-addtile__title', text: title }),
+      el('span', { class: 'ap-addtile__desc', text: desc }),
+    ]),
+  ]);
   openDrawer({ title: 'Add a block', body: [
     el('div', { style: { display: 'grid', gap: '10px' } }, [
       opt('trending', 'Stat card', 'A single KPI number with trend', 'stat'),
       opt('barchart', 'Chart', 'Bar, line, pie, scatter and more', 'chart'),
-      opt('database', 'Breakdown', 'Group-wise counts with % and colored dots', 'breakdown'),
+      opt('database', 'Breakdown', 'Group-wise counts with % and coloured dots', 'breakdown'),
       opt('globe', 'Map', 'Plot lat/long points on a map', 'map'),
       opt('type', 'Text', 'A heading and rich text', 'text'),
     ]),
