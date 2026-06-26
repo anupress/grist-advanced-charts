@@ -45,6 +45,23 @@ document, so it is yours, portable, and reloads automatically.
 Want to try with real data first? Import the example table in [`examples/`](examples/)
 (`ANUPRESS_DummyData.csv`).
 
+## Local development
+
+You only need a static file server (no Node/Python required).
+
+```powershell
+# Windows — dependency-free PowerShell server bundled with the repo:
+powershell -ExecutionPolicy Bypass -File scripts/serve.ps1
+# then open http://127.0.0.1:4178/?demo=1
+```
+
+Or any static server (`npx serve`, `python -m http.server`, VS Code Live Server, …).
+
+**Heads-up on maps offline:** the Map block fetches tiles from public servers
+(OpenStreetMap / Esri / OpenTopo). Without internet, the map controls, markers
+and popups still render, but you'll see a light grid background instead of tiles.
+No widget data is ever sent — only the requested map view.
+
 ## How your design is stored
 
 - `ANUPRESS_Config` — one row (`Key = "site"`) whose `Value` is the JSON describing your whole site

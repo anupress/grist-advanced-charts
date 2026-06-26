@@ -1,7 +1,8 @@
 # Dependency-free static file server for local preview (no Node/Python needed).
 # Concurrent: each connection is handled in a runspace, with socket timeouts, so a single
 # idle/preconnect socket can never wedge the accept loop.
-param([int]$Port = 4178, [string]$Root = $PSScriptRoot)
+# Default web root = the project root (parent of /scripts).
+param([int]$Port = 4178, [string]$Root = (Split-Path -Parent $PSScriptRoot))
 
 $listener = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, $Port)
 $listener.Start()

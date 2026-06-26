@@ -139,6 +139,9 @@
 /* ---- Map block ---- */
 .ap-mapcard { display: flex; flex-direction: column; height: 100%; min-height: 440px; padding: 16px 18px; border-radius: var(--ap-radius); }
 .ap-map { flex: 1; width: 100%; min-height: 360px; border-radius: 10px; overflow: hidden; margin-top: 8px; background: var(--ap-bg-soft); }
+/* Light grid shown through when tiles fail to load (e.g. offline dev). */
+.ap-map.leaflet-container { background-color: var(--ap-bg-soft); }
+.ap-map .leaflet-tile-pane { background-image: linear-gradient(var(--ap-border) 1px, transparent 1px), linear-gradient(90deg, var(--ap-border) 1px, transparent 1px); background-size: 32px 32px; }
 .ap-map-pin { background: transparent !important; border: none !important; }
 .ap-map-pin svg { display: block; filter: drop-shadow(0 2px 3px rgba(0,0,0,.4)); }
 .ap-map-count { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
