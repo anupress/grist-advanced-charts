@@ -82,7 +82,8 @@ const indexHtml = `<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Advanced Charts — by ANUPRESS</title>
-<link rel="icon" href="assets/media/brand/favicon.svg" type="image/svg+xml"/>
+<link rel="icon" href="assets/media/brand/favicon.png" type="image/png"/>
+<link rel="apple-touch-icon" href="assets/media/brand/favicon.png"/>
 <link rel="stylesheet" href="assets/styles/tokens.css"/>
 <link rel="stylesheet" href="assets/styles/base.css"/>
 <link rel="stylesheet" href="assets/styles/site.css"/>
