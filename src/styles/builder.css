@@ -123,7 +123,7 @@
 .ap-addtile__icon svg { width: 23px; height: 23px; }
 .ap-addtile__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .ap-addtile__title { font-weight: 700; font-size: var(--ap-fs-md); color: var(--ap-text); }
-.ap-addtile__desc { font-size: var(--ap-fs-xs); color: var(--ap-text-mute); margin-left: 10px; }
+.ap-addtile__desc { font-size: var(--ap-fs-xs); color: var(--ap-text-mute); }
 
 /* tab editor row */
 .ap-tabedit { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--ap-border); border-radius: 10px; margin-bottom: 8px; background: var(--ap-surface); }
