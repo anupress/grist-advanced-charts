@@ -1,17 +1,22 @@
 // Tiny DOM + helper kit shared across modules. No framework, no dependencies.
 
+// Valid HTML attribute name (spec-lax): starts with letter/underscore, then letters/digits/hyphens/dots/colons/underscores.
+const ATTR_RE = /^[a-zA-Z_][\w.:-]*$/;
+
 export function el(tag, props = {}, children = []) {
   const node = document.createElement(tag);
   for (const [k, v] of Object.entries(props)) {
     if (v == null || v === false) continue;
-    if (k === 'class') node.className = v;
-    else if (k === 'html') node.innerHTML = v;
-    else if (k === 'text') node.textContent = v;
-    else if (k === 'dataset') Object.assign(node.dataset, v);
-    else if (k === 'style' && typeof v === 'object') Object.assign(node.style, v);
-    else if (k.startsWith('on') && typeof v === 'function') node.addEventListener(k.slice(2).toLowerCase(), v);
-    else if (k in node && k !== 'list') { try { node[k] = v; } catch { node.setAttribute(k, v); } }
-    else node.setAttribute(k, v);
+    if (k === 'class') { node.className = v; continue; }
+    if (k === 'html') { node.innerHTML = v; continue; }
+    if (k === 'text') { node.textContent = v; continue; }
+    if (k === 'dataset') { Object.assign(node.dataset, v); continue; }
+    if (k === 'style' && typeof v === 'object') { Object.assign(node.style, v); continue; }
+    if (k.startsWith('on') && typeof v === 'function') { node.addEventListener(k.slice(2).toLowerCase(), v); continue; }
+    if (k in node && k !== 'list') { try { node[k] = v; continue; } catch {} }
+    // Fall-through: only call setAttribute with a name the DOM will accept —
+    // otherwise a mangled key crashes the whole render with DOMException.
+    if (ATTR_RE.test(k)) { try { node.setAttribute(k, v); } catch {} }
   }
   for (const c of [].concat(children)) {
     if (c == null || c === false) continue;

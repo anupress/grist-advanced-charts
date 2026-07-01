@@ -40,21 +40,22 @@ const result = await build({
 });
 
 // 2. Obfuscate every emitted JS chunk, write the rest verbatim.
+// NOTE: We intentionally do NOT use these options — they break the reflective el() helper
+// (which inspects object literal keys at runtime) and cause silent DOMException failures
+// in embedded Grist widgets. Learned the hard way in v1 on self-hosted Grist:
+//   - transformObjectKeys: mangles our { class:'…', onClick:fn } props objects
+//   - controlFlowFlattening + deadCodeInjection: added a lot of noise for little gain
+// Identifier mangling + string-array + base64 still makes the code hard to casually read.
 const obfOpts = {
   compact: true,
-  controlFlowFlattening: true,
-  controlFlowFlatteningThreshold: 0.6,
-  deadCodeInjection: true,
-  deadCodeInjectionThreshold: 0.3,
   identifierNamesGenerator: 'mangled-shuffled',
   numbersToExpressions: true,
   simplify: true,
   splitStrings: true,
-  splitStringsChunkLength: 8,
+  splitStringsChunkLength: 10,
   stringArray: true,
-  stringArrayThreshold: 0.8,
+  stringArrayThreshold: 0.75,
   stringArrayEncoding: ['base64'],
-  transformObjectKeys: true,
   unicodeEscapeSequence: false,
 };
 for (const file of result.outputFiles) {

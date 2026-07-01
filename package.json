@@ -1,6 +1,6 @@
 {
   "name": "advanced-charts-grist",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Advanced Charts — a custom widget for Grist by ANUPRESS. A website-style dashboard (KPI cards, every ECharts chart type, group breakdowns and maps) edited in-place and saved into the user's own Grist document.",
   "type": "module",
   "private": true,

@@ -73,14 +73,19 @@ function columnarToRows(tbl) {
   return rows;
 }
 
+// Meta tables cache — _grist_Tables and _grist_Tables_column change so rarely that a per-session
+// fetch is safe and cheap. Without this cache, GristProvider.init() re-fetched both tables for
+// every user table (9 tables → 18 network round-trips). One promise each, reused.
+let _metaTablesP = null, _metaColumnsP = null;
+function fetchMetaTables()  { return _metaTablesP  ||= g().docApi.fetchTable('_grist_Tables'); }
+function fetchMetaColumns() { return _metaColumnsP ||= g().docApi.fetchTable('_grist_Tables_column'); }
+export function invalidateMetaCache() { _metaTablesP = null; _metaColumnsP = null; }
+
 // Read real column types from Grist metadata; fall back to value inference.
 export async function getColumns(tableId) {
   if (!hasGrist()) return [];
   try {
-    const [metaT, metaC] = await Promise.all([
-      g().docApi.fetchTable('_grist_Tables'),
-      g().docApi.fetchTable('_grist_Tables_column'),
-    ]);
+    const [metaT, metaC] = await Promise.all([fetchMetaTables(), fetchMetaColumns()]);
     const tRowToId = {};
     for (let i = 0; i < metaT.id.length; i++) tRowToId[metaT.id[i]] = metaT.tableId[i];
     const cols = [];
@@ -149,7 +154,7 @@ export async function ensureTables() {
   // Everything (layout, theme, logo, custom icons) lives in this one table's JSON value.
   if (!existing.has(CONFIG_TABLE)) actions.push(['AddTable', CONFIG_TABLE, [{ id: 'Key', type: 'Text' }, { id: 'Value', type: 'Text' }]]);
   if (!actions.length) return true;
-  try { await g().docApi.applyUserActions(actions); return true; }
+  try { await g().docApi.applyUserActions(actions); invalidateMetaCache(); return true; }
   catch (e) { console.warn('[ANUPRESS] ensureTables failed', e); return false; }
 }
 async function safeListAll() { try { return await g().docApi.listTables(); } catch { return []; }

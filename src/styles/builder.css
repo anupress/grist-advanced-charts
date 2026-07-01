@@ -121,9 +121,36 @@
 .ap-addtile:focus-visible { outline: none; box-shadow: var(--ap-ring); }
 .ap-addtile__icon { flex: none; width: 46px; height: 46px; border-radius: 13px; background: var(--ap-grad); color: #fff; display: grid; place-items: center; box-shadow: 0 6px 16px color-mix(in srgb, var(--ap-primary) 30%, transparent); }
 .ap-addtile__icon svg { width: 23px; height: 23px; }
-.ap-addtile__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.ap-addtile__title { font-weight: 700; font-size: var(--ap-fs-md); color: var(--ap-text); }
-.ap-addtile__desc { font-size: var(--ap-fs-xs); color: var(--ap-text-mute); }
+.ap-addtile__text { flex: 1; min-width: 0; }
+.ap-addtile__title { display: block; font-weight: 700; font-size: var(--ap-fs-md); color: var(--ap-text); line-height: 1.25; }
+.ap-addtile__desc { display: block; margin-top: 3px; font-size: var(--ap-fs-xs); color: var(--ap-text-mute); line-height: 1.35; }
+
+/* "Not sure? Let me help" tile — highlighted top item in the chooser. */
+.ap-addtile--wizard { background: color-mix(in srgb, var(--ap-primary) 10%, var(--ap-surface)); border-color: color-mix(in srgb, var(--ap-primary) 30%, var(--ap-border)); }
+.ap-addtile--wizard:hover { background: color-mix(in srgb, var(--ap-primary) 16%, var(--ap-surface)); }
+.ap-addtile-sep { text-align: center; font-size: var(--ap-fs-xs); color: var(--ap-text-mute); text-transform: uppercase; letter-spacing: .08em; margin: 4px 0 0; }
+
+/* -------- Guided chart wizard -------- */
+.ap-wiz-steps { display: flex; justify-content: center; gap: 8px; margin-bottom: 18px; }
+.ap-wiz-step { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; background: var(--ap-bg-soft); color: var(--ap-text-mute); border: 1px solid var(--ap-border); }
+.ap-wiz-step.is-current { background: var(--ap-primary); color: #fff; border-color: transparent; box-shadow: 0 4px 12px color-mix(in srgb, var(--ap-primary) 40%, transparent); }
+.ap-wiz-step.is-done { background: color-mix(in srgb, var(--ap-accent) 20%, var(--ap-surface)); color: var(--ap-accent); border-color: transparent; }
+.ap-wiz-q { font-size: var(--ap-fs-lg); margin: 0 0 6px; color: var(--ap-text); }
+.ap-wiz-hint { font-size: var(--ap-fs-sm); color: var(--ap-text-soft); margin: 0 0 16px; }
+.ap-wiz-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
+.ap-wiz-list--compact { gap: 6px; }
+.ap-wiz-item { appearance: none; -webkit-appearance: none; font: inherit; width: 100%; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 12px; border: 1.5px solid var(--ap-border); background: var(--ap-surface); color: var(--ap-text); cursor: pointer; transition: all .14s var(--ap-ease); }
+.ap-wiz-item:hover { border-color: var(--ap-primary); background: color-mix(in srgb, var(--ap-primary) 6%, var(--ap-surface)); }
+.ap-wiz-item.is-selected { border-color: var(--ap-primary); background: color-mix(in srgb, var(--ap-primary) 14%, var(--ap-surface)); }
+.ap-wiz-item__title { font-weight: 600; }
+.ap-wiz-item__meta, .ap-wiz-item__type { font-size: var(--ap-fs-xs); color: var(--ap-text-mute); text-transform: uppercase; letter-spacing: .05em; }
+.ap-wiz-item.is-selected .ap-wiz-item__type { color: var(--ap-primary); }
+.ap-wiz-summary { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+.ap-wiz-chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; background: var(--ap-bg-soft); font-size: var(--ap-fs-sm); color: var(--ap-text-soft); }
+.ap-wiz-chip svg { width: 15px; height: 15px; }
+.ap-wiz-chip b { color: var(--ap-text-mute); font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: .06em; margin-right: 2px; }
+.ap-wiz-typegrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.ap-btn.is-disabled { opacity: .4; cursor: not-allowed; }
 
 /* tab editor row */
 .ap-tabedit { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--ap-border); border-radius: 10px; margin-bottom: 8px; background: var(--ap-surface); }

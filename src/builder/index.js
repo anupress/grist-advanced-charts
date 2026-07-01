@@ -10,6 +10,7 @@ import { autoPick, isMeasure, isDimension } from '../charts/recommend.js';
 import { detectLatLon } from '../render/map.js';
 import * as bridge from '../grist/bridge.js';
 import { openBlockEditor } from './block-editor.js';
+import { openGuidedWizard } from './wizard.js';
 import { makeBlocksSortable, makeTabsSortable, makePagesSortable } from './dnd.js';
 import { openDrawer, closeDrawer, field, textInput, selectInput, checkboxRow, segmented, colorInput, subhead, divider, primaryBtn, ghostBtn } from './ui.js';
 import { heroEditorBody } from './hero-editor.js';
@@ -112,13 +113,22 @@ function defaultBlock(type, tabId) {
 function chooseNewBlock(tabId) {
   const opt = (ic, title, desc, type) => el('button', { class: 'ap-addtile', onClick: () => { closeDrawer(); addBlock(tabId, type); } }, [
     el('span', { class: 'ap-addtile__icon' }, [icon(ic)]),
-    el('span', { class: 'ap-addtile__text' }, [
-      el('span', { class: 'ap-addtile__title', text: title }),
-      el('span', { class: 'ap-addtile__desc', text: desc }),
+    el('div', { class: 'ap-addtile__text' }, [
+      el('div', { class: 'ap-addtile__title', text: title }),
+      el('div', { class: 'ap-addtile__desc', text: desc }),
+    ]),
+  ]);
+  const guided = el('button', { class: 'ap-addtile ap-addtile--wizard', onClick: () => { closeDrawer(); openGuidedWizard({ provider, onCreate: (block) => { const tab = findTab(tabId); (tab.blocks ||= []).push(block); mark(); rerender(); } }); } }, [
+    el('span', { class: 'ap-addtile__icon' }, [icon('sparkles')]),
+    el('div', { class: 'ap-addtile__text' }, [
+      el('div', { class: 'ap-addtile__title', text: 'Not sure? Let me help' }),
+      el('div', { class: 'ap-addtile__desc', text: 'A guided 3-step wizard — great if you don\'t know statistics' }),
     ]),
   ]);
   openDrawer({ title: 'Add a block', body: [
     el('div', { style: { display: 'grid', gap: '10px' } }, [
+      guided,
+      el('div', { class: 'ap-addtile-sep' }, ['or pick a specific block']),
       opt('trending', 'Stat card', 'A single KPI number with trend', 'stat'),
       opt('barchart', 'Chart', 'Bar, line, pie, scatter and more', 'chart'),
       opt('database', 'Breakdown', 'Group-wise counts with % and coloured dots', 'breakdown'),
