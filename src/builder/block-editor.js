@@ -38,6 +38,7 @@ export function openBlockEditor(block, ctx) {
   if (block.type === 'counter') return openCounterEditor(block, ctx);
   if (block.type === 'accordion') return openAccordionEditor(block, ctx);
   if (block.type === 'image') return openImageEditor(block, ctx);
+  if (block.type === 'testimonials') return openTestimonialsEditor(block, ctx);
   return openChartEditor(block, ctx);
 }
 
@@ -582,4 +583,106 @@ function rowLabel(row, cols) {
   const nameCol = cols.find((c) => /name|title|label/i.test(c.id) && !/attach/i.test(c.type));
   const val = nameCol ? row[nameCol.id] : null;
   return val != null && val !== '' ? String(val) : `Row ${row.id}`;
+}
+
+// ---------------- Testimonials editor ----------------
+function openTestimonialsEditor(block, ctx) {
+  const wb = clone(block); wb.config = wb.config || {};
+  wb.config.mode = wb.config.mode || 'manual';
+  wb.config.entries = wb.config.entries?.length ? wb.config.entries : [{ name: '', quote: '', rating: 5, photoData: null }];
+  const provider = ctx.provider;
+  const previewHost = el('div', { class: 'ap-preview' });
+  const refreshPreview = debounce(async () => {
+    if (wb.config.mode === 'data' && wb.config.table) await ensureRows(provider, wb.config.table);
+    previewHost.replaceChildren(renderBlock(clone(wb), { provider, config: {} }));
+    mountAttachmentImages(previewHost);
+  }, 150);
+
+  const dynHost = el('div');
+  function buildDyn() {
+    if (wb.config.mode === 'manual') { dynHost.replaceChildren(manualEntriesEditor()); return; }
+    const tables = provider.tables();
+    if (!wb.config.table) wb.config.table = tables[0]?.id || null;
+    const cols = provider.columns(wb.config.table);
+    const attCols = cols.filter((c) => /attach/i.test(c.type));
+    if (cols.length && !cols.find((c) => c.id === wb.config.nameColumn)) wb.config.nameColumn = cols[0].id;
+    const optional = (label) => [{ value: '', label }].concat(cols.map((c) => ({ value: c.id, label: c.label })));
+    dynHost.replaceChildren(
+      field('Data table', selectInput(tables.map((t) => ({ value: t.id, label: t.label })), wb.config.table,
+        async (v) => { wb.config.table = v; wb.config.nameColumn = null; wb.config.quoteColumn = null; wb.config.ratingColumn = null; wb.config.photoColumn = null; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
+      field('Name column', selectInput(cols.map((c) => ({ value: c.id, label: c.label })), wb.config.nameColumn, (v) => { wb.config.nameColumn = v; refreshPreview(); })),
+      field('Quote column', selectInput(optional('— none —'), wb.config.quoteColumn || '', (v) => { wb.config.quoteColumn = v || null; refreshPreview(); })),
+      field('Rating column (optional, 1–5)', selectInput(optional('— none —'), wb.config.ratingColumn || '', (v) => { wb.config.ratingColumn = v || null; refreshPreview(); })),
+      attCols.length
+        ? field('Photo column (optional)', selectInput([{ value: '', label: '— none —' }].concat(attCols.map((c) => ({ value: c.id, label: c.label }))), wb.config.photoColumn || '', (v) => { wb.config.photoColumn = v || null; refreshPreview(); }))
+        : el('div', { class: 'ap-muted', style: { fontSize: '12px' }, text: 'No Attachments column in this table — photos will show as an initial instead.' }),
+      field('Max testimonials shown', textInput(String(wb.config.limit || 6), (v) => { wb.config.limit = Math.max(1, Math.min(24, Number(v) || 6)); refreshPreview(); }, { type: 'number' })),
+    );
+  }
+
+  function manualEntriesEditor() {
+    const host = el('div', {}, [subhead('Testimonials')]);
+    wb.config.entries.forEach((e, i) => {
+      const avatarPreview = el('div', { style: { marginBottom: '6px' } }, [avatarThumb(e)]);
+      const row = el('div', { class: 'ap-tabedit', style: { alignItems: 'flex-start', gap: '10px' } }, [
+        el('div', { style: { flex: '1', display: 'flex', flexDirection: 'column', gap: '6px' } }, [
+          textInput(e.name || '', (v) => { e.name = v; refreshPreview(); }, { placeholder: 'Name' }),
+          textInput(e.quote || '', (v) => { e.quote = v; refreshPreview(); }, { textarea: true, placeholder: 'What they said…' }),
+          ratingPicker(e),
+          avatarPreview,
+          el('div', { class: 'ap-row' }, [
+            el('button', { class: 'ap-btn ap-btn--soft ap-btn--sm', onClick: () => pickImage(async (f) => {
+              e.photoData = await readFileAsDataURL(f, 200); avatarPreview.replaceChildren(avatarThumb(e)); refreshPreview();
+            }) }, [icon('image'), e.photoData ? 'Replace photo' : 'Add photo']),
+            e.photoData ? el('button', { class: 'ap-btn ap-btn--ghost ap-btn--sm ap-btn--danger', onClick: () => { e.photoData = null; avatarPreview.replaceChildren(avatarThumb(e)); refreshPreview(); } }, [icon('trash'), 'Remove']) : null,
+          ]),
+        ]),
+        el('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px' } }, [
+          i > 0 ? iconBtn('arrowUp', 'Move up', () => swapEntry(i, i - 1)) : null,
+          i < wb.config.entries.length - 1 ? iconBtn('arrowDown', 'Move down', () => swapEntry(i, i + 1)) : null,
+          wb.config.entries.length > 1 ? iconBtn('trash', 'Remove', () => { wb.config.entries.splice(i, 1); buildDyn(); refreshPreview(); }, 'ap-btn--danger') : null,
+        ]),
+      ]);
+      host.append(row);
+    });
+    host.append(el('button', { class: 'ap-btn ap-btn--soft', onClick: () => { wb.config.entries.push({ name: '', quote: '', rating: 5, photoData: null }); buildDyn(); refreshPreview(); } }, [icon('plus'), 'Add testimonial']));
+    return host;
+  }
+  function avatarThumb(e) {
+    return e.photoData
+      ? el('img', { src: e.photoData, alt: '', style: { width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' } })
+      : el('div', { class: 'ap-muted', style: { fontSize: '12px' }, text: 'No photo (shows initial)' });
+  }
+  function ratingPicker(e) {
+    const wrap = el('div', { class: 'ap-row', style: { gap: '3px' } });
+    const rebuild = () => {
+      wrap.replaceChildren();
+      for (let i = 1; i <= 5; i++) {
+        const b = el('button', { class: 'ap-btn ap-btn--icon ap-btn--sm', title: `${i} star${i > 1 ? 's' : ''}`, style: { color: i <= (e.rating || 0) ? '#f5a524' : 'var(--ap-text-mute)' } }, [icon('star')]);
+        b.addEventListener('click', () => { e.rating = i; rebuild(); refreshPreview(); });
+        wrap.append(b);
+      }
+      const clear = el('button', { class: 'ap-btn ap-btn--ghost ap-btn--sm', text: 'No rating' });
+      clear.addEventListener('click', () => { e.rating = null; rebuild(); refreshPreview(); });
+      wrap.append(clear);
+    };
+    rebuild();
+    return wrap;
+  }
+  function swapEntry(a, b) { const arr = wb.config.entries; [arr[a], arr[b]] = [arr[b], arr[a]]; buildDyn(); refreshPreview(); }
+
+  const body = [
+    field('Section title (optional)', textInput(wb.config.title || '', (v) => { wb.config.title = v; refreshPreview(); }, { placeholder: 'e.g. What people are saying' })),
+    field('Content comes from', segmented([{ value: 'manual', label: 'Type them in' }, { value: 'data', label: 'From my data' }], wb.config.mode, (v) => { wb.config.mode = v; buildDyn(); refreshPreview(); })),
+    dynHost,
+    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    subhead('Live preview'), previewHost,
+  ];
+  const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
+  openDrawer({ title: block.__isNew ? 'Add testimonials' : 'Edit testimonials', body, footer });
+  (async () => {
+    if (wb.config.mode === 'data' && wb.config.table) await ensureRows(provider, wb.config.table);
+    buildDyn();
+    refreshPreview();
+  })();
 }

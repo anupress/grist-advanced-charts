@@ -51,6 +51,11 @@ export const BLOCK_CATALOG = [
     info: 'A start and end number you set yourself (not calculated from data) that animates upward once it scrolls into view — a classic "1,250+ happy customers" effect.',
   },
   {
+    type: 'testimonials', category: 'content', icon: 'users', title: 'Testimonials',
+    desc: 'A grid of quotes and star ratings',
+    info: 'A wall of quotes with names, star ratings and photos — type them in yourself, or pull them straight from a table of reviews/feedback.',
+  },
+  {
     type: 'accordion', category: 'content', icon: 'accordion', title: 'Accordion',
     desc: 'Expandable question & answer list',
     info: 'A list of questions that expand to reveal an answer when clicked — perfect for an FAQ section.',

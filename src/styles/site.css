@@ -203,6 +203,20 @@
 .ap-image .ap-image__empty { aspect-ratio: 16 / 10; }
 .ap-image .ap-image__empty svg { width: 80px; }
 
+/* ---- Testimonials block ---- */
+.ap-testimonials { padding: 20px; border-radius: var(--ap-radius); }
+.ap-testimonials__title { font-size: var(--ap-fs-xl); margin: 0 0 14px; }
+.ap-testimonials__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.ap-testimonial { padding: 16px; border-radius: var(--ap-radius-sm); background: var(--ap-bg-soft); display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.ap-testimonial__head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ap-testimonial__avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex: none; }
+.ap-testimonial__avatar--ph { display: grid; place-items: center; background: var(--ap-grad); color: #fff; font-weight: 800; font-size: var(--ap-fs-md); }
+.ap-testimonial__name { font-weight: 700; font-size: var(--ap-fs-sm); color: var(--ap-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ap-testimonial__stars { display: flex; gap: 1px; margin-top: 2px; }
+.ap-testimonial__star { width: 13px; height: 13px; color: var(--ap-border); }
+.ap-testimonial__star.is-on { color: #f5a524; fill: currentColor; }
+.ap-testimonial__quote { font-size: var(--ap-fs-sm); color: var(--ap-text-soft); line-height: 1.55; }
+
 /* ---- Mobile nav ---- */
 @media (max-width: 760px) {
   .ap-nav { position: fixed; inset: 0 0 0 auto; width: min(78vw, 320px); flex-direction: column; align-items: stretch; gap: 4px; padding: 80px 16px 24px; background: var(--ap-surface); box-shadow: var(--ap-shadow-lg); transform: translateX(100%); transition: transform .3s var(--ap-ease); z-index: 45; }
