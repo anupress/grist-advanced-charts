@@ -15,12 +15,36 @@ export function field(labelText, control, hint, infoHtml) {
 }
 
 // A small "i" button that toggles a popover with help text (e.g. available placeholders).
+// One delegated outside-click listener for the whole page (not one per call) — closes whichever
+// popover is open when a click lands outside its .ap-info-wrap, and closes any other open
+// popover when a new one opens (only one help popover open at a time).
+let _infoOutsideClickWired = false;
+function wireInfoOutsideClickOnce() {
+  if (_infoOutsideClickWired) return;
+  _infoOutsideClickWired = true;
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll('.ap-info-pop.is-open').forEach((pop) => {
+      if (!pop.closest('.ap-info-wrap')?.contains(e.target)) pop.classList.remove('is-open');
+    });
+  });
+}
 export function infoButton(html) {
+  wireInfoOutsideClickOnce();
   const pop = el('span', { class: 'ap-info-pop', html });
   const btn = el('button', { class: 'ap-info-btn', type: 'button', 'aria-label': 'More info', text: 'i' });
   const wrap = el('span', { class: 'ap-info-wrap' }, [btn, pop]);
-  btn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); pop.classList.toggle('is-open'); });
-  document.addEventListener('click', () => pop.classList.remove('is-open'));
+  // infoButton() is often placed inside a <label> (see field()). Per the HTML label-activation
+  // spec, clicking ANY non-interactive descendant of a <label> — including a click landing inside
+  // this popover's own text — auto-fires a second, synthetic click on the label's first labelable
+  // descendant (our <button>), which would immediately re-toggle the popover shut. preventDefault()
+  // on clicks inside the popover suppresses that forwarding so reading/selecting its text works.
+  pop.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
+  btn.addEventListener('click', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const opening = !pop.classList.contains('is-open');
+    document.querySelectorAll('.ap-info-pop.is-open').forEach((p) => p.classList.remove('is-open'));
+    pop.classList.toggle('is-open', opening);
+  });
   return wrap;
 }
 
