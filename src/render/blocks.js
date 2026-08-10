@@ -16,6 +16,10 @@ import { renderImage } from './image.js';
 import { renderTestimonials } from './testimonials.js';
 import { renderLiveTable } from './livetable.js';
 import { renderEmbed } from './embed.js';
+import { renderQRCode } from './qrcode.js';
+import { renderCountdown } from './countdown.js';
+import { renderTimeline } from './timeline.js';
+import { renderPricing } from './pricing.js';
 
 function blockData(block, ctx) {
   const table = block.config?.table || ctx.config?.dataTable;
@@ -49,6 +53,11 @@ export function renderBlock(block, ctx) {
   else if (block.type === 'testimonials') inner = renderTestimonials(block, ctx);
   else if (block.type === 'livetable') inner = renderLiveTable(block, ctx);
   else if (block.type === 'embed') inner = renderEmbed(block);
+  else if (block.type === 'qrcode') inner = renderQRCode(block);
+  else if (block.type === 'countdown') inner = renderCountdown(block);
+  else if (block.type === 'timeline') inner = renderTimeline(block);
+  else if (block.type === 'divider') inner = renderDivider(block);
+  else if (block.type === 'pricing') inner = renderPricing(block, ctx);
   else inner = renderChartCard(block, ctx);
 
   const wrap = el('div', { class: 'ap-block', dataset: { span: String(block.span || 12), blockId: block.id } }, [inner]);
@@ -147,6 +156,15 @@ function renderSpacer(block) {
   const c = block.config || {};
   const h = clamp(Number(c.height) || 40, 4, 240);
   return el('div', { class: 'ap-spacer', dataset: { blockId: block.id }, style: { height: h + 'px' } });
+}
+
+function renderDivider(block) {
+  const c = block.config || {};
+  const style = ['solid', 'dashed', 'dotted'].includes(c.style) ? c.style : 'solid';
+  const thickness = clamp(Number(c.thickness) || 1, 1, 10);
+  return el('div', { class: 'ap-dividerblock', dataset: { blockId: block.id } }, [
+    el('div', { class: 'ap-dividerblock__line', style: { borderTopStyle: style, borderTopColor: c.color || 'var(--ap-border)', borderTopWidth: thickness + 'px' } }),
+  ]);
 }
 
 // Shared by Button and Icon: builds an <a> (external URL, target.newTab respected) or a

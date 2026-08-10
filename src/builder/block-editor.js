@@ -12,6 +12,7 @@ import { renderBlock, mountCharts } from '../render/blocks.js';
 import { mountMaps, detectLatLon } from '../render/map.js';
 import { mountCounters } from '../render/counter.js';
 import { mountAttachmentImages } from '../render/media-mount.js';
+import { mountCountdowns } from '../render/countdown.js';
 import { currentSeriesColors } from '../theme/apply.js';
 import { pickImage, readFileAsDataURL } from './imageutil.js';
 
@@ -41,6 +42,11 @@ export function openBlockEditor(block, ctx) {
   if (block.type === 'testimonials') return openTestimonialsEditor(block, ctx);
   if (block.type === 'livetable') return openLiveTableEditor(block, ctx);
   if (block.type === 'embed') return openEmbedEditor(block, ctx);
+  if (block.type === 'qrcode') return openQRCodeEditor(block, ctx);
+  if (block.type === 'countdown') return openCountdownEditor(block, ctx);
+  if (block.type === 'timeline') return openTimelineEditor(block, ctx);
+  if (block.type === 'divider') return openDividerEditor(block, ctx);
+  if (block.type === 'pricing') return openPricingEditor(block, ctx);
   return openChartEditor(block, ctx);
 }
 
@@ -751,5 +757,183 @@ function openEmbedEditor(block, ctx) {
   ];
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
   openDrawer({ title: block.__isNew ? 'Add embed' : 'Edit embed', body, footer });
+  refreshPreview();
+}
+
+// ---------------- QR code editor ----------------
+function openQRCodeEditor(block, ctx) {
+  const wb = clone(block); wb.config = wb.config || {};
+  const previewHost = el('div', { class: 'ap-preview' });
+  const refreshPreview = debounce(() => { previewHost.replaceChildren(renderBlock(clone(wb), { provider: ctx.provider, config: {} })); }, 150);
+  const body = [
+    field('Link or text', textInput(wb.config.text || '', (v) => { wb.config.text = v; refreshPreview(); }, { textarea: true, placeholder: 'https://example.com' }),
+      'Anything works — a URL, a phone number, plain text. Generated entirely in the browser; nothing is sent anywhere.'),
+    field('Error correction', segmented([
+      { value: 'L', label: 'Low' }, { value: 'M', label: 'Medium' }, { value: 'Q', label: 'Quartile' }, { value: 'H', label: 'High' },
+    ], wb.config.level || 'M', (v) => { wb.config.level = v; refreshPreview(); }),
+      'Higher levels stay scannable even if the code gets partly damaged or covered, but hold less text at a given size.'),
+    twoUp(
+      colorField('Code color', wb.config.fg, '#000000', (v) => { wb.config.fg = v; refreshPreview(); }),
+      colorField('Background', wb.config.bg, '#ffffff', (v) => { wb.config.bg = v; refreshPreview(); }),
+    ),
+    field('Size (pixels)', textInput(String(wb.config.size ?? 200), (v) => { wb.config.size = Math.max(80, Math.min(600, Number(v) || 200)); refreshPreview(); }, { type: 'number' })),
+    field('Caption (optional)', textInput(wb.config.caption || '', (v) => { wb.config.caption = v; refreshPreview(); }, { placeholder: 'e.g. Scan to donate' })),
+    field('Block width', segmented(SPANS, wb.span || 3, (v) => { wb.span = v; })),
+    subhead('Live preview'), previewHost,
+  ];
+  const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
+  openDrawer({ title: block.__isNew ? 'Add QR code' : 'Edit QR code', body, footer });
+  refreshPreview();
+}
+
+// ---------------- Countdown editor ----------------
+function openCountdownEditor(block, ctx) {
+  const wb = clone(block); wb.config = wb.config || {};
+  wb.config.targetDate = wb.config.targetDate || new Date(Date.now() + 7 * 86400000).toISOString();
+  const previewHost = el('div', { class: 'ap-preview' });
+  const refreshPreview = debounce(() => {
+    previewHost.replaceChildren(renderBlock(clone(wb), { provider: ctx.provider, config: {} }));
+    mountCountdowns(previewHost);
+  }, 200);
+
+  // datetime-local wants a timezone-free "local" string; shifting by the local offset before
+  // calling toISOString() is the standard trick to populate one from a UTC-based Date.
+  const dt = new Date(wb.config.targetDate);
+  const localStr = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+
+  const body = [
+    field('Title (optional)', textInput(wb.config.title || '', (v) => { wb.config.title = v; refreshPreview(); }, { placeholder: 'e.g. Early-bird pricing ends' })),
+    field('Counts down to', textInput(localStr, (v) => { if (v) { wb.config.targetDate = new Date(v).toISOString(); refreshPreview(); } }, { type: 'datetime-local' })),
+    field('Message once it ends', textInput(wb.config.expiredText || '', (v) => { wb.config.expiredText = v; refreshPreview(); }, { placeholder: 'e.g. This offer has ended.' })),
+    colorField('Number color', wb.config.color, '#6d5efc', (v) => { wb.config.color = v; refreshPreview(); }),
+    field('Block width', segmented(SPANS, wb.span || 4, (v) => { wb.span = v; })),
+    subhead('Live preview'), previewHost,
+  ];
+  const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
+  openDrawer({ title: block.__isNew ? 'Add countdown' : 'Edit countdown', body, footer });
+  refreshPreview();
+}
+
+// ---------------- Timeline editor ----------------
+function openTimelineEditor(block, ctx) {
+  const wb = clone(block); wb.config = wb.config || {};
+  wb.config.items = wb.config.items?.length ? wb.config.items : [{ date: '', title: '', description: '' }];
+  const previewHost = el('div', { class: 'ap-preview' });
+  const refreshPreview = debounce(() => { previewHost.replaceChildren(renderBlock(clone(wb), { provider: ctx.provider, config: {} })); }, 100);
+
+  const itemsHost = el('div');
+  function renderItems() {
+    itemsHost.replaceChildren(subhead('Milestones'));
+    wb.config.items.forEach((it, i) => {
+      const row = el('div', { class: 'ap-tabedit', style: { alignItems: 'flex-start', gap: '10px' } }, [
+        el('div', { style: { flex: '1', display: 'flex', flexDirection: 'column', gap: '6px' } }, [
+          textInput(it.date || '', (v) => { it.date = v; refreshPreview(); }, { placeholder: 'e.g. 2020, or March 2024' }),
+          textInput(it.title || '', (v) => { it.title = v; refreshPreview(); }, { placeholder: 'Milestone title' }),
+          textInput(it.description || '', (v) => { it.description = v; refreshPreview(); }, { textarea: true, placeholder: 'A short description (optional)' }),
+        ]),
+        el('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px' } }, [
+          i > 0 ? iconBtn('arrowUp', 'Move up', () => swap(i, i - 1)) : null,
+          i < wb.config.items.length - 1 ? iconBtn('arrowDown', 'Move down', () => swap(i, i + 1)) : null,
+          wb.config.items.length > 1 ? iconBtn('trash', 'Remove', () => { wb.config.items.splice(i, 1); renderItems(); refreshPreview(); }, 'ap-btn--danger') : null,
+        ]),
+      ]);
+      itemsHost.append(row);
+    });
+    itemsHost.append(el('button', { class: 'ap-btn ap-btn--soft', onClick: () => { wb.config.items.push({ date: '', title: '', description: '' }); renderItems(); refreshPreview(); } }, [icon('plus'), 'Add milestone']));
+  }
+  function swap(a, b) { const arr = wb.config.items; [arr[a], arr[b]] = [arr[b], arr[a]]; renderItems(); refreshPreview(); }
+  renderItems();
+
+  const body = [
+    field('Title (optional)', textInput(wb.config.title || '', (v) => { wb.config.title = v; refreshPreview(); }, { placeholder: 'e.g. Our history' })),
+    divider(), itemsHost,
+    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    subhead('Live preview'), previewHost,
+  ];
+  const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
+  openDrawer({ title: block.__isNew ? 'Add timeline' : 'Edit timeline', body, footer });
+  refreshPreview();
+}
+
+// ---------------- Divider editor ----------------
+function openDividerEditor(block, ctx) {
+  const wb = clone(block); wb.config = wb.config || {};
+  const previewHost = el('div', { class: 'ap-preview' });
+  const refreshPreview = () => { previewHost.replaceChildren(renderBlock(clone(wb), { provider: ctx.provider, config: {} })); };
+  const body = [
+    field('Style', segmented([{ value: 'solid', label: 'Solid' }, { value: 'dashed', label: 'Dashed' }, { value: 'dotted', label: 'Dotted' }], wb.config.style || 'solid', (v) => { wb.config.style = v; refreshPreview(); })),
+    field('Thickness (pixels)', textInput(String(wb.config.thickness ?? 1), (v) => { wb.config.thickness = Math.max(1, Math.min(10, Number(v) || 1)); refreshPreview(); }, { type: 'number' })),
+    colorField('Color', wb.config.color, '#d0d5dd', (v) => { wb.config.color = v; refreshPreview(); }),
+    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    subhead('Live preview'), previewHost,
+  ];
+  const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
+  openDrawer({ title: block.__isNew ? 'Add divider' : 'Edit divider', body, footer });
+  refreshPreview();
+}
+
+// ---------------- Pricing table editor ----------------
+function defaultPlan() {
+  return { name: 'Plan', price: '$0', period: '/mo', features: ['Feature one'], highlighted: false, buttonLabel: 'Choose', buttonTarget: { kind: null, tab: null, url: null, newTab: true } };
+}
+function openPricingEditor(block, ctx) {
+  const wb = clone(block); wb.config = wb.config || {};
+  wb.config.plans = wb.config.plans?.length ? wb.config.plans : [defaultPlan()];
+  const previewHost = el('div', { class: 'ap-preview' });
+  const refreshPreview = debounce(() => { previewHost.replaceChildren(renderBlock(clone(wb), { provider: ctx.provider, config: {} })); }, 150);
+
+  const plansHost = el('div');
+  function renderPlans() {
+    plansHost.replaceChildren(subhead('Plans'));
+    wb.config.plans.forEach((p, i) => {
+      p.buttonTarget = p.buttonTarget || { kind: null, tab: null, url: null, newTab: true };
+      const featuresHost = el('div');
+      function renderFeatures() {
+        featuresHost.replaceChildren();
+        (p.features ||= []).forEach((f, fi) => {
+          featuresHost.append(el('div', { class: 'ap-row' }, [
+            textInput(f, (v) => { p.features[fi] = v; refreshPreview(); }, { placeholder: 'e.g. Unlimited projects' }),
+            iconBtn('trash', 'Remove feature', () => { p.features.splice(fi, 1); renderFeatures(); refreshPreview(); }, 'ap-btn--danger'),
+          ]));
+        });
+        featuresHost.append(el('button', { class: 'ap-btn ap-btn--ghost ap-btn--sm', onClick: () => { p.features.push(''); renderFeatures(); refreshPreview(); } }, [icon('plus'), 'Add feature']));
+      }
+      renderFeatures();
+
+      const planBody = el('div', { style: { flex: '1', display: 'flex', flexDirection: 'column', gap: '8px' } }, [
+        textInput(p.name || '', (v) => { p.name = v; refreshPreview(); }, { placeholder: 'Plan name' }),
+        twoUp(
+          textInput(p.price || '', (v) => { p.price = v; refreshPreview(); }, { placeholder: 'e.g. $29' }),
+          textInput(p.period || '', (v) => { p.period = v; refreshPreview(); }, { placeholder: 'e.g. /month' }),
+        ),
+        checkboxRow('Highlight this plan', !!p.highlighted, (v) => { p.highlighted = v; refreshPreview(); }),
+        subhead('Features'), featuresHost,
+        subhead('Button'),
+        textInput(p.buttonLabel || '', (v) => { p.buttonLabel = v; refreshPreview(); }, { placeholder: 'Button label' }),
+        linkTargetField(p.buttonTarget, ctx.site?.tabs, refreshPreview),
+      ]);
+      const row = el('div', { class: 'ap-tabedit', style: { alignItems: 'flex-start', gap: '10px' } }, [
+        planBody,
+        el('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px' } }, [
+          i > 0 ? iconBtn('arrowUp', 'Move up', () => swapPlan(i, i - 1)) : null,
+          i < wb.config.plans.length - 1 ? iconBtn('arrowDown', 'Move down', () => swapPlan(i, i + 1)) : null,
+          wb.config.plans.length > 1 ? iconBtn('trash', 'Remove plan', () => { wb.config.plans.splice(i, 1); renderPlans(); refreshPreview(); }, 'ap-btn--danger') : null,
+        ]),
+      ]);
+      plansHost.append(row, divider());
+    });
+    plansHost.append(el('button', { class: 'ap-btn ap-btn--soft', onClick: () => { wb.config.plans.push(defaultPlan()); renderPlans(); refreshPreview(); } }, [icon('plus'), 'Add plan']));
+  }
+  function swapPlan(a, b) { const arr = wb.config.plans; [arr[a], arr[b]] = [arr[b], arr[a]]; renderPlans(); refreshPreview(); }
+  renderPlans();
+
+  const body = [
+    field('Section title (optional)', textInput(wb.config.title || '', (v) => { wb.config.title = v; refreshPreview(); }, { placeholder: 'e.g. Choose your plan' })),
+    plansHost,
+    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    subhead('Live preview'), previewHost,
+  ];
+  const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
+  openDrawer({ title: block.__isNew ? 'Add pricing table' : 'Edit pricing table', body, footer });
   refreshPreview();
 }

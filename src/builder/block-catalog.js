@@ -81,6 +81,31 @@ export const BLOCK_CATALOG = [
     info: 'Adds empty vertical space between other elements — invisible on the page, just adjusts the gap.',
   },
   {
+    type: 'divider', category: 'basic', icon: 'divider', title: 'Divider',
+    desc: 'A thin line to separate sections',
+    info: 'A simple horizontal rule to visually separate content — choose solid, dashed or dotted, and pick a color and thickness.',
+  },
+  {
+    type: 'countdown', category: 'basic', icon: 'countdown', title: 'Countdown timer',
+    desc: 'A live countdown to a date & time',
+    info: 'Counts down to a date and time you set — days, hours, minutes and seconds tick live in the visitor\'s browser. Good for deadlines, launches or offer end-dates.',
+  },
+  {
+    type: 'qrcode', category: 'basic', icon: 'qrcode', title: 'QR code',
+    desc: 'A scannable code for a link or text',
+    info: 'Generates a QR code for a link or any text, entirely in the visitor\'s browser — nothing is sent anywhere to create it, matching this widget\'s zero-third-party-calls design.',
+  },
+  {
+    type: 'timeline', category: 'content', icon: 'timeline', title: 'Timeline',
+    desc: 'A vertical list of dated milestones',
+    info: 'A vertical list of milestones, each with a date, title and short description — good for a history, roadmap or process overview.',
+  },
+  {
+    type: 'pricing', category: 'content', icon: 'pricing', title: 'Pricing table',
+    desc: 'Side-by-side plans with features & a CTA',
+    info: 'Side-by-side plan cards, each with a price, a list of features and its own call-to-action button — optionally highlight one as the recommended plan.',
+  },
+  {
     type: 'embed', category: 'advanced', icon: 'code', title: 'HTML/CSS/JS',
     desc: 'Your own custom code, sandboxed',
     info: 'For advanced users: write your own HTML, CSS and JavaScript, rendered in a sandboxed frame that cannot access your Grist data or this widget\'s settings.',

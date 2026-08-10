@@ -123,6 +123,14 @@ function defaultBlock(type, tabId) {
   if (type === 'testimonials') return { id: uid('blk'), type: 'testimonials', span: 12, __isNew: true, config: { title: 'What people are saying', mode: 'manual', entries: [{ name: '', quote: '', rating: 5, photoData: null }], table: null, nameColumn: null, quoteColumn: null, ratingColumn: null, photoColumn: null, limit: 6 } };
   if (type === 'livetable') return { id: uid('blk'), type: 'livetable', span: 12, __isNew: true, config: { title: '', table, columns: cols.slice(0, 5).map((c) => c.id), pageSize: 10, searchable: true, sortable: true, defaultSort: null } };
   if (type === 'embed') return { id: uid('blk'), type: 'embed', span: 12, __isNew: true, config: { html: '', css: '', js: '', height: 300 } };
+  if (type === 'qrcode') return { id: uid('blk'), type: 'qrcode', span: 3, __isNew: true, config: { text: 'https://', level: 'M', fg: '#000000', bg: '#ffffff', size: 200, caption: '' } };
+  if (type === 'countdown') return { id: uid('blk'), type: 'countdown', span: 4, __isNew: true, config: { title: '', targetDate: new Date(Date.now() + 7 * 86400000).toISOString(), expiredText: 'This has ended.', color: null } };
+  if (type === 'timeline') return { id: uid('blk'), type: 'timeline', span: 12, __isNew: true, config: { title: 'Our history', items: [{ date: '', title: 'Milestone one', description: '' }] } };
+  if (type === 'divider') return { id: uid('blk'), type: 'divider', span: 12, __isNew: true, config: { style: 'solid', thickness: 1, color: null } };
+  if (type === 'pricing') return { id: uid('blk'), type: 'pricing', span: 12, __isNew: true, config: { title: 'Choose your plan', plans: [
+    { name: 'Basic', price: '$9', period: '/mo', features: ['Feature one', 'Feature two'], highlighted: false, buttonLabel: 'Choose', buttonTarget: { kind: null, tab: null, url: null, newTab: true } },
+    { name: 'Pro', price: '$29', period: '/mo', features: ['Everything in Basic', 'Feature three', 'Feature four'], highlighted: true, buttonLabel: 'Choose', buttonTarget: { kind: null, tab: null, url: null, newTab: true } },
+  ] } };
   return { id: uid('blk'), type: 'chart', span: 6, __isNew: true, config: { table, title: 'New chart', ...autoPick(cols) } };
 }
 

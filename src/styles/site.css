@@ -242,6 +242,52 @@
 .ap-embed { padding: 0; overflow: hidden; }
 .ap-embed__frame { width: 100%; border: none; display: block; background: transparent; }
 
+/* ---- QR code block ---- */
+.ap-qr { padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; height: 100%; justify-content: center; }
+.ap-qr svg { max-width: 100%; height: auto; border-radius: 6px; }
+.ap-qr__caption { font-size: var(--ap-fs-sm); color: var(--ap-text-soft); text-align: center; }
+.ap-qr__empty { font-size: var(--ap-fs-sm); color: var(--ap-text-mute); text-align: center; padding: 20px; }
+
+/* ---- Countdown block ---- */
+.ap-countdown { padding: 22px; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; height: 100%; justify-content: center; }
+.ap-countdown__title { font-weight: 700; font-size: var(--ap-fs-md); color: var(--ap-text); }
+.ap-countdown__units { display: flex; gap: 14px; }
+.ap-countdown__unit { display: flex; flex-direction: column; align-items: center; min-width: 52px; }
+.ap-countdown__num { font-family: var(--ap-font-head); font-weight: 800; font-size: var(--ap-fs-2xl); line-height: 1; font-variant-numeric: tabular-nums; }
+.ap-countdown__label { font-size: var(--ap-fs-xs); text-transform: uppercase; letter-spacing: .05em; color: var(--ap-text-mute); margin-top: 4px; }
+.ap-countdown__expired { font-size: var(--ap-fs-md); color: var(--ap-text-soft); font-weight: 600; }
+
+/* ---- Timeline block ---- */
+.ap-timeline { padding: 20px 22px; }
+.ap-timeline__title { font-size: var(--ap-fs-xl); margin: 0 0 16px; }
+.ap-timeline__list { position: relative; display: flex; flex-direction: column; gap: 22px; padding-left: 26px; }
+.ap-timeline__list::before { content: ''; position: absolute; left: 5px; top: 6px; bottom: 6px; width: 2px; background: var(--ap-border); }
+.ap-timeline__item { position: relative; }
+.ap-timeline__dot { position: absolute; left: -26px; top: 3px; width: 12px; height: 12px; border-radius: 50%; background: var(--ap-primary); border: 3px solid var(--ap-surface); box-shadow: 0 0 0 2px var(--ap-primary); }
+.ap-timeline__date { font-size: var(--ap-fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--ap-primary); margin-bottom: 2px; }
+.ap-timeline__itemtitle { font-weight: 700; font-size: var(--ap-fs-md); color: var(--ap-text); }
+.ap-timeline__desc { font-size: var(--ap-fs-sm); color: var(--ap-text-soft); margin-top: 3px; line-height: 1.5; }
+
+/* ---- Divider block (deliberately no card chrome — a plain rule, not a bordered box) ---- */
+.ap-dividerblock { width: 100%; padding: 14px 4px; display: flex; align-items: center; }
+.ap-dividerblock__line { width: 100%; border-top: 1px solid var(--ap-border); }
+
+/* ---- Pricing table block ---- */
+.ap-pricing { padding: 20px 22px; }
+.ap-pricing__title { font-size: var(--ap-fs-xl); margin: 0 0 16px; text-align: center; }
+.ap-pricing__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; align-items: stretch; }
+.ap-pricing__plan { position: relative; display: flex; flex-direction: column; gap: 12px; padding: 22px 20px; border-radius: var(--ap-radius-sm); border: 1px solid var(--ap-border); background: var(--ap-surface); }
+.ap-pricing__plan.is-highlighted { border-color: var(--ap-primary); box-shadow: 0 10px 30px color-mix(in srgb, var(--ap-primary) 18%, transparent); transform: translateY(-4px); }
+.ap-pricing__badge { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: var(--ap-grad); color: #fff; font-size: var(--ap-fs-xs); font-weight: 700; padding: 3px 12px; border-radius: 999px; }
+.ap-pricing__name { font-weight: 700; font-size: var(--ap-fs-md); color: var(--ap-text); }
+.ap-pricing__price { display: flex; align-items: baseline; gap: 4px; }
+.ap-pricing__amount { font-family: var(--ap-font-head); font-weight: 800; font-size: var(--ap-fs-2xl); color: var(--ap-text); }
+.ap-pricing__period { font-size: var(--ap-fs-sm); color: var(--ap-text-mute); }
+.ap-pricing__features { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.ap-pricing__features li { display: flex; align-items: flex-start; gap: 8px; font-size: var(--ap-fs-sm); color: var(--ap-text-soft); }
+.ap-pricing__features svg { flex: none; width: 16px; height: 16px; color: var(--ap-primary); margin-top: 2px; }
+.ap-pricing__btn { justify-content: center; text-align: center; }
+
 /* ---- Mobile nav ---- */
 @media (max-width: 760px) {
   .ap-nav { position: fixed; inset: 0 0 0 auto; width: min(78vw, 320px); flex-direction: column; align-items: stretch; gap: 4px; padding: 80px 16px 24px; background: var(--ap-surface); box-shadow: var(--ap-shadow-lg); transform: translateX(100%); transition: transform .3s var(--ap-ease); z-index: 45; }
