@@ -130,6 +130,36 @@
 .ap-addtile--wizard:hover { background: color-mix(in srgb, var(--ap-primary) 16%, var(--ap-surface)); }
 .ap-addtile-sep { text-align: center; font-size: var(--ap-fs-xs); color: var(--ap-text-mute); text-transform: uppercase; letter-spacing: .08em; margin: 4px 0 0; }
 
+/* "Add Element" chooser: search box + collapsible categories + a 2-col icon-tile grid. */
+.ap-el-search { width: 100%; }
+.ap-el-categories { display: grid; gap: 10px; }
+.ap-el-cat { border: none; }
+.ap-el-cat__head { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px;
+  padding: 8px 2px; font-weight: 800; font-size: var(--ap-fs-xs); text-transform: uppercase; letter-spacing: .06em; color: var(--ap-text-mute); }
+.ap-el-cat__head::-webkit-details-marker { display: none; }
+.ap-el-cat__head::marker { content: ''; }
+.ap-el-cat__head::before { content: '▸'; display: inline-block; font-size: 10px; color: var(--ap-text-mute); transition: transform .15s var(--ap-ease); }
+.ap-el-cat[open] > .ap-el-cat__head::before { transform: rotate(90deg); }
+.ap-el-cat__label { flex: 1; }
+.ap-el-cat__count { font-weight: 700; color: var(--ap-text-mute); background: var(--ap-bg-soft); border-radius: 999px; padding: 1px 8px; font-size: 10px; letter-spacing: 0; text-transform: none; }
+
+.ap-el-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ap-eltile-wrap { position: relative; }
+.ap-eltile { appearance: none; -webkit-appearance: none; font: inherit; width: 100%; height: 100%; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 10px 14px; border-radius: 14px;
+  border: 1px solid var(--ap-border); background: var(--ap-surface); color: var(--ap-text); cursor: pointer;
+  transition: border-color .15s var(--ap-ease), background .15s var(--ap-ease), transform .12s var(--ap-ease), box-shadow .15s var(--ap-ease); }
+.ap-eltile:hover { border-color: var(--ap-primary); background: color-mix(in srgb, var(--ap-primary) 8%, var(--ap-surface)); transform: translateY(-1px); box-shadow: var(--ap-shadow-sm); }
+.ap-eltile:focus-visible { outline: none; box-shadow: var(--ap-ring); }
+.ap-eltile__icon { flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--ap-grad); color: #fff; display: grid; place-items: center; box-shadow: 0 6px 16px color-mix(in srgb, var(--ap-primary) 30%, transparent); }
+.ap-eltile__icon svg { width: 20px; height: 20px; }
+.ap-eltile__title { font-weight: 700; font-size: var(--ap-fs-sm); color: var(--ap-text); line-height: 1.25; }
+.ap-eltile__desc { font-size: 11px; color: var(--ap-text-mute); line-height: 1.3; }
+/* The (i) help button is a sibling of .ap-eltile (see chooser.js), pinned to the tile's
+   top-right corner; its popover opens leftward here so it can't overflow the drawer's edge. */
+.ap-eltile-wrap > .ap-info-wrap { position: absolute; top: 8px; right: 8px; margin-left: 0; }
+.ap-eltile-wrap > .ap-info-wrap > .ap-info-pop { left: auto; right: 0; }
+
 /* -------- Guided chart wizard -------- */
 .ap-wiz-steps { display: flex; justify-content: center; gap: 8px; margin-bottom: 18px; }
 .ap-wiz-step { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; background: var(--ap-bg-soft); color: var(--ap-text-mute); border: 1px solid var(--ap-border); }

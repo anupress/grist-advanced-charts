@@ -70,7 +70,7 @@ export function renderSite(opts) {
 
   function addBlockTile(tabId, edit) {
     const tile = el('div', { class: 'ap-block', dataset: { span: '4' } }, [
-      el('button', { class: 'ap-addblock', onClick: () => edit.onAddBlock?.(tabId) }, [icon('plus'), 'Add a block']),
+      el('button', { class: 'ap-addblock', onClick: () => edit.onAddBlock?.(tabId) }, [icon('plus'), 'Add Element']),
     ]);
     return tile;
   }
