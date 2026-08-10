@@ -76,10 +76,54 @@ function columnarToRows(tbl) {
 // Meta tables cache — _grist_Tables and _grist_Tables_column change so rarely that a per-session
 // fetch is safe and cheap. Without this cache, GristProvider.init() re-fetched both tables for
 // every user table (9 tables → 18 network round-trips). One promise each, reused.
-let _metaTablesP = null, _metaColumnsP = null;
+let _metaTablesP = null, _metaColumnsP = null, _metaAttachmentsP = null;
 function fetchMetaTables()  { return _metaTablesP  ||= g().docApi.fetchTable('_grist_Tables'); }
 function fetchMetaColumns() { return _metaColumnsP ||= g().docApi.fetchTable('_grist_Tables_column'); }
-export function invalidateMetaCache() { _metaTablesP = null; _metaColumnsP = null; }
+function fetchMetaAttachments() { return _metaAttachmentsP ||= g().docApi.fetchTable('_grist_Attachments'); }
+export function invalidateMetaCache() { _metaTablesP = null; _metaColumnsP = null; _metaAttachmentsP = null; }
+
+// ---- Attachments ----
+// An Attachments-type cell value comes back from fetchTable as either null (empty) or a
+// Grist list-tuple ['L', id1, id2, ...] (occasionally a bare array/number defensively tolerated
+// too). We only ever show the first attached file per cell.
+export function firstAttachmentId(cellValue) {
+  if (cellValue == null) return null;
+  if (typeof cellValue === 'number') return cellValue;
+  if (Array.isArray(cellValue)) {
+    const list = cellValue[0] === 'L' ? cellValue.slice(1) : cellValue;
+    return list.length ? list[0] : null;
+  }
+  return null;
+}
+
+// Resolve a raw attachment row id to live metadata + a FRESH, token-authed download URL.
+// Access tokens are short-lived — this is never cached; call it again each time you need the URL
+// (e.g. every render pass), and never persist the resolved `url` itself into saved config.
+export async function resolveAttachmentById(attId) {
+  if (!hasGrist() || attId == null) return null;
+  try {
+    const meta = await fetchMetaAttachments();
+    const idx = (meta.id || []).indexOf(attId);
+    if (idx < 0) return null;
+    const token = await g().docApi.getAccessToken({ readOnly: true });
+    if (!token?.baseUrl || !token?.token) return null;
+    return {
+      id: attId,
+      url: `${token.baseUrl}/attachments/${attId}/download?auth=${token.token}`,
+      fileName: meta.fileName?.[idx] ?? null,
+      fileType: meta.fileType?.[idx] ?? null,
+      imageWidth: meta.imageWidth?.[idx] ?? null,
+      imageHeight: meta.imageHeight?.[idx] ?? null,
+    };
+  } catch (e) { console.warn('[ANUPRESS] resolveAttachmentById failed', e); return null; }
+}
+
+// Convenience for block renderers that already have the row (e.g. from provider.records()) —
+// resolves an Attachments-column cell value directly, avoiding a second per-row schema round trip.
+export async function resolveAttachmentCell(cellValue) {
+  const id = firstAttachmentId(cellValue);
+  return id == null ? null : resolveAttachmentById(id);
+}
 
 // Read real column types from Grist metadata; fall back to value inference.
 export async function getColumns(tableId) {

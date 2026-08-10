@@ -12,6 +12,7 @@ import { renderBlock, mountCharts } from '../render/blocks.js';
 import { mountMaps, detectLatLon } from '../render/map.js';
 import { currentSeriesColors } from '../theme/apply.js';
 import { pickImage, readFileAsDataURL } from './imageutil.js';
+import { getMediaLibrary, addMediaAsset } from './media.js';
 
 const SPANS = [{ value: 3, label: 'XS' }, { value: 4, label: 'S' }, { value: 6, label: 'M' }, { value: 8, label: 'L' }, { value: 12, label: 'Full' }];
 const STAT_ICONS = ['coins', 'cart', 'trending', 'users', 'pulse', 'target', 'star', 'database', 'globe', 'sparkles'];
@@ -171,7 +172,6 @@ function openStatEditor(block, ctx) {
 
   function iconPicker() {
     const site = ctx.site || {};
-    site.customIcons = site.customIcons || [];
     const wrap = el('div', { class: 'ap-row', style: { flexWrap: 'wrap', gap: '6px' } });
     const rebuild = () => {
       wrap.replaceChildren();
@@ -181,16 +181,16 @@ function openStatEditor(block, ctx) {
         chip.addEventListener('click', () => { wb.config.icon = name; wb.config.iconData = null; rebuild(); refreshPreview(); });
         wrap.append(chip);
       });
-      site.customIcons.forEach((data) => {
-        const chip = el('button', { class: 'ap-chip' + (wb.config.iconData === data ? ' is-active' : ''), title: 'Custom icon' },
-          [el('img', { src: data, alt: '', style: { width: '16px', height: '16px', objectFit: 'contain' } })]);
-        chip.addEventListener('click', () => { wb.config.iconData = data; rebuild(); refreshPreview(); });
+      getMediaLibrary(site).forEach(({ dataUrl }) => {
+        const chip = el('button', { class: 'ap-chip' + (wb.config.iconData === dataUrl ? ' is-active' : ''), title: 'Custom icon' },
+          [el('img', { src: dataUrl, alt: '', style: { width: '16px', height: '16px', objectFit: 'contain' } })]);
+        chip.addEventListener('click', () => { wb.config.iconData = dataUrl; rebuild(); refreshPreview(); });
         wrap.append(chip);
       });
       const up = el('button', { class: 'ap-chip', title: 'Upload your own icon' }, [icon('plus'), 'Upload']);
       up.addEventListener('click', () => pickImage(async (f) => {
         const data = await readFileAsDataURL(f, 128);
-        if (!site.customIcons.includes(data)) site.customIcons.push(data);
+        addMediaAsset(site, data);
         wb.config.iconData = data; rebuild(); refreshPreview();
       }));
       wrap.append(up);

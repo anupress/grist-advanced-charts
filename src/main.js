@@ -5,7 +5,7 @@
 
 import { clone, toast } from './util.js';
 import * as bridge from './grist/bridge.js';
-import { DummyProvider, GristProvider, tablesInConfig } from './data/provider.js';
+import { DummyProvider, GristProvider, tablesInConfig, adaptConfigToTable } from './data/provider.js';
 import { DEFAULT_SITE } from './data/default-site.js';
 import { renderSite } from './render/site.js';
 import { showConsent } from './consent/modal.js';
@@ -108,28 +108,6 @@ async function startEdit() {
     root, config: app.config, provider, live,
     onExit: (finalConfig) => { if (finalConfig) app.config = finalConfig; renderView(); },
   });
-}
-
-// When a fresh user opens the demo and connects Grist, point demo blocks at their table so
-// they see *something* immediately; they can then remap columns in the builder.
-function adaptConfigToTable(config, provider) {
-  const table = provider.defaultTable();
-  if (!table) return config;
-  const cols = provider.columns(table);
-  const c = clone(config);
-  c.dataTable = table;
-  const dim = cols.find((x) => /text|choice|date/i.test(x.type)) || cols[0];
-  const measure = cols.find((x) => /int|numeric|number|currency/i.test(x.type)) || cols[1] || cols[0];
-  for (const tab of c.tabs || []) for (const b of tab.blocks || []) {
-    if (!b.config) continue;
-    b.config.table = table;
-    if (b.type === 'stat') b.config.column = measure?.id;
-    if (b.type === 'chart') {
-      b.config.dims = dim ? [dim.id] : [];
-      b.config.measures = measure ? [measure.id] : [];
-    }
-  }
-  return c;
 }
 
 boot();

@@ -168,8 +168,11 @@
 .ap-info-pop.is-open { display: block; }
 .ap-info-pop code { background: var(--ap-bg-soft); padding: 1px 5px; border-radius: 4px; font-size: 11px; color: var(--ap-primary); }
 
-/* toast */
-.ap-toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(20px); z-index: 120; background: var(--ap-chrome); color: #fff; padding: 11px 18px; border-radius: 999px; font-weight: 600; font-size: var(--ap-fs-sm); box-shadow: var(--ap-shadow-lg); opacity: 0; transition: all .3s var(--ap-ease); display: flex; align-items: center; gap: 9px; }
+/* toast — purely informational (no buttons/links inside), so it never captures clicks,
+   even while visible; without this, the always-present fixed-position element keeps
+   intercepting clicks in its screen region forever after the first toast (opacity alone
+   doesn't remove it from hit-testing). */
+.ap-toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(20px); z-index: 120; background: var(--ap-chrome); color: #fff; padding: 11px 18px; border-radius: 999px; font-weight: 600; font-size: var(--ap-fs-sm); box-shadow: var(--ap-shadow-lg); opacity: 0; transition: all .3s var(--ap-ease); display: flex; align-items: center; gap: 9px; pointer-events: none; }
 .ap-toast.is-show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .ap-toast svg { width: 18px; height: 18px; }
 .ap-toast--ok { background: #14a06f; }
