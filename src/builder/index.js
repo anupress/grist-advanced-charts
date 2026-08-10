@@ -12,6 +12,7 @@ import * as bridge from '../grist/bridge.js';
 import { openBlockEditor } from './block-editor.js';
 import { openGuidedWizard } from './wizard.js';
 import { openBlockChooser } from './chooser.js';
+import { openTemplatePicker } from './template-picker.js';
 import { makeBlocksSortable, makeTabsSortable, makePagesSortable } from './dnd.js';
 import { openDrawer, closeDrawer, field, textInput, selectInput, checkboxRow, segmented, colorInput, subhead, divider, primaryBtn } from './ui.js';
 import { heroEditorBody } from './hero-editor.js';
@@ -80,6 +81,7 @@ function buildEditBar() {
       barBtn('sliders', 'Design', openDesignPanel),
       barBtn('layout', 'Pages', openTabsPanel),
       barBtn('type', 'Header', openHeaderPanel),
+      barBtn('copy', 'Templates', openTemplatesPanel),
       ghostBtnWhite('Done', finish),
       primaryWhite('Save & Publish', save),
     ]),
@@ -128,6 +130,19 @@ function chooseNewBlock(tabId) {
   openBlockChooser({
     onPick: (type) => { closeDrawer(); addBlock(tabId, type); },
     onGuided: () => { closeDrawer(); openGuidedWizard({ provider, onCreate: (block) => { const tab = findTab(tabId); (tab.blocks ||= []).push(block); mark(); rerender(); } }); },
+    onTemplates: () => { closeDrawer(); openTemplatesPanel(); },
+  });
+}
+
+function openTemplatesPanel() {
+  openTemplatePicker({
+    provider,
+    onApply: (newConfig) => {
+      working = newConfig;
+      activeTabId = working.tabs?.[0]?.id || null;
+      mark();
+      rerender();
+    },
   });
 }
 

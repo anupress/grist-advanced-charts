@@ -130,6 +130,14 @@
 .ap-addtile--wizard:hover { background: color-mix(in srgb, var(--ap-primary) 16%, var(--ap-surface)); }
 .ap-addtile-sep { text-align: center; font-size: var(--ap-fs-xs); color: var(--ap-text-mute); text-transform: uppercase; letter-spacing: .08em; margin: 4px 0 0; }
 
+/* Slim discovery link to the template picker, sitting between the guided-wizard banner and the
+   element grid — deliberately understated (text + icon, no card chrome) since it's a secondary
+   path, not the main "add one element" flow. */
+.ap-el-templink { appearance: none; -webkit-appearance: none; background: none; border: none; font: inherit;
+  display: flex; align-items: center; gap: 8px; padding: 4px 2px; color: var(--ap-text-mute); font-size: var(--ap-fs-sm); font-weight: 600; cursor: pointer; }
+.ap-el-templink svg { width: 15px; height: 15px; flex: none; }
+.ap-el-templink:hover { color: var(--ap-primary); }
+
 /* "Add Element" chooser: search box + collapsible categories + a 2-col icon-tile grid. */
 .ap-el-search { width: 100%; }
 .ap-el-categories { display: grid; gap: 10px; }

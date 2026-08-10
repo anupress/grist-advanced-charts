@@ -3,16 +3,16 @@
 // generic "Layout/Container" category — there's no section-container primitive here).
 //
 // Knows nothing about tabs/working-config/etc: it only offers a block *type* back to the caller
-// via onPick, plus a separate onGuided for the existing "not sure? let me help" wizard entry
-// point. New block types (later phases) just need an entry in block-catalog.js — nothing here
-// needs to change as the catalog grows.
+// via onPick, plus onGuided for the existing "not sure? let me help" wizard entry point and
+// onTemplates for the industry template picker. New block types (later phases) just need an
+// entry in block-catalog.js — nothing here needs to change as the catalog grows.
 
 import { el } from '../util.js';
 import { icon } from '../assets/icons.js';
 import { openDrawer, closeDrawer, ghostBtn, infoButton } from './ui.js';
 import { CATEGORIES, BLOCK_CATALOG } from './block-catalog.js';
 
-export function openBlockChooser({ onPick, onGuided }) {
+export function openBlockChooser({ onPick, onGuided, onTemplates }) {
   let query = '';
   render();
 
@@ -29,6 +29,9 @@ export function openBlockChooser({ onPick, onGuided }) {
         el('div', { class: 'ap-addtile__desc', text: 'A guided 3-step wizard — great if you don\'t know statistics' }),
       ]),
     ]);
+    const templatesLink = el('button', { class: 'ap-el-templink', onClick: () => onTemplates() }, [
+      icon('copy'), el('span', { text: 'Or start a whole page from an industry template' }),
+    ]);
 
     const search = el('input', { class: 'ap-input ap-el-search', type: 'search', placeholder: 'Search elements…', value: query });
     const list = el('div', { class: 'ap-el-categories' });
@@ -44,6 +47,7 @@ export function openBlockChooser({ onPick, onGuided }) {
 
     return el('div', { style: { display: 'grid', gap: '14px' } }, [
       guided,
+      templatesLink,
       el('div', { class: 'ap-addtile-sep' }, ['or pick a specific element']),
       search,
       list,
