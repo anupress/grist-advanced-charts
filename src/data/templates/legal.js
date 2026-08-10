@@ -1,4 +1,7 @@
-import { stat, chart, text, accordion, counter, iconBlock, button, urlTarget } from './_helpers.js';
+import {
+  stat, chart, text, accordion, counter, iconBlock, button, urlTarget,
+  spacer, progress, image, testimonials, breakdown, mapBlock, livetable, clockEmbed, placeholderImage,
+} from './_helpers.js';
 
 export const TEMPLATE = {
   id: 'legal',
@@ -9,10 +12,10 @@ export const TEMPLATE = {
     theme: { paletteId: 'mono', fontId: 'serifmix', mode: 'light' },
     dataTable: 'Data',
     header: {
-      logoData: null, title: 'Ashcroft & Wells LLP', slogan: 'Trusted counsel, clear results',
-      menu: [{ label: 'Overview', tab: 'tab-overview' }, { label: 'Practice Areas', tab: 'tab-practice' }],
+      logoData: null, title: 'Anupress Legal', slogan: 'Trusted counsel, clear results',
+      menu: [{ label: 'Overview', tab: 'tab-overview' }, { label: 'Practice Areas', tab: 'tab-practice' }, { label: 'Client Resources', tab: 'tab-resources' }],
     },
-    footer: { text: '© 2026 Ashcroft & Wells LLP. Attorney advertising.', links: [{ label: 'Overview', tab: 'tab-overview' }, { label: 'Practice Areas', tab: 'tab-practice' }], showCredit: true },
+    footer: { text: '© 2026 Anupress Legal. Attorney advertising.', links: [{ label: 'Overview', tab: 'tab-overview' }, { label: 'Practice Areas', tab: 'tab-practice' }], showCredit: true },
     tabs: [
       {
         id: 'tab-overview', title: 'Overview',
@@ -26,6 +29,8 @@ export const TEMPLATE = {
           chart('lg6', 'Cases by practice area', 'doughnut', ['Category'], ['Value'], {}, 4),
           chart('lg7', 'Cases by outcome', 'column', ['Category'], ['Value'], { sortByValue: true }, 6),
           chart('lg8', 'Client satisfaction by matter type', 'bar', ['Category'], ['Value'], { agg: 'avg' }, 6),
+          spacer('lg8s', 12),
+          progress('lg8p', 'Cases resolved this quarter', 62, 90, { color: '#495057' }, 12),
           text('lg9', 'Our approach', 'We believe clients deserve clarity, not jargon. This dashboard is for internal tracking — click <b>Edit</b> to connect it to your firm\'s own case management data in Grist.'),
           accordion('lg10', 'Frequently asked questions', [
             { q: 'How do I schedule a consultation?', a: 'Use the contact button on the Practice Areas page, or call our office directly — most consultations are scheduled within a week.' },
@@ -46,8 +51,25 @@ export const TEMPLATE = {
           counter('lg16', 'Years combined experience', 0, 65, { suffix: '+' }, 3),
           counter('lg17', 'Attorneys', 0, 14, {}, 3),
           counter('lg18', 'Client retention rate', 0, 96, { suffix: '%' }, 3),
+          spacer('lg18s', 30),
           text('lg19', 'Speak with an attorney', 'Every matter starts with a conversation. Reach out to discuss your case in confidence — there\'s no obligation.'),
           button('lg20', 'Schedule a consultation', 'primary', 'left', urlTarget('https://example.com/contact'), 4),
+        ],
+      },
+      {
+        id: 'tab-resources', title: 'Client Resources',
+        hero: { title: 'Resources for clients', subtitle: 'What to expect when you work with us.' },
+        blocks: [
+          image('lg21', placeholderImage('#495057', '#868e96'), 'Law office conference room', 'Our main conference room, where it all starts', 6),
+          breakdown('lg22', 'Cases by type', 4),
+          mapBlock('lg23', 'Our office locations', 12),
+          testimonials('lg24', 'What our clients say', [
+            { name: 'Robert Hale', quote: 'They explained everything in plain English and fought hard for us.', rating: 5, photoData: null },
+            { name: 'Patricia Nguyen', quote: 'Responsive, thorough, and genuinely on our side throughout.', rating: 5, photoData: null },
+          ]),
+          livetable('lg25', 'Case types on file', 12),
+          spacer('lg25s', 30),
+          clockEmbed('lg26', 'Office hours'),
         ],
       },
     ],

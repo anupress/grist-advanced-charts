@@ -1,4 +1,7 @@
-import { stat, chart, text, accordion, counter, iconBlock, button, urlTarget } from './_helpers.js';
+import {
+  stat, chart, text, accordion, counter, iconBlock, button, urlTarget,
+  spacer, progress, image, testimonials, breakdown, mapBlock, livetable, clockEmbed, placeholderImage,
+} from './_helpers.js';
 
 export const TEMPLATE = {
   id: 'marketing',
@@ -9,10 +12,10 @@ export const TEMPLATE = {
     theme: { paletteId: 'sunset', fontId: 'geometric', mode: 'light' },
     dataTable: 'Data',
     header: {
-      logoData: null, title: 'Bright Spark Marketing', slogan: 'Campaigns that actually convert',
-      menu: [{ label: 'Overview', tab: 'tab-overview' }, { label: 'Our Work', tab: 'tab-work' }],
+      logoData: null, title: 'Anupress Marketing', slogan: 'Campaigns that actually convert',
+      menu: [{ label: 'Overview', tab: 'tab-overview' }, { label: 'Our Work', tab: 'tab-work' }, { label: 'Case Studies', tab: 'tab-cases' }],
     },
-    footer: { text: '© 2026 Bright Spark Marketing.', links: [{ label: 'Overview', tab: 'tab-overview' }, { label: 'Our Work', tab: 'tab-work' }], showCredit: true },
+    footer: { text: '© 2026 Anupress Marketing.', links: [{ label: 'Overview', tab: 'tab-overview' }, { label: 'Our Work', tab: 'tab-work' }], showCredit: true },
     tabs: [
       {
         id: 'tab-overview', title: 'Overview',
@@ -26,6 +29,8 @@ export const TEMPLATE = {
           chart('mk6', 'Reach by channel', 'doughnut', ['Category'], ['Value'], {}, 4),
           chart('mk7', 'Conversions by campaign type', 'column', ['Category'], ['Value'], { sortByValue: true }, 6),
           chart('mk8', 'ROI by client', 'bar', ['Category'], ['Value'], { agg: 'avg', sortByValue: true }, 6),
+          spacer('mk8s', 12),
+          progress('mk8p', 'Quarterly new-client goal', 7, 10, { color: '#ff6b6b' }, 12),
           text('mk9', 'How we work', 'We report the same numbers to you that we track internally — no vanity metrics. This page pulls straight from our own campaign records.'),
           accordion('mk10', 'Frequently asked questions', [
             { q: 'What\'s your onboarding process?', a: 'We start with a strategy call to understand your goals, then propose a plan within a week — no long contracts required upfront.' },
@@ -46,8 +51,25 @@ export const TEMPLATE = {
           counter('mk16', 'Average ROI', 0, 340, { suffix: '%' }, 3),
           counter('mk17', 'Happy clients', 0, 128, {}, 3),
           counter('mk18', 'Industry awards', 0, 9, {}, 3),
+          spacer('mk18s', 30),
           text('mk19', 'Let\'s talk growth', 'Tell us about your goals and we\'ll show you exactly how we\'d approach them — no obligation.'),
           button('mk20', 'Book a strategy call', 'primary', 'left', urlTarget('https://example.com/contact'), 4),
+        ],
+      },
+      {
+        id: 'tab-cases', title: 'Case Studies',
+        hero: { title: 'Case studies', subtitle: 'A sample of the work behind the numbers.' },
+        blocks: [
+          image('mk21', placeholderImage('#ff6b6b', '#ffa94d'), 'Creative studio workspace', 'Our studio, mid-campaign', 6),
+          breakdown('mk22', 'Campaigns by industry', 4),
+          mapBlock('mk23', 'Where our clients are', 12),
+          testimonials('mk24', 'What our clients say', [
+            { name: 'Tasha Reed, CMO', quote: 'They tripled our qualified leads in one quarter — with real reporting, not fluff.', rating: 5, photoData: null },
+            { name: 'Owen Park, Founder', quote: 'Finally an agency that treats our budget like their own.', rating: 5, photoData: null },
+          ]),
+          livetable('mk25', 'Recent campaign results', 12),
+          spacer('mk25s', 30),
+          clockEmbed('mk26', 'Studio time'),
         ],
       },
     ],

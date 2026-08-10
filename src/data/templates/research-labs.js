@@ -1,4 +1,7 @@
-import { stat, chart, text, accordion, counter, iconBlock, button, urlTarget } from './_helpers.js';
+import {
+  stat, chart, text, accordion, counter, iconBlock, button, urlTarget,
+  spacer, progress, image, testimonials, breakdown, mapBlock, livetable, clockEmbed, placeholderImage,
+} from './_helpers.js';
 
 export const TEMPLATE = {
   id: 'research-labs',
@@ -9,10 +12,10 @@ export const TEMPLATE = {
     theme: { paletteId: 'ocean', fontId: 'humanist', mode: 'light' },
     dataTable: 'Data',
     header: {
-      logoData: null, title: 'Northbridge Research Lab', slogan: 'Advancing science, one study at a time',
-      menu: [{ label: 'Overview', tab: 'tab-overview' }, { label: 'Research', tab: 'tab-research' }],
+      logoData: null, title: 'Anupress Lab', slogan: 'Advancing science, one study at a time',
+      menu: [{ label: 'Overview', tab: 'tab-overview' }, { label: 'Research', tab: 'tab-research' }, { label: 'Data & Resources', tab: 'tab-data' }],
     },
-    footer: { text: '© 2026 Northbridge Research Lab.', links: [{ label: 'Overview', tab: 'tab-overview' }, { label: 'Research', tab: 'tab-research' }], showCredit: true },
+    footer: { text: '© 2026 Anupress Lab.', links: [{ label: 'Overview', tab: 'tab-overview' }, { label: 'Research', tab: 'tab-research' }], showCredit: true },
     tabs: [
       {
         id: 'tab-overview', title: 'Overview',
@@ -26,6 +29,8 @@ export const TEMPLATE = {
           chart('rl6', 'Studies by phase', 'doughnut', ['Category'], ['Value'], {}, 4),
           chart('rl7', 'Results by research area', 'column', ['Category'], ['Value'], { sortByValue: true }, 6),
           chart('rl8', 'Funding by source', 'pie', ['Category'], ['Value'], {}, 6),
+          spacer('rl8s', 12),
+          progress('rl8p', 'Annual grant funding goal', 340000, 500000, { suffix: '$', color: '#1c7ed6' }, 12),
           text('rl9', 'About this dashboard', 'This page tracks our lab\'s studies, sample pipeline and publications live from our own records. Click <b>Edit</b> to connect it to your lab\'s Grist tables — every card here reconfigures to your columns in a couple of clicks.'),
           accordion('rl10', 'Frequently asked questions', [
             { q: 'How is participant data protected?', a: 'All identifiable data stays inside our own Grist document — this dashboard reads it directly in your browser and never sends it to a third-party server.' },
@@ -46,8 +51,25 @@ export const TEMPLATE = {
           counter('rl16', 'Peer-reviewed papers', 0, 142, { suffix: '+' }, 3),
           counter('rl17', 'Active collaborators', 0, 36, {}, 3),
           counter('rl18', 'Countries represented', 0, 12, {}, 3),
+          spacer('rl18s', 30),
           text('rl19', 'Partner with us', 'We collaborate with universities, hospitals and industry partners on funded studies. Reach out if you\'d like to discuss a joint research proposal.'),
           button('rl20', 'Contact our research office', 'primary', 'left', urlTarget('https://example.com/contact'), 4),
+        ],
+      },
+      {
+        id: 'tab-data', title: 'Data & Resources',
+        hero: { title: 'Explore our data', subtitle: 'A closer look at how our studies and sites break down.' },
+        blocks: [
+          image('rl21', placeholderImage('#1c7ed6', '#22b8cf'), 'Lab bench with research equipment', 'Our main wet-lab facility', 6),
+          breakdown('rl22', 'Studies by category', 4),
+          mapBlock('rl23', 'Research sites', 12),
+          testimonials('rl24', 'What our collaborators say', [
+            { name: 'Elena Ruiz, PhD', quote: 'The clearest, fastest-moving research partnership we\'ve had.', rating: 5, photoData: null },
+            { name: 'Sam Okafor, PhD', quote: 'Their data practices make joint studies painless.', rating: 5, photoData: null },
+          ]),
+          livetable('rl25', 'Recent samples', 12),
+          spacer('rl25s', 30),
+          clockEmbed('rl26', 'Lab time'),
         ],
       },
     ],

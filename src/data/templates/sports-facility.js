@@ -1,4 +1,7 @@
-import { stat, chart, text, accordion, counter, iconBlock, button, urlTarget } from './_helpers.js';
+import {
+  stat, chart, text, accordion, counter, iconBlock, button, urlTarget,
+  spacer, progress, image, testimonials, breakdown, mapBlock, livetable, clockEmbed, placeholderImage,
+} from './_helpers.js';
 
 export const TEMPLATE = {
   id: 'sports-facility',
@@ -9,10 +12,10 @@ export const TEMPLATE = {
     theme: { paletteId: 'candy', fontId: 'geometric', mode: 'light' },
     dataTable: 'Data',
     header: {
-      logoData: null, title: 'Summit Ridge Sports Complex', slogan: 'Where every game finds its home',
-      menu: [{ label: 'Overview', tab: 'tab-overview' }, { label: 'Facilities', tab: 'tab-facilities' }],
+      logoData: null, title: 'Anupress Sports', slogan: 'Where every game finds its home',
+      menu: [{ label: 'Overview', tab: 'tab-overview' }, { label: 'Facilities', tab: 'tab-facilities' }, { label: 'Book & Explore', tab: 'tab-book' }],
     },
-    footer: { text: '© 2026 Summit Ridge Sports Complex.', links: [{ label: 'Overview', tab: 'tab-overview' }, { label: 'Facilities', tab: 'tab-facilities' }], showCredit: true },
+    footer: { text: '© 2026 Anupress Sports.', links: [{ label: 'Overview', tab: 'tab-overview' }, { label: 'Facilities', tab: 'tab-facilities' }], showCredit: true },
     tabs: [
       {
         id: 'tab-overview', title: 'Overview',
@@ -26,6 +29,8 @@ export const TEMPLATE = {
           chart('sf6', 'Bookings by facility', 'doughnut', ['Category'], ['Value'], {}, 4),
           chart('sf7', 'Membership by type', 'column', ['Category'], ['Value'], { sortByValue: true }, 6),
           chart('sf8', 'Utilization by day', 'bar', ['Category'], ['Value'], { agg: 'avg' }, 6),
+          spacer('sf8s', 12),
+          progress('sf8p', 'New members this season', 168, 250, { color: '#f06595' }, 12),
           text('sf9', 'About our complex', 'From weekend leagues to championship tournaments, this page tracks how our facilities are used — live, straight from our own booking records.'),
           accordion('sf10', 'Frequently asked questions', [
             { q: 'How do I book a court or field?', a: 'Members can book online up to two weeks in advance; guest passes are available at the front desk.' },
@@ -46,8 +51,25 @@ export const TEMPLATE = {
           counter('sf16', 'Facilities available', 0, 26, {}, 3),
           counter('sf17', 'Annual events hosted', 0, 180, { suffix: '+' }, 3),
           counter('sf18', 'Member satisfaction', 0, 94, { suffix: '%' }, 3),
+          spacer('sf18s', 30),
           text('sf19', 'Ready to play?', 'Book a facility for your next game, or join as a member for priority access and better rates.'),
           button('sf20', 'Book a facility', 'primary', 'left', urlTarget('https://example.com/book'), 4),
+        ],
+      },
+      {
+        id: 'tab-book', title: 'Book & Explore',
+        hero: { title: 'Book your next game', subtitle: 'Everything you need to plan a visit.' },
+        blocks: [
+          image('sf21', placeholderImage('#f06595', '#74c0fc'), 'Indoor sports courts', 'Our main indoor court complex', 6),
+          breakdown('sf22', 'Bookings by facility type', 4),
+          mapBlock('sf23', 'Facility locations', 12),
+          testimonials('sf24', 'What our members say', [
+            { name: 'Coach Derek Snyder', quote: 'Best-maintained courts in the area — our league won\'t play anywhere else.', rating: 5, photoData: null },
+            { name: 'Amy Torres', quote: 'Booking is effortless and the staff genuinely care about the community.', rating: 5, photoData: null },
+          ]),
+          livetable('sf25', 'Upcoming events', 12),
+          spacer('sf25s', 30),
+          clockEmbed('sf26', 'Game time'),
         ],
       },
     ],

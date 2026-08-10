@@ -1,4 +1,7 @@
-import { stat, chart, text, accordion, counter, iconBlock, button, urlTarget } from './_helpers.js';
+import {
+  stat, chart, text, accordion, counter, iconBlock, button, urlTarget,
+  spacer, progress, image, testimonials, breakdown, mapBlock, livetable, clockEmbed, placeholderImage,
+} from './_helpers.js';
 
 export const TEMPLATE = {
   id: 'nonprofits',
@@ -9,10 +12,10 @@ export const TEMPLATE = {
     theme: { paletteId: 'forest', fontId: 'humanist', mode: 'light' },
     dataTable: 'Data',
     header: {
-      logoData: null, title: 'Riverside Community Fund', slogan: 'Making a measurable difference, together',
-      menu: [{ label: 'Overview', tab: 'tab-overview' }, { label: 'Our Impact', tab: 'tab-impact' }],
+      logoData: null, title: 'Anupress Community', slogan: 'Making a measurable difference, together',
+      menu: [{ label: 'Overview', tab: 'tab-overview' }, { label: 'Our Impact', tab: 'tab-impact' }, { label: 'Get Involved', tab: 'tab-involved' }],
     },
-    footer: { text: '© 2026 Riverside Community Fund. A registered nonprofit.', links: [{ label: 'Overview', tab: 'tab-overview' }, { label: 'Our Impact', tab: 'tab-impact' }], showCredit: true },
+    footer: { text: '© 2026 Anupress Community. A registered nonprofit.', links: [{ label: 'Overview', tab: 'tab-overview' }, { label: 'Our Impact', tab: 'tab-impact' }], showCredit: true },
     tabs: [
       {
         id: 'tab-overview', title: 'Overview',
@@ -26,11 +29,13 @@ export const TEMPLATE = {
           chart('np6', 'Funds by program', 'doughnut', ['Category'], ['Value'], {}, 4),
           chart('np7', 'Volunteers by region', 'column', ['Category'], ['Value'], { sortByValue: true }, 6),
           chart('np8', 'Impact by category', 'bar', ['Category'], ['Value'], { sortByValue: true }, 6),
+          spacer('np8s', 12),
+          progress('np8p', 'Annual fundraising goal', 86000, 120000, { suffix: '$', color: '#2f9e44' }, 12),
           text('np9', 'Where your donation goes', 'We publish our finances openly. This page reads directly from our own Grist records — the same numbers our board sees — so you always know exactly how donations are used before you give.'),
           accordion('np10', 'Frequently asked questions', [
             { q: 'Is my donation tax-deductible?', a: 'Yes — we\'re a registered 501(c)(3) nonprofit and every donor receives a receipt for tax purposes.' },
             { q: 'How much goes directly to programs?', a: 'We publish our full breakdown on this page — most of every dollar goes straight to program delivery, not overhead.' },
-            { q: 'Can I volunteer instead of donating?', a: 'Absolutely — see the Our Impact page for ways to get involved, or reach out directly.' },
+            { q: 'Can I volunteer instead of donating?', a: 'Absolutely — see the Get Involved page for ways to help, or reach out directly.' },
           ]),
         ],
       },
@@ -46,8 +51,25 @@ export const TEMPLATE = {
           counter('np16', 'Volunteer hours logged', 0, 8600, { suffix: '+' }, 3),
           counter('np17', 'Communities reached', 0, 24, {}, 3),
           counter('np18', 'Years of service', 0, 15, {}, 3),
+          spacer('np18s', 30),
           text('np19', 'Get involved', 'Whether it\'s a one-time gift, a monthly pledge or your time as a volunteer, every contribution moves our mission forward.'),
           button('np20', 'Donate now', 'primary', 'left', urlTarget('https://example.com/donate'), 4),
+        ],
+      },
+      {
+        id: 'tab-involved', title: 'Get Involved',
+        hero: { title: 'Ways to help', subtitle: 'Every hour and every dollar reaches someone.' },
+        blocks: [
+          image('np21', placeholderImage('#2f9e44', '#94d82d'), 'Volunteers at a community event', 'Our volunteers at last spring\'s food drive', 6),
+          breakdown('np22', 'Donations by program', 4),
+          mapBlock('np23', 'Communities we serve', 12),
+          testimonials('np24', 'From our community', [
+            { name: 'Maria Gomez', quote: 'This program helped my family get back on our feet — I\'m forever grateful.', rating: 5, photoData: null },
+            { name: 'James Whitfield', quote: 'I\'ve volunteered for years — I\'ve never seen an organization this transparent.', rating: 5, photoData: null },
+          ]),
+          livetable('np25', 'Recent donations', 12),
+          spacer('np25s', 30),
+          clockEmbed('np26', 'Local time'),
         ],
       },
     ],
