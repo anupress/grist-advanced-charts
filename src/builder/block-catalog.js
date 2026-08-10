@@ -36,6 +36,11 @@ export const BLOCK_CATALOG = [
     info: 'Shows a value moving toward a target as a filled bar — e.g. "$45,000 of $50,000 raised". The value can be typed in or calculated from your data.',
   },
   {
+    type: 'livetable', category: 'data', icon: 'layout', title: 'Data table',
+    desc: 'A searchable, sortable table of rows',
+    info: 'Shows the raw rows of a table, with search, click-to-sort columns and paging — handy for browsing a full list rather than a summary.',
+  },
+  {
     type: 'text', category: 'content', icon: 'type', title: 'Text',
     desc: 'A heading and rich text',
     info: 'A heading plus a block of formatted text — for introductions, explanations or any freeform writing.',

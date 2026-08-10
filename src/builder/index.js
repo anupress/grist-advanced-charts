@@ -119,6 +119,7 @@ function defaultBlock(type, tabId) {
   if (type === 'accordion') return { id: uid('blk'), type: 'accordion', span: 12, __isNew: true, config: { title: 'Frequently asked questions', items: [{ q: 'Question one', a: 'Answer goes here.' }], openFirst: true } };
   if (type === 'image') return { id: uid('blk'), type: 'image', span: 6, __isNew: true, config: { mode: 'upload', imageData: null, ref: { table: null, column: null, row: null }, alt: '', fit: 'cover', caption: '', link: { kind: null, tab: null, url: null, newTab: true } } };
   if (type === 'testimonials') return { id: uid('blk'), type: 'testimonials', span: 12, __isNew: true, config: { title: 'What people are saying', mode: 'manual', entries: [{ name: '', quote: '', rating: 5, photoData: null }], table: null, nameColumn: null, quoteColumn: null, ratingColumn: null, photoColumn: null, limit: 6 } };
+  if (type === 'livetable') return { id: uid('blk'), type: 'livetable', span: 12, __isNew: true, config: { title: '', table, columns: cols.slice(0, 5).map((c) => c.id), pageSize: 10, searchable: true, sortable: true, defaultSort: null } };
   return { id: uid('blk'), type: 'chart', span: 6, __isNew: true, config: { table, title: 'New chart', ...autoPick(cols) } };
 }
 

@@ -39,6 +39,7 @@ export function openBlockEditor(block, ctx) {
   if (block.type === 'accordion') return openAccordionEditor(block, ctx);
   if (block.type === 'image') return openImageEditor(block, ctx);
   if (block.type === 'testimonials') return openTestimonialsEditor(block, ctx);
+  if (block.type === 'livetable') return openLiveTableEditor(block, ctx);
   return openChartEditor(block, ctx);
 }
 
@@ -685,4 +686,41 @@ function openTestimonialsEditor(block, ctx) {
     buildDyn();
     refreshPreview();
   })();
+}
+
+// ---------------- Live data table editor ----------------
+function openLiveTableEditor(block, ctx) {
+  const wb = clone(block); wb.config = wb.config || {};
+  const provider = ctx.provider;
+  wb.config.table = wb.config.table || provider.defaultTable();
+  const previewHost = el('div', { class: 'ap-preview' });
+  const refreshPreview = debounce(async () => {
+    await ensureRows(provider, wb.config.table);
+    previewHost.replaceChildren(renderBlock(clone(wb), { provider, config: {} }));
+  }, 150);
+
+  const dynHost = el('div');
+  function buildDyn() {
+    const cols = provider.columns(wb.config.table);
+    if (!wb.config.columns?.length) wb.config.columns = cols.slice(0, 5).map((c) => c.id);
+    dynHost.replaceChildren(
+      subhead('Columns to show'),
+      columnPicker(cols, wb.config.columns, (ids) => { wb.config.columns = ids; refreshPreview(); }),
+    );
+  }
+
+  const body = [
+    field('Title (optional)', textInput(wb.config.title || '', (v) => { wb.config.title = v; refreshPreview(); }, { placeholder: 'e.g. All submissions' })),
+    field('Data table', selectInput(provider.tables().map((t) => ({ value: t.id, label: t.label })), wb.config.table,
+      async (v) => { wb.config.table = v; wb.config.columns = null; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
+    dynHost,
+    field('Rows per page', textInput(String(wb.config.pageSize || 10), (v) => { wb.config.pageSize = Math.max(3, Math.min(100, Number(v) || 10)); refreshPreview(); }, { type: 'number' })),
+    checkboxRow('Let viewers search', wb.config.searchable !== false, (v) => { wb.config.searchable = v; refreshPreview(); }),
+    checkboxRow('Let viewers sort by clicking column headers', wb.config.sortable !== false, (v) => { wb.config.sortable = v; refreshPreview(); }),
+    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    subhead('Live preview'), previewHost,
+  ];
+  const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
+  openDrawer({ title: block.__isNew ? 'Add data table' : 'Edit data table', body, footer });
+  (async () => { await ensureRows(provider, wb.config.table); buildDyn(); refreshPreview(); })();
 }

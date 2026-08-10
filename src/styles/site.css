@@ -217,6 +217,27 @@
 .ap-testimonial__star.is-on { color: #f5a524; fill: currentColor; }
 .ap-testimonial__quote { font-size: var(--ap-fs-sm); color: var(--ap-text-soft); line-height: 1.55; }
 
+/* ---- Live data table block ---- */
+.ap-livetable { padding: 16px 18px; border-radius: var(--ap-radius); display: flex; flex-direction: column; gap: 10px; }
+.ap-livetable__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.ap-livetable__title { font-size: var(--ap-fs-md); font-weight: 700; }
+.ap-livetable__search { max-width: 220px; }
+.ap-livetable__scroll { overflow-x: auto; border: 1px solid var(--ap-border); border-radius: var(--ap-radius-sm); }
+.ap-livetable__table { width: 100%; border-collapse: collapse; font-size: var(--ap-fs-sm); }
+.ap-livetable__table th { text-align: left; padding: 9px 12px; background: var(--ap-bg-soft); color: var(--ap-text-soft); font-weight: 700; font-size: var(--ap-fs-xs); text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; border-bottom: 1px solid var(--ap-border); }
+.ap-livetable__table th.is-sortable { cursor: pointer; user-select: none; }
+.ap-livetable__table th.is-sortable:hover { color: var(--ap-primary); }
+.ap-livetable__sorticon { width: 11px; height: 11px; margin-left: 4px; opacity: .3; vertical-align: -1px; transition: transform .15s var(--ap-ease), opacity .15s; }
+.ap-livetable__table th.is-sorted .ap-livetable__sorticon { opacity: 1; color: var(--ap-primary); }
+.ap-livetable__table th.is-sorted[data-dir="desc"] .ap-livetable__sorticon { transform: rotate(180deg); }
+.ap-livetable__table td { padding: 9px 12px; border-bottom: 1px solid var(--ap-border); color: var(--ap-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+.ap-livetable__table tr:last-child td { border-bottom: none; }
+.ap-livetable__table tbody tr:hover td { background: var(--ap-bg-soft); }
+.ap-livetable__pager { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ap-livetable__pageno { font-size: var(--ap-fs-xs); color: var(--ap-text-mute); font-variant-numeric: tabular-nums; }
+.ap-livetable__prev svg { transform: rotate(90deg); }
+.ap-livetable__next svg { transform: rotate(-90deg); }
+
 /* ---- Mobile nav ---- */
 @media (max-width: 760px) {
   .ap-nav { position: fixed; inset: 0 0 0 auto; width: min(78vw, 320px); flex-direction: column; align-items: stretch; gap: 4px; padding: 80px 16px 24px; background: var(--ap-surface); box-shadow: var(--ap-shadow-lg); transform: translateX(100%); transition: transform .3s var(--ap-ease); z-index: 45; }
