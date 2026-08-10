@@ -8,6 +8,7 @@ import { buildFooter } from './footer.js';
 import { renderBlock, mountCharts } from './blocks.js';
 import { buildHero } from './hero.js';
 import { mountMaps, resizeMapsIn } from './map.js';
+import { mountCounters } from './counter.js';
 import { resizeChartsIn, wireGlobalResize } from '../charts/echarts-adapter.js';
 import { icon } from '../assets/icons.js';
 
@@ -59,7 +60,9 @@ export function renderSite(opts) {
     if (heroInfo && !heroInfo.fullWidth) container.append(heroInfo.el); // gradient banner inside
 
     const grid = el('div', { class: 'ap-grid' });
-    const ctx = { provider, config, edit: editing ? {
+    // onNav lives at the top level (not inside `edit`) so Button/Icon "jump to page" links work
+    // for regular viewers too, not just while editing.
+    const ctx = { provider, config, onNav: showTab, edit: editing ? {
       active: true, onEditBlock: edit?.onEditBlock, onDeleteBlock: edit?.onDeleteBlock } : null };
     for (const block of tab.blocks || []) grid.append(renderBlock(block, ctx));
     if (editing) grid.append(addBlockTile(tab.id, edit));
@@ -88,7 +91,7 @@ export function renderSite(opts) {
   function mountTab(id) {
     const panel = panels.get(id);
     if (!panel) return;
-    const go = () => { mountCharts(panel); resizeChartsIn(panel); mountMaps(panel); resizeMapsIn(panel); };
+    const go = () => { mountCharts(panel); resizeChartsIn(panel); mountMaps(panel); resizeMapsIn(panel); mountCounters(panel); };
     go();
     setTimeout(go, 120);
     mounted.add(id);

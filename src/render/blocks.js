@@ -2,14 +2,16 @@
 // Charts are mounted in a second pass (mountCharts) once the node is in the document and
 // has a measurable size.
 
-import { el, fromHTML, fmtNumber, interpolate } from '../util.js';
+import { el, fromHTML, fmtNumber, interpolate, clamp } from '../util.js';
 import { icon, chartIcon, EMPTY_ART } from '../assets/icons.js';
-import { computeKpi, sparkSeries, AGGREGATIONS } from '../stats/aggregate.js';
+import { computeKpi, sparkSeries, aggregate, AGGREGATIONS } from '../stats/aggregate.js';
 import { renderChart } from '../charts/echarts-adapter.js';
 import { getChartType } from '../charts/catalog.js';
 import { readVar } from '../theme/apply.js';
 import { renderBreakdown } from './breakdown.js';
 import { buildMapCard } from './map.js';
+import { renderCounter } from './counter.js';
+import { renderAccordion } from './accordion.js';
 
 function blockData(block, ctx) {
   const table = block.config?.table || ctx.config?.dataTable;
@@ -33,6 +35,12 @@ export function renderBlock(block, ctx) {
   else if (block.type === 'breakdown') inner = (block.config?.display === 'chart')
     ? renderChartCard(breakdownAsChart(block), ctx) : renderBreakdown(block, ctx);
   else if (block.type === 'map') inner = buildMapCard(block, ctx);
+  else if (block.type === 'spacer') inner = renderSpacer(block);
+  else if (block.type === 'button') inner = renderButton(block, ctx);
+  else if (block.type === 'icon') inner = renderIconBlock(block, ctx);
+  else if (block.type === 'progress') inner = renderProgressBlock(block, ctx);
+  else if (block.type === 'counter') inner = renderCounter(block);
+  else if (block.type === 'accordion') inner = renderAccordion(block, ctx);
   else inner = renderChartCard(block, ctx);
 
   const wrap = el('div', { class: 'ap-block', dataset: { span: String(block.span || 12), blockId: block.id } }, [inner]);
@@ -124,6 +132,81 @@ function renderText(block, ctx) {
   return el('div', { class: 'ap-card ap-textblock', dataset: { blockId: block.id } }, [
     c.heading ? el('h2', { text: c.heading }) : null,
     el('div', { class: 'ap-richtext', html: c.html || '' }),
+  ]);
+}
+
+function renderSpacer(block) {
+  const c = block.config || {};
+  const h = clamp(Number(c.height) || 40, 4, 240);
+  return el('div', { class: 'ap-spacer', dataset: { blockId: block.id }, style: { height: h + 'px' } });
+}
+
+// Shared by Button and Icon: builds an <a> (external URL, target.newTab respected) or a
+// <button> (jump to a page via ctx.onNav) wired up to `target`; null if no target is set, so
+// the caller can fall back to a plain non-interactive element instead.
+// ctx.edit is `null` only on a genuinely live (non-editing) page render (see site.js) — it's
+// `undefined` in an editor-drawer preview and `{active:true,...}` while editing. In both of
+// those non-live cases the real navigate/link-follow is suppressed and the click is left to
+// bubble up to the block's own "open editor" listener instead — otherwise a click inside the
+// editor's live preview, or on the real page while editing, could navigate this embedded
+// widget's iframe away to an external URL.
+function clickTarget(target, ctx, cls) {
+  const isLivePage = ctx.edit === null;
+  if (target?.kind === 'url' && target.url) {
+    const node = el('a', { class: cls, href: target.url, target: target.newTab ? '_blank' : null, rel: target.newTab ? 'noopener noreferrer' : null });
+    node.addEventListener('click', (e) => { if (!isLivePage) e.preventDefault(); });
+    return node;
+  }
+  if (target?.kind === 'tab' && target.tab) {
+    const node = el('button', { class: cls, type: 'button' });
+    node.addEventListener('click', (e) => { if (!isLivePage) { e.preventDefault(); return; } ctx.onNav?.(target.tab); });
+    return node;
+  }
+  return null;
+}
+const alignJustify = (a) => (a === 'center' ? 'center' : a === 'right' ? 'flex-end' : 'flex-start');
+
+function renderButton(block, ctx) {
+  const c = block.config || {};
+  const cls = 'ap-btn' + (c.style === 'primary' ? ' ap-btn--primary' : c.style === 'soft' ? ' ap-btn--soft' : '');
+  const node = clickTarget(c.target, ctx, cls) || el('span', { class: cls });
+  node.textContent = c.label || 'Button';
+  return el('div', { class: 'ap-card ap-buttonblock', dataset: { blockId: block.id }, style: { justifyContent: alignJustify(c.align) } }, [node]);
+}
+
+function renderIconBlock(block, ctx) {
+  const c = block.config || {};
+  const size = { s: 36, m: 52, l: 72 }[c.size] || 52;
+  const glyphSize = Math.round(size * 0.46);
+  const glyph = c.iconData
+    ? el('img', { src: c.iconData, alt: '', style: { width: glyphSize + 'px', height: glyphSize + 'px', objectFit: 'contain' } })
+    : icon(c.icon || 'sparkles');
+  if (!c.iconData) Object.assign(glyph.style, { width: glyphSize + 'px', height: glyphSize + 'px' });
+  const node = clickTarget(c.target, ctx, 'ap-iconblock__badge') || el('span', { class: 'ap-iconblock__badge' });
+  Object.assign(node.style, { width: size + 'px', height: size + 'px', background: c.bg || 'var(--ap-grad)', color: c.color || '#fff' });
+  node.append(glyph);
+  return el('div', { class: 'ap-card ap-iconblock', dataset: { blockId: block.id }, style: { justifyContent: alignJustify(c.align) } }, [node]);
+}
+
+function renderProgressBlock(block, ctx) {
+  const c = block.config || {};
+  let value = Number(c.value) || 0;
+  if (c.mode === 'data' && c.valueColumn) {
+    const { rows } = blockData(block, ctx);
+    value = aggregate(rows.map((r) => r[c.valueColumn]), c.agg || 'sum');
+  }
+  const target = Number(c.target) || 0;
+  const pct = target > 0 ? clamp(Math.round((value / target) * 100), 0, 100) : 0;
+  const suf = c.suffix ? ' ' + c.suffix : '';
+  return el('div', { class: 'ap-card ap-progressblock', dataset: { blockId: block.id } }, [
+    el('div', { class: 'ap-progressblock__head' }, [
+      el('span', { class: 'ap-progressblock__title', text: c.title || 'Progress' }),
+      el('span', { class: 'ap-progressblock__val', text: `${fmtNumber(value)}${suf} / ${fmtNumber(target)}${suf}` }),
+    ]),
+    el('div', { class: 'ap-progressblock__track' }, [
+      el('div', { class: 'ap-progressblock__fill', style: { width: pct + '%', background: c.color || 'var(--ap-primary)' } }),
+    ]),
+    el('span', { class: 'ap-progressblock__pct', text: pct + '%' }),
   ]);
 }
 

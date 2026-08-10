@@ -31,9 +31,39 @@ export const BLOCK_CATALOG = [
     info: 'Plots each row as a point on a map using latitude/longitude columns from your table — handy for store locations, event sites or any geographic data.',
   },
   {
+    type: 'progress', category: 'data', icon: 'progress', title: 'Progress bar',
+    desc: 'A fill bar toward a goal',
+    info: 'Shows a value moving toward a target as a filled bar — e.g. "$45,000 of $50,000 raised". The value can be typed in or calculated from your data.',
+  },
+  {
     type: 'text', category: 'content', icon: 'type', title: 'Text',
     desc: 'A heading and rich text',
     info: 'A heading plus a block of formatted text — for introductions, explanations or any freeform writing.',
+  },
+  {
+    type: 'counter', category: 'content', icon: 'counter', title: 'Counter',
+    desc: 'A number that counts up on scroll',
+    info: 'A start and end number you set yourself (not calculated from data) that animates upward once it scrolls into view — a classic "1,250+ happy customers" effect.',
+  },
+  {
+    type: 'accordion', category: 'content', icon: 'accordion', title: 'Accordion',
+    desc: 'Expandable question & answer list',
+    info: 'A list of questions that expand to reveal an answer when clicked — perfect for an FAQ section.',
+  },
+  {
+    type: 'button', category: 'basic', icon: 'buttonEl', title: 'Button',
+    desc: 'A clickable call-to-action',
+    info: 'A button that links to another page on your site or an external URL — e.g. "Learn more" or "Visit our shop".',
+  },
+  {
+    type: 'icon', category: 'basic', icon: 'sparkles', title: 'Icon',
+    desc: 'A single decorative or linked icon',
+    info: 'A standalone icon in a colored badge — purely decorative, or optionally clickable like a button.',
+  },
+  {
+    type: 'spacer', category: 'basic', icon: 'spacer', title: 'Spacer',
+    desc: 'Blank vertical space',
+    info: 'Adds empty vertical space between other elements — invisible on the page, just adjusts the gap.',
   },
 ];
 

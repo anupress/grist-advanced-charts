@@ -3,19 +3,17 @@
 
 import { el, clone, debounce } from '../util.js';
 import { icon, chartIcon } from '../assets/icons.js';
-import { openDrawer, closeDrawer, field, textInput, selectInput, checkboxRow, segmented, subhead, divider, primaryBtn, ghostBtn } from './ui.js';
+import { openDrawer, closeDrawer, field, textInput, selectInput, checkboxRow, segmented, subhead, divider, primaryBtn, ghostBtn, iconPickerField, linkTargetField, colorInput } from './ui.js';
 import { CHART_TYPES, getChartType, CARTESIAN } from '../charts/catalog.js';
 import { evaluateTypes, isMeasure, autoPick } from '../charts/recommend.js';
 import { AGGREGATIONS } from '../stats/aggregate.js';
 import { renderChart } from '../charts/echarts-adapter.js';
 import { renderBlock, mountCharts } from '../render/blocks.js';
 import { mountMaps, detectLatLon } from '../render/map.js';
+import { mountCounters } from '../render/counter.js';
 import { currentSeriesColors } from '../theme/apply.js';
-import { pickImage, readFileAsDataURL } from './imageutil.js';
-import { getMediaLibrary, addMediaAsset } from './media.js';
 
 const SPANS = [{ value: 3, label: 'XS' }, { value: 4, label: 'S' }, { value: 6, label: 'M' }, { value: 8, label: 'L' }, { value: 12, label: 'Full' }];
-const STAT_ICONS = ['coins', 'cart', 'trending', 'users', 'pulse', 'target', 'star', 'database', 'globe', 'sparkles'];
 
 const SUB_INFO = {
   chart: 'Type your own text, or use placeholders that fill in live:<br><code>%count</code> rows · <code>%groups</code> categories · <code>%total</code> sum of the value.',
@@ -31,6 +29,12 @@ export function openBlockEditor(block, ctx) {
   if (block.type === 'text') return openTextEditor(block, ctx);
   if (block.type === 'breakdown') return openBreakdownEditor(block, ctx);
   if (block.type === 'map') return openMapEditor(block, ctx);
+  if (block.type === 'spacer') return openSpacerEditor(block, ctx);
+  if (block.type === 'button') return openButtonEditor(block, ctx);
+  if (block.type === 'icon') return openIconEditor(block, ctx);
+  if (block.type === 'progress') return openProgressEditor(block, ctx);
+  if (block.type === 'counter') return openCounterEditor(block, ctx);
+  if (block.type === 'accordion') return openAccordionEditor(block, ctx);
   return openChartEditor(block, ctx);
 }
 
@@ -170,35 +174,6 @@ function openStatEditor(block, ctx) {
     previewHost.replaceChildren(renderBlock(clone(wb), { provider, config: { dataTable: wb.config.table } }));
   }, 100);
 
-  function iconPicker() {
-    const site = ctx.site || {};
-    const wrap = el('div', { class: 'ap-row', style: { flexWrap: 'wrap', gap: '6px' } });
-    const rebuild = () => {
-      wrap.replaceChildren();
-      STAT_ICONS.forEach((name) => {
-        const active = !wb.config.iconData && wb.config.icon === name;
-        const chip = el('button', { class: 'ap-chip' + (active ? ' is-active' : ''), title: name }, [icon(name)]);
-        chip.addEventListener('click', () => { wb.config.icon = name; wb.config.iconData = null; rebuild(); refreshPreview(); });
-        wrap.append(chip);
-      });
-      getMediaLibrary(site).forEach(({ dataUrl }) => {
-        const chip = el('button', { class: 'ap-chip' + (wb.config.iconData === dataUrl ? ' is-active' : ''), title: 'Custom icon' },
-          [el('img', { src: dataUrl, alt: '', style: { width: '16px', height: '16px', objectFit: 'contain' } })]);
-        chip.addEventListener('click', () => { wb.config.iconData = dataUrl; rebuild(); refreshPreview(); });
-        wrap.append(chip);
-      });
-      const up = el('button', { class: 'ap-chip', title: 'Upload your own icon' }, [icon('plus'), 'Upload']);
-      up.addEventListener('click', () => pickImage(async (f) => {
-        const data = await readFileAsDataURL(f, 128);
-        addMediaAsset(site, data);
-        wb.config.iconData = data; rebuild(); refreshPreview();
-      }));
-      wrap.append(up);
-    };
-    rebuild();
-    return wrap;
-  }
-
   // Table-dependent fields, rebuilt whenever the table changes.
   const dynHost = el('div');
   function buildDyn() {
@@ -223,7 +198,7 @@ function openStatEditor(block, ctx) {
     field('Data table', selectInput(provider.tables().map((t) => ({ value: t.id, label: t.label })), wb.config.table,
       async (v) => { wb.config.table = v; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
     dynHost,
-    subhead('Icon'), iconPicker(),
+    subhead('Icon'), iconPickerField(ctx.site || {}, wb.config, refreshPreview),
     subhead('Number format'),
     checkboxRow('Compact (1.2K, 3.4M)', wb.config.format?.compact, (v) => { wb.config.format = { ...wb.config.format, compact: v }; refreshPreview(); }),
     field('Currency symbol', textInput(wb.config.format?.currency || '', (v) => { wb.config.format = { ...wb.config.format, currency: v }; refreshPreview(); }, { placeholder: 'e.g. $' })),
@@ -338,5 +313,195 @@ function openMapEditor(block, ctx) {
   buildDyn();
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
   openDrawer({ title: block.__isNew ? 'Add map' : 'Edit map', body, footer });
+  refreshPreview();
+}
+
+// Two fields side by side (e.g. Start/End, Prefix/Suffix).
+function twoUp(a, b) {
+  return el('div', { class: 'ap-row', style: { alignItems: 'flex-start' } }, [
+    el('div', { style: { flex: '1' } }, [a]),
+    el('div', { style: { flex: '1' } }, [b]),
+  ]);
+}
+function iconBtn(ic, title, on, extra = '') {
+  return el('button', { class: 'ap-btn ap-btn--icon ap-btn--sm ' + extra, title, 'aria-label': title, onClick: on }, [icon(ic)]);
+}
+function colorField(labelText, value, fallback, onChange) {
+  return el('div', {}, [el('label', { class: 'ap-label', text: labelText }), colorInput(value || fallback, onChange)]);
+}
+
+// ---------------- Spacer editor ----------------
+function openSpacerEditor(block, ctx) {
+  const wb = clone(block); wb.config = wb.config || {};
+  const previewHost = el('div', { class: 'ap-preview' });
+  const refreshPreview = () => { previewHost.replaceChildren(renderBlock(clone(wb), { provider: ctx.provider, config: {} })); };
+  const body = [
+    field('Height (pixels)', textInput(String(wb.config.height ?? 40), (v) => { wb.config.height = Math.max(4, Math.min(240, Number(v) || 40)); refreshPreview(); }, { type: 'number' }),
+      'Empty vertical space between other elements.'),
+    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    subhead('Live preview'), previewHost,
+  ];
+  const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
+  openDrawer({ title: block.__isNew ? 'Add spacer' : 'Edit spacer', body, footer });
+  refreshPreview();
+}
+
+// ---------------- Button editor ----------------
+function openButtonEditor(block, ctx) {
+  const wb = clone(block); wb.config = wb.config || {};
+  wb.config.target = wb.config.target || { kind: null, tab: null, url: null, newTab: true };
+  const previewHost = el('div', { class: 'ap-preview' });
+  const refreshPreview = debounce(() => { previewHost.replaceChildren(renderBlock(clone(wb), { provider: ctx.provider, config: {} })); }, 100);
+  const body = [
+    field('Label', textInput(wb.config.label || '', (v) => { wb.config.label = v; refreshPreview(); }, { placeholder: 'e.g. Get started' })),
+    field('Style', segmented([{ value: 'primary', label: 'Primary' }, { value: 'soft', label: 'Soft' }, { value: 'outline', label: 'Outline' }], wb.config.style || 'primary', (v) => { wb.config.style = v; refreshPreview(); })),
+    field('Alignment', segmented([{ value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }], wb.config.align || 'left', (v) => { wb.config.align = v; refreshPreview(); })),
+    field('Link', linkTargetField(wb.config.target, ctx.site?.tabs, refreshPreview)),
+    field('Block width', segmented(SPANS, wb.span || 3, (v) => { wb.span = v; })),
+    subhead('Live preview'), previewHost,
+  ];
+  const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
+  openDrawer({ title: block.__isNew ? 'Add button' : 'Edit button', body, footer });
+  refreshPreview();
+}
+
+// ---------------- Icon editor ----------------
+function openIconEditor(block, ctx) {
+  const wb = clone(block); wb.config = wb.config || {};
+  wb.config.target = wb.config.target || { kind: null, tab: null, url: null, newTab: true };
+  const site = ctx.site || {};
+  const previewHost = el('div', { class: 'ap-preview' });
+  const refreshPreview = debounce(() => { previewHost.replaceChildren(renderBlock(clone(wb), { provider: ctx.provider, config: {} })); }, 100);
+  const body = [
+    subhead('Icon'), iconPickerField(site, wb.config, refreshPreview),
+    field('Size', segmented([{ value: 's', label: 'Small' }, { value: 'm', label: 'Medium' }, { value: 'l', label: 'Large' }], wb.config.size || 'm', (v) => { wb.config.size = v; refreshPreview(); })),
+    twoUp(
+      colorField('Icon color', wb.config.color, '#ffffff', (v) => { wb.config.color = v; refreshPreview(); }),
+      colorField('Background', wb.config.bg, '#6d5efc', (v) => { wb.config.bg = v; refreshPreview(); }),
+    ),
+    field('Alignment', segmented([{ value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }], wb.config.align || 'left', (v) => { wb.config.align = v; refreshPreview(); })),
+    field('Link (optional)', linkTargetField(wb.config.target, site.tabs, refreshPreview)),
+    field('Block width', segmented(SPANS, wb.span || 3, (v) => { wb.span = v; })),
+    subhead('Live preview'), previewHost,
+  ];
+  const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
+  openDrawer({ title: block.__isNew ? 'Add icon' : 'Edit icon', body, footer });
+  refreshPreview();
+}
+
+// ---------------- Progress bar editor ----------------
+function openProgressEditor(block, ctx) {
+  const wb = clone(block); wb.config = wb.config || {};
+  const provider = ctx.provider;
+  wb.config.table = wb.config.table || provider.defaultTable();
+  const previewHost = el('div', { class: 'ap-preview' });
+  const refreshPreview = debounce(async () => {
+    if (wb.config.mode === 'data') await ensureRows(provider, wb.config.table);
+    previewHost.replaceChildren(renderBlock(clone(wb), { provider, config: { dataTable: wb.config.table } }));
+  }, 100);
+
+  const dynHost = el('div');
+  function buildDyn() {
+    if (wb.config.mode === 'data') {
+      const cols = provider.columns(wb.config.table);
+      if (cols.length && !cols.find((c) => c.id === wb.config.valueColumn)) wb.config.valueColumn = cols[0].id;
+      dynHost.replaceChildren(
+        field('Data table', selectInput(provider.tables().map((t) => ({ value: t.id, label: t.label })), wb.config.table,
+          async (v) => { wb.config.table = v; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
+        field('Value column', selectInput(cols.map((c) => ({ value: c.id, label: c.label })), wb.config.valueColumn, (v) => { wb.config.valueColumn = v; refreshPreview(); })),
+        field('Summarize by', selectInput(AGGREGATIONS.map((a) => ({ value: a.id, label: a.label })), wb.config.agg || 'sum', (v) => { wb.config.agg = v; refreshPreview(); })),
+      );
+    } else {
+      dynHost.replaceChildren(
+        field('Current value', textInput(String(wb.config.value ?? 0), (v) => { wb.config.value = Number(v) || 0; refreshPreview(); }, { type: 'number' })),
+      );
+    }
+  }
+
+  const body = [
+    field('Title', textInput(wb.config.title || '', (v) => { wb.config.title = v; refreshPreview(); }, { placeholder: 'e.g. Fundraising goal' })),
+    field('Value comes from', segmented([{ value: 'manual', label: 'Type a number' }, { value: 'data', label: 'From my data' }], wb.config.mode || 'manual', (v) => { wb.config.mode = v; buildDyn(); refreshPreview(); })),
+    dynHost,
+    field('Target (goal)', textInput(String(wb.config.target ?? 100), (v) => { wb.config.target = Number(v) || 0; refreshPreview(); }, { type: 'number' })),
+    field('Suffix (optional)', textInput(wb.config.suffix || '', (v) => { wb.config.suffix = v; refreshPreview(); }, { placeholder: 'e.g. signups, $' })),
+    colorField('Bar color', wb.config.color, '#6d5efc', (v) => { wb.config.color = v; refreshPreview(); }),
+    field('Block width', segmented(SPANS, wb.span || 4, (v) => { wb.span = v; })),
+    subhead('Live preview'), previewHost,
+  ];
+  buildDyn();
+  const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
+  openDrawer({ title: block.__isNew ? 'Add progress bar' : 'Edit progress bar', body, footer });
+  refreshPreview();
+}
+
+// ---------------- Counter editor ----------------
+function openCounterEditor(block, ctx) {
+  const wb = clone(block); wb.config = wb.config || {};
+  const previewHost = el('div', { class: 'ap-preview' });
+  const refreshPreview = debounce(() => {
+    previewHost.replaceChildren(renderBlock(clone(wb), { provider: ctx.provider, config: {} }));
+    mountCounters(previewHost);
+  }, 150);
+  const body = [
+    field('Label', textInput(wb.config.label || '', (v) => { wb.config.label = v; refreshPreview(); }, { placeholder: 'e.g. Happy customers' })),
+    twoUp(
+      field('Start number', textInput(String(wb.config.start ?? 0), (v) => { wb.config.start = Number(v) || 0; refreshPreview(); }, { type: 'number' })),
+      field('End number', textInput(String(wb.config.end ?? 100), (v) => { wb.config.end = Number(v) || 0; refreshPreview(); }, { type: 'number' })),
+    ),
+    twoUp(
+      field('Prefix', textInput(wb.config.prefix || '', (v) => { wb.config.prefix = v; refreshPreview(); }, { placeholder: 'e.g. $' })),
+      field('Suffix', textInput(wb.config.suffix || '', (v) => { wb.config.suffix = v; refreshPreview(); }, { placeholder: 'e.g. +, %' })),
+    ),
+    field('Decimal places', textInput(String(wb.config.decimals ?? 0), (v) => { wb.config.decimals = Math.max(0, Math.min(4, Number(v) || 0)); refreshPreview(); }, { type: 'number' })),
+    field('Animation length (ms)', textInput(String(wb.config.duration ?? 1400), (v) => { wb.config.duration = Math.max(200, Number(v) || 1400); refreshPreview(); }, { type: 'number' }),
+      'How long the count-up takes once it scrolls into view.'),
+    subhead('Icon (optional)'), iconPickerField(ctx.site || {}, wb.config, refreshPreview),
+    field('Block width', segmented(SPANS, wb.span || 3, (v) => { wb.span = v; })),
+    subhead('Live preview'), previewHost,
+  ];
+  const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
+  openDrawer({ title: block.__isNew ? 'Add counter' : 'Edit counter', body, footer });
+  refreshPreview();
+}
+
+// ---------------- Accordion editor ----------------
+function openAccordionEditor(block, ctx) {
+  const wb = clone(block); wb.config = wb.config || {};
+  wb.config.items = wb.config.items?.length ? wb.config.items : [{ q: 'Question one', a: 'Answer goes here.' }];
+  const previewHost = el('div', { class: 'ap-preview' });
+  const refreshPreview = debounce(() => { previewHost.replaceChildren(renderBlock(clone(wb), { provider: ctx.provider, config: {} })); }, 100);
+
+  const itemsHost = el('div');
+  function renderItems() {
+    itemsHost.replaceChildren(subhead('Questions & answers'));
+    wb.config.items.forEach((it, i) => {
+      const row = el('div', { class: 'ap-tabedit', style: { alignItems: 'flex-start', gap: '10px' } }, [
+        el('div', { style: { flex: '1', display: 'flex', flexDirection: 'column', gap: '6px' } }, [
+          textInput(it.q || '', (v) => { it.q = v; refreshPreview(); }, { placeholder: 'Question' }),
+          textInput(it.a || '', (v) => { it.a = v; refreshPreview(); }, { textarea: true, placeholder: 'Answer' }),
+        ]),
+        el('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px' } }, [
+          i > 0 ? iconBtn('arrowUp', 'Move up', () => swap(i, i - 1)) : null,
+          i < wb.config.items.length - 1 ? iconBtn('arrowDown', 'Move down', () => swap(i, i + 1)) : null,
+          wb.config.items.length > 1 ? iconBtn('trash', 'Remove', () => { wb.config.items.splice(i, 1); renderItems(); refreshPreview(); }, 'ap-btn--danger') : null,
+        ]),
+      ]);
+      itemsHost.append(row);
+    });
+    itemsHost.append(el('button', { class: 'ap-btn ap-btn--soft', onClick: addItem }, [icon('plus'), 'Add question']));
+  }
+  function swap(a, b) { const it = wb.config.items; [it[a], it[b]] = [it[b], it[a]]; renderItems(); refreshPreview(); }
+  function addItem() { wb.config.items.push({ q: '', a: '' }); renderItems(); refreshPreview(); }
+  renderItems();
+
+  const body = [
+    field('Title (optional)', textInput(wb.config.title || '', (v) => { wb.config.title = v; refreshPreview(); }, { placeholder: 'e.g. Frequently asked questions' })),
+    checkboxRow('First question open by default', wb.config.openFirst !== false, (v) => { wb.config.openFirst = v; refreshPreview(); }),
+    divider(), itemsHost,
+    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    subhead('Live preview'), previewHost,
+  ];
+  const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
+  openDrawer({ title: block.__isNew ? 'Add accordion' : 'Edit accordion', body, footer });
   refreshPreview();
 }

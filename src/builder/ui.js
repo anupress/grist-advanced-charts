@@ -2,6 +2,8 @@
 
 import { el, uid } from '../util.js';
 import { icon } from '../assets/icons.js';
+import { pickImage, readFileAsDataURL } from './imageutil.js';
+import { getMediaLibrary, addMediaAsset } from './media.js';
 
 export function field(labelText, control, hint, infoHtml) {
   const label = labelText
@@ -118,6 +120,72 @@ export function closeDrawer() {
   const d = current; current = null;
   d.classList.remove('is-open');
   setTimeout(() => d.remove(), 320);
+}
+
+// ---- Shared block-editor controls ----
+
+// Icons offered by iconPickerField — a small curated set (not the whole ICONS library, which
+// includes UI-only glyphs like "close"/"grip" that don't make sense as decorative content icons).
+const PICKABLE_ICONS = ['coins', 'cart', 'trending', 'users', 'pulse', 'target', 'star', 'database', 'globe', 'sparkles'];
+
+// "Choose an icon" control shared by any block config with {icon, iconData} fields (Stat,
+// Icon block, Counter). Reads/writes `config` in place; `site` is the whole working site config,
+// used to read/add to its shared media library (see media.js) for uploaded custom icons.
+export function iconPickerField(site, config, onChange) {
+  const wrap = el('div', { class: 'ap-row', style: { flexWrap: 'wrap', gap: '6px' } });
+  const rebuild = () => {
+    wrap.replaceChildren();
+    PICKABLE_ICONS.forEach((name) => {
+      const active = !config.iconData && config.icon === name;
+      const chip = el('button', { class: 'ap-chip' + (active ? ' is-active' : ''), title: name }, [icon(name)]);
+      chip.addEventListener('click', () => { config.icon = name; config.iconData = null; rebuild(); onChange(); });
+      wrap.append(chip);
+    });
+    getMediaLibrary(site).forEach(({ dataUrl }) => {
+      const chip = el('button', { class: 'ap-chip' + (config.iconData === dataUrl ? ' is-active' : ''), title: 'Custom icon' },
+        [el('img', { src: dataUrl, alt: '', style: { width: '16px', height: '16px', objectFit: 'contain' } })]);
+      chip.addEventListener('click', () => { config.iconData = dataUrl; rebuild(); onChange(); });
+      wrap.append(chip);
+    });
+    const up = el('button', { class: 'ap-chip', title: 'Upload your own icon' }, [icon('plus'), 'Upload']);
+    up.addEventListener('click', () => pickImage(async (f) => {
+      const data = await readFileAsDataURL(f, 128);
+      addMediaAsset(site, data);
+      config.iconData = data; rebuild(); onChange();
+    }));
+    wrap.append(up);
+  };
+  rebuild();
+  return wrap;
+}
+
+// "Where should this go?" control for clickable blocks (Button, Icon): jump to one of the
+// site's own pages, or an external URL (optionally in a new tab). Mutates `target` in place —
+// {kind:'tab'|'url'|null, tab, url, newTab}.
+export function linkTargetField(target, tabs, onChange) {
+  const wrap = el('div', { style: { display: 'grid', gap: '8px' } });
+  const kindSel = selectInput(
+    [{ value: '', label: '— No link —' }]
+      .concat((tabs || []).map((t) => ({ value: 'tab:' + t.id, label: 'Page: ' + t.title })))
+      .concat([{ value: 'url', label: 'Custom URL…' }]),
+    target.kind === 'tab' ? 'tab:' + target.tab : (target.kind === 'url' ? 'url' : ''),
+    (v) => {
+      if (v === '') { target.kind = null; target.tab = null; target.url = null; }
+      else if (v === 'url') { target.kind = 'url'; target.tab = null; target.url = target.url || 'https://'; }
+      else { target.kind = 'tab'; target.tab = v.slice(4); target.url = null; }
+      rebuild(); onChange();
+    });
+  function rebuild() {
+    wrap.replaceChildren(kindSel);
+    if (target.kind === 'url') {
+      wrap.append(
+        textInput(target.url || '', (v) => { target.url = v; onChange(); }, { placeholder: 'https://example.com' }),
+        checkboxRow('Open in a new tab', target.newTab !== false, (v) => { target.newTab = v; onChange(); }),
+      );
+    }
+  }
+  rebuild();
+  return wrap;
 }
 
 export function primaryBtn(text, ic, onClick) {

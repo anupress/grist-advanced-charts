@@ -152,6 +152,47 @@
 .leaflet-popup-content { font-size: 12px !important; line-height: 1.5 !important; }
 .leaflet-popup-content strong { color: var(--ap-primary); }
 
+/* ---- Spacer block (deliberately invisible — no card chrome) ---- */
+.ap-spacer { width: 100%; }
+
+/* ---- Button / Icon blocks ---- */
+.ap-buttonblock, .ap-iconblock { display: flex; align-items: center; padding: 26px 20px; border-radius: var(--ap-radius); }
+.ap-iconblock__badge { appearance: none; -webkit-appearance: none; border: none; padding: 0; margin: 0; font: inherit;
+  border-radius: 16px; display: grid; place-items: center; flex: none; }
+.ap-iconblock__badge:is(a, button) { cursor: pointer; text-decoration: none; transition: transform .15s var(--ap-ease); }
+.ap-iconblock__badge:is(a, button):hover { transform: translateY(-2px) scale(1.04); }
+.ap-iconblock__badge:is(a, button):focus-visible { outline: none; box-shadow: var(--ap-ring); }
+
+/* ---- Progress bar block ---- */
+.ap-progressblock { padding: 18px 20px; border-radius: var(--ap-radius); display: flex; flex-direction: column; gap: 10px; height: 100%; }
+.ap-progressblock__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.ap-progressblock__title { font-size: var(--ap-fs-sm); font-weight: 700; color: var(--ap-text-soft); }
+.ap-progressblock__val { font-size: var(--ap-fs-xs); font-weight: 700; color: var(--ap-text-mute); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ap-progressblock__track { height: 12px; border-radius: 999px; background: var(--ap-bg-soft); overflow: hidden; }
+.ap-progressblock__fill { height: 100%; border-radius: 999px; transition: width .4s var(--ap-ease); }
+.ap-progressblock__pct { align-self: flex-end; font-size: var(--ap-fs-xs); font-weight: 800; color: var(--ap-text-mute); }
+
+/* ---- Counter block ---- */
+.ap-counter { padding: 24px 20px; border-radius: var(--ap-radius); text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; }
+.ap-counter__icon { width: 44px; height: 44px; border-radius: 13px; background: var(--ap-grad); color: #fff; display: grid; place-items: center; }
+.ap-counter__icon svg { width: 22px; height: 22px; }
+.ap-counter__value { font-family: var(--ap-font-head); font-weight: 800; font-size: var(--ap-fs-2xl); letter-spacing: -.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+.ap-counter__label { font-size: var(--ap-fs-sm); color: var(--ap-text-mute); font-weight: 600; }
+
+/* ---- Accordion block ---- */
+.ap-accordion { padding: 18px 20px; border-radius: var(--ap-radius); }
+.ap-accordion__title { font-size: var(--ap-fs-xl); margin: 0 0 4px; }
+.ap-accordion__item { border-bottom: 1px solid var(--ap-border); }
+.ap-accordion__item:last-child { border-bottom: none; }
+.ap-accordion__q { cursor: pointer; list-style: none; padding: 12px 26px 12px 2px; font-weight: 700; font-size: var(--ap-fs-sm); color: var(--ap-text); position: relative; }
+.ap-accordion__q::-webkit-details-marker { display: none; }
+.ap-accordion__q::marker { content: ''; }
+.ap-accordion__q::after { content: ''; position: absolute; right: 2px; top: 50%; width: 8px; height: 8px;
+  border-right: 2px solid var(--ap-text-mute); border-bottom: 2px solid var(--ap-text-mute);
+  transform: translateY(-65%) rotate(45deg); transition: transform .2s var(--ap-ease); }
+.ap-accordion__item[open] > .ap-accordion__q::after { transform: translateY(-35%) rotate(-135deg); }
+.ap-accordion__a { padding: 0 26px 14px 2px; font-size: var(--ap-fs-sm); color: var(--ap-text-soft); line-height: 1.6; }
+
 /* ---- Mobile nav ---- */
 @media (max-width: 760px) {
   .ap-nav { position: fixed; inset: 0 0 0 auto; width: min(78vw, 320px); flex-direction: column; align-items: stretch; gap: 4px; padding: 80px 16px 24px; background: var(--ap-surface); box-shadow: var(--ap-shadow-lg); transform: translateX(100%); transition: transform .3s var(--ap-ease); z-index: 45; }

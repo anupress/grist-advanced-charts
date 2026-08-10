@@ -108,6 +108,15 @@ function defaultBlock(type, tabId) {
     const label = cols.find((c) => /name|code|title|label/i.test(c.id)) || cols.filter(isDimension)[0] || cols[0];
     return { id: uid('blk'), type: 'map', span: 12, __isNew: true, config: { table, title: 'Map', latColumn: det.lat || '', lonColumn: det.lon || '', labelColumn: label?.id || null, colorBy: null } };
   }
+  if (type === 'spacer') return { id: uid('blk'), type: 'spacer', span: 12, __isNew: true, config: { height: 40 } };
+  if (type === 'button') return { id: uid('blk'), type: 'button', span: 3, __isNew: true, config: { label: 'Click here', style: 'primary', align: 'left', target: { kind: null, tab: null, url: null, newTab: true } } };
+  if (type === 'icon') return { id: uid('blk'), type: 'icon', span: 3, __isNew: true, config: { icon: 'sparkles', iconData: null, size: 'm', color: null, bg: null, align: 'left', target: { kind: null, tab: null, url: null, newTab: true } } };
+  if (type === 'progress') {
+    const m = cols.filter(isMeasure)[0];
+    return { id: uid('blk'), type: 'progress', span: 4, __isNew: true, config: { title: 'Progress', mode: 'manual', value: 40, target: 100, table, valueColumn: (m || cols[0])?.id, agg: 'sum', suffix: '', color: null } };
+  }
+  if (type === 'counter') return { id: uid('blk'), type: 'counter', span: 3, __isNew: true, config: { label: 'Happy customers', start: 0, end: 100, duration: 1400, prefix: '', suffix: '', decimals: 0, icon: 'sparkles', iconData: null } };
+  if (type === 'accordion') return { id: uid('blk'), type: 'accordion', span: 12, __isNew: true, config: { title: 'Frequently asked questions', items: [{ q: 'Question one', a: 'Answer goes here.' }], openFirst: true } };
   return { id: uid('blk'), type: 'chart', span: 6, __isNew: true, config: { table, title: 'New chart', ...autoPick(cols) } };
 }
 
