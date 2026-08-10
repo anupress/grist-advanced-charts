@@ -80,6 +80,11 @@ export const BLOCK_CATALOG = [
     desc: 'Blank vertical space',
     info: 'Adds empty vertical space between other elements — invisible on the page, just adjusts the gap.',
   },
+  {
+    type: 'embed', category: 'advanced', icon: 'code', title: 'HTML/CSS/JS',
+    desc: 'Your own custom code, sandboxed',
+    info: 'For advanced users: write your own HTML, CSS and JavaScript, rendered in a sandboxed frame that cannot access your Grist data or this widget\'s settings.',
+  },
 ];
 
 export function blockCatalogEntry(type) { return BLOCK_CATALOG.find((b) => b.type === type) || null; }

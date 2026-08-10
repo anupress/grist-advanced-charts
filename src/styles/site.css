@@ -238,6 +238,10 @@
 .ap-livetable__prev svg { transform: rotate(90deg); }
 .ap-livetable__next svg { transform: rotate(-90deg); }
 
+/* ---- Embed block ---- */
+.ap-embed { padding: 0; overflow: hidden; }
+.ap-embed__frame { width: 100%; border: none; display: block; background: transparent; }
+
 /* ---- Mobile nav ---- */
 @media (max-width: 760px) {
   .ap-nav { position: fixed; inset: 0 0 0 auto; width: min(78vw, 320px); flex-direction: column; align-items: stretch; gap: 4px; padding: 80px 16px 24px; background: var(--ap-surface); box-shadow: var(--ap-shadow-lg); transform: translateX(100%); transition: transform .3s var(--ap-ease); z-index: 45; }

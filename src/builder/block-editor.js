@@ -40,6 +40,7 @@ export function openBlockEditor(block, ctx) {
   if (block.type === 'image') return openImageEditor(block, ctx);
   if (block.type === 'testimonials') return openTestimonialsEditor(block, ctx);
   if (block.type === 'livetable') return openLiveTableEditor(block, ctx);
+  if (block.type === 'embed') return openEmbedEditor(block, ctx);
   return openChartEditor(block, ctx);
 }
 
@@ -723,4 +724,32 @@ function openLiveTableEditor(block, ctx) {
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
   openDrawer({ title: block.__isNew ? 'Add data table' : 'Edit data table', body, footer });
   (async () => { await ensureRows(provider, wb.config.table); buildDyn(); refreshPreview(); })();
+}
+
+// ---------------- Embed editor ----------------
+function openEmbedEditor(block, ctx) {
+  const wb = clone(block); wb.config = wb.config || {};
+  const previewHost = el('div', { class: 'ap-preview' });
+  // Re-composing srcdoc reloads the whole iframe from scratch — a longer debounce than other
+  // editors keeps that from firing on every keystroke.
+  const refreshPreview = debounce(() => { previewHost.replaceChildren(renderBlock(clone(wb), { provider: ctx.provider, config: {} })); }, 500);
+
+  const body = [
+    el('div', { class: 'ap-trust' }, [
+      icon('code'),
+      el('div', {}, [
+        el('strong', { text: 'Runs in a sandboxed frame.' }),
+        el('div', { class: 'ap-muted', html: 'Your HTML, CSS and JavaScript run isolated from this widget and your Grist data — they can\'t read your tables, this widget\'s settings, or the page around them. You\'re responsible for whatever you put here.' }),
+      ]),
+    ]),
+    field('HTML', textInput(wb.config.html || '', (v) => { wb.config.html = v; refreshPreview(); }, { textarea: true, placeholder: '<div>Hello world</div>' })),
+    field('CSS', textInput(wb.config.css || '', (v) => { wb.config.css = v; refreshPreview(); }, { textarea: true, placeholder: 'div { color: teal; }' })),
+    field('JavaScript', textInput(wb.config.js || '', (v) => { wb.config.js = v; refreshPreview(); }, { textarea: true, placeholder: 'console.log("hello")' })),
+    field('Height (pixels)', textInput(String(wb.config.height ?? 300), (v) => { wb.config.height = Math.max(80, Math.min(1200, Number(v) || 300)); refreshPreview(); }, { type: 'number' })),
+    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    subhead('Live preview'), previewHost,
+  ];
+  const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
+  openDrawer({ title: block.__isNew ? 'Add embed' : 'Edit embed', body, footer });
+  refreshPreview();
 }

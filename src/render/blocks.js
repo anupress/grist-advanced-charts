@@ -15,6 +15,7 @@ import { renderAccordion } from './accordion.js';
 import { renderImage } from './image.js';
 import { renderTestimonials } from './testimonials.js';
 import { renderLiveTable } from './livetable.js';
+import { renderEmbed } from './embed.js';
 
 function blockData(block, ctx) {
   const table = block.config?.table || ctx.config?.dataTable;
@@ -47,6 +48,7 @@ export function renderBlock(block, ctx) {
   else if (block.type === 'image') inner = renderImage(block, ctx);
   else if (block.type === 'testimonials') inner = renderTestimonials(block, ctx);
   else if (block.type === 'livetable') inner = renderLiveTable(block, ctx);
+  else if (block.type === 'embed') inner = renderEmbed(block);
   else inner = renderChartCard(block, ctx);
 
   const wrap = el('div', { class: 'ap-block', dataset: { span: String(block.span || 12), blockId: block.id } }, [inner]);
