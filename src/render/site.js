@@ -9,6 +9,7 @@ import { renderBlock, mountCharts } from './blocks.js';
 import { buildHero } from './hero.js';
 import { mountMaps, resizeMapsIn } from './map.js';
 import { mountCounters } from './counter.js';
+import { mountAttachmentImages } from './media-mount.js';
 import { resizeChartsIn, wireGlobalResize } from '../charts/echarts-adapter.js';
 import { icon } from '../assets/icons.js';
 
@@ -91,7 +92,7 @@ export function renderSite(opts) {
   function mountTab(id) {
     const panel = panels.get(id);
     if (!panel) return;
-    const go = () => { mountCharts(panel); resizeChartsIn(panel); mountMaps(panel); resizeMapsIn(panel); mountCounters(panel); };
+    const go = () => { mountCharts(panel); resizeChartsIn(panel); mountMaps(panel); resizeMapsIn(panel); mountCounters(panel); mountAttachmentImages(panel); };
     go();
     setTimeout(go, 120);
     mounted.add(id);

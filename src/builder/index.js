@@ -117,6 +117,7 @@ function defaultBlock(type, tabId) {
   }
   if (type === 'counter') return { id: uid('blk'), type: 'counter', span: 3, __isNew: true, config: { label: 'Happy customers', start: 0, end: 100, duration: 1400, prefix: '', suffix: '', decimals: 0, icon: 'sparkles', iconData: null } };
   if (type === 'accordion') return { id: uid('blk'), type: 'accordion', span: 12, __isNew: true, config: { title: 'Frequently asked questions', items: [{ q: 'Question one', a: 'Answer goes here.' }], openFirst: true } };
+  if (type === 'image') return { id: uid('blk'), type: 'image', span: 6, __isNew: true, config: { mode: 'upload', imageData: null, ref: { table: null, column: null, row: null }, alt: '', fit: 'cover', caption: '', link: { kind: null, tab: null, url: null, newTab: true } } };
   return { id: uid('blk'), type: 'chart', span: 6, __isNew: true, config: { table, title: 'New chart', ...autoPick(cols) } };
 }
 

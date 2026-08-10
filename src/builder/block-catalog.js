@@ -41,6 +41,11 @@ export const BLOCK_CATALOG = [
     info: 'A heading plus a block of formatted text — for introductions, explanations or any freeform writing.',
   },
   {
+    type: 'image', category: 'content', icon: 'image', title: 'Image',
+    desc: 'A photo, from an upload or your data',
+    info: 'Add an image by uploading it yourself, or — if a table has a Grist Attachments column — pull a specific photo straight from your data (e.g. each row\'s headshot or product photo).',
+  },
+  {
     type: 'counter', category: 'content', icon: 'counter', title: 'Counter',
     desc: 'A number that counts up on scroll',
     info: 'A start and end number you set yourself (not calculated from data) that animates upward once it scrolls into view — a classic "1,250+ happy customers" effect.',

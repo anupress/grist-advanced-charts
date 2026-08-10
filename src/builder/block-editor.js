@@ -11,7 +11,9 @@ import { renderChart } from '../charts/echarts-adapter.js';
 import { renderBlock, mountCharts } from '../render/blocks.js';
 import { mountMaps, detectLatLon } from '../render/map.js';
 import { mountCounters } from '../render/counter.js';
+import { mountAttachmentImages } from '../render/media-mount.js';
 import { currentSeriesColors } from '../theme/apply.js';
+import { pickImage, readFileAsDataURL } from './imageutil.js';
 
 const SPANS = [{ value: 3, label: 'XS' }, { value: 4, label: 'S' }, { value: 6, label: 'M' }, { value: 8, label: 'L' }, { value: 12, label: 'Full' }];
 
@@ -35,6 +37,7 @@ export function openBlockEditor(block, ctx) {
   if (block.type === 'progress') return openProgressEditor(block, ctx);
   if (block.type === 'counter') return openCounterEditor(block, ctx);
   if (block.type === 'accordion') return openAccordionEditor(block, ctx);
+  if (block.type === 'image') return openImageEditor(block, ctx);
   return openChartEditor(block, ctx);
 }
 
@@ -504,4 +507,79 @@ function openAccordionEditor(block, ctx) {
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
   openDrawer({ title: block.__isNew ? 'Add accordion' : 'Edit accordion', body, footer });
   refreshPreview();
+}
+
+// ---------------- Image editor ----------------
+function openImageEditor(block, ctx) {
+  const wb = clone(block); wb.config = wb.config || {};
+  wb.config.mode = wb.config.mode || 'upload';
+  wb.config.ref = wb.config.ref || { table: null, column: null, row: null };
+  wb.config.link = wb.config.link || { kind: null, tab: null, url: null, newTab: true };
+  const provider = ctx.provider;
+  const previewHost = el('div', { class: 'ap-preview' });
+  const refreshPreview = debounce(async () => {
+    if (wb.config.mode === 'attachment' && wb.config.ref.table) await ensureRows(provider, wb.config.ref.table);
+    previewHost.replaceChildren(renderBlock(clone(wb), { provider, config: {} }));
+    mountAttachmentImages(previewHost);
+  }, 150);
+
+  const dynHost = el('div');
+  function buildDyn() {
+    if (wb.config.mode === 'upload') {
+      dynHost.replaceChildren(
+        el('div', { class: 'ap-row' }, [
+          el('button', { class: 'ap-btn ap-btn--soft', onClick: () => pickImage(async (f) => {
+            wb.config.imageData = await readFileAsDataURL(f, 1600); buildDyn(); refreshPreview();
+          }) }, [icon('image'), wb.config.imageData ? 'Replace image' : 'Upload image']),
+          wb.config.imageData ? el('button', { class: 'ap-btn ap-btn--ghost ap-btn--danger', onClick: () => { wb.config.imageData = null; buildDyn(); refreshPreview(); } }, [icon('trash'), 'Remove']) : null,
+        ]),
+      );
+      return;
+    }
+    // Attachment mode — table/column/row all need to be picked; only tables with a real Grist
+    // Attachments column are usable (see bridge.js's resolveAttachmentCell for the cell shape).
+    const tables = provider.tables();
+    if (!wb.config.ref.table) wb.config.ref.table = tables[0]?.id || null;
+    const cols = provider.columns(wb.config.ref.table).filter((c) => /attach/i.test(c.type));
+    if (cols.length && !cols.find((c) => c.id === wb.config.ref.column)) wb.config.ref.column = cols[0].id;
+    const rows = provider.records(wb.config.ref.table);
+    if (cols.length && rows.length && wb.config.ref.row == null) wb.config.ref.row = rows[0].id;
+    dynHost.replaceChildren(
+      field('Data table', selectInput(tables.map((t) => ({ value: t.id, label: t.label })), wb.config.ref.table,
+        async (v) => { wb.config.ref.table = v; wb.config.ref.column = null; wb.config.ref.row = null; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
+      !cols.length
+        ? el('div', { class: 'ap-muted', style: { fontSize: '12px' }, text: 'This table has no Attachments column. Add one in Grist, or switch to "Upload my own image".' })
+        : el('div', {}, [
+            field('Attachment column', selectInput(cols.map((c) => ({ value: c.id, label: c.label })), wb.config.ref.column, (v) => { wb.config.ref.column = v; refreshPreview(); })),
+            field('Row', selectInput(rows.map((r) => ({ value: String(r.id), label: rowLabel(r, provider.columns(wb.config.ref.table)) })), String(wb.config.ref.row ?? ''), (v) => { wb.config.ref.row = Number(v); refreshPreview(); })),
+          ]),
+    );
+  }
+
+  const body = [
+    field('Image source', segmented([{ value: 'upload', label: 'Upload my own' }, { value: 'attachment', label: 'From my Grist data' }], wb.config.mode, (v) => { wb.config.mode = v; buildDyn(); refreshPreview(); })),
+    dynHost,
+    field('Alt text (accessibility)', textInput(wb.config.alt || '', (v) => { wb.config.alt = v; }, { placeholder: 'Describe the image' })),
+    field('Fit', segmented([{ value: 'cover', label: 'Fill & crop' }, { value: 'contain', label: 'Show whole image' }], wb.config.fit || 'cover', (v) => { wb.config.fit = v; refreshPreview(); })),
+    field('Caption (optional)', textInput(wb.config.caption || '', (v) => { wb.config.caption = v; refreshPreview(); }, { placeholder: 'A short caption under the image' })),
+    field('Link (optional)', linkTargetField(wb.config.link, ctx.site?.tabs, refreshPreview)),
+    field('Block width', segmented(SPANS, wb.span || 6, (v) => { wb.span = v; })),
+    subhead('Live preview'), previewHost,
+  ];
+  const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
+  openDrawer({ title: block.__isNew ? 'Add image' : 'Edit image', body, footer });
+  // Row records aren't guaranteed pre-loaded (unlike columns, which GristProvider.init() always
+  // pre-fetches) — prime them before the first build so an existing attachment-mode image's row
+  // picker isn't briefly empty.
+  (async () => {
+    if (wb.config.mode === 'attachment' && wb.config.ref.table) await ensureRows(provider, wb.config.ref.table);
+    buildDyn();
+    refreshPreview();
+  })();
+}
+
+function rowLabel(row, cols) {
+  const nameCol = cols.find((c) => /name|title|label/i.test(c.id) && !/attach/i.test(c.type));
+  const val = nameCol ? row[nameCol.id] : null;
+  return val != null && val !== '' ? String(val) : `Row ${row.id}`;
 }

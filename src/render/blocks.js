@@ -12,6 +12,7 @@ import { renderBreakdown } from './breakdown.js';
 import { buildMapCard } from './map.js';
 import { renderCounter } from './counter.js';
 import { renderAccordion } from './accordion.js';
+import { renderImage } from './image.js';
 
 function blockData(block, ctx) {
   const table = block.config?.table || ctx.config?.dataTable;
@@ -41,6 +42,7 @@ export function renderBlock(block, ctx) {
   else if (block.type === 'progress') inner = renderProgressBlock(block, ctx);
   else if (block.type === 'counter') inner = renderCounter(block);
   else if (block.type === 'accordion') inner = renderAccordion(block, ctx);
+  else if (block.type === 'image') inner = renderImage(block, ctx);
   else inner = renderChartCard(block, ctx);
 
   const wrap = el('div', { class: 'ap-block', dataset: { span: String(block.span || 12), blockId: block.id } }, [inner]);
