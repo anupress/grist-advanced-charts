@@ -321,11 +321,14 @@ function buildFinanceData() {
   const invoices = [];
   for (let i = 0; i < 30; i++) {
     const cname = FIN_CLIENTS[Math.floor(rnd() * FIN_CLIENTS.length)][0];
-    const issue = new Date(today.getTime() - Math.round(5 + rnd() * 150) * 86400000);
-    const due = new Date(issue.getTime() + 30 * 86400000);
+    // setDate(), not millisecond addition: adding 30×86400000 ms across a daylight-saving boundary
+    // lands on a different local wall-clock time, so the formatted dates come out 31 days apart
+    // and the "net 30" terms quietly break twice a year.
+    const issue = new Date(today); issue.setDate(issue.getDate() - Math.round(5 + rnd() * 150));
+    const due = new Date(issue); due.setDate(due.getDate() + 30);
     const amount = Math.round((800 + rnd() * 23000) / 10) * 10;
     let status, paidDate = null;
-    if (due < today) { if (rnd() < 0.72) { status = 'Paid'; paidDate = finIso(new Date(due.getTime() - Math.round(rnd() * 10) * 86400000)); } else status = 'Overdue'; }
+    if (due < today) { if (rnd() < 0.72) { status = 'Paid'; const pd = new Date(due); pd.setDate(pd.getDate() - Math.round(rnd() * 10)); paidDate = finIso(pd); } else status = 'Overdue'; }
     else status = rnd() < 0.85 ? 'Sent' : 'Draft';
     invoices.push({
       id: i + 1, InvoiceNumber: 'INV-' + (1001 + i), Client: cname, IssueDate: finIso(issue), DueDate: finIso(due),
@@ -717,6 +720,193 @@ function buildDevelopersData() {
   };
 }
 
+// ---- Legal: a matter-centric firm cockpit ----
+// Grist splits this across separate internal docs: Expert Witness Database (All_Expert_Witnesses
+// with a CV attachment, "Worked for us?" flag and a two-level Primary/Secondary field taxonomy —
+// the primary is a formula derived from the secondary) and Tracking Time + Invoicing (Clients with
+// Rate_per_Hour → Projects rolling up Hours/Amount → Time_Log where Amount = Duration_hrs ×
+// client rate, with Mark_Start/Mark_End checkbox stopwatch → Invoices where Subtotal = Hours ×
+// rate and Due = invoice date + 30 days). Neither is publishable.
+//
+// Unified here into Matters / TimeEntries / Clients / ExpertWitnesses / Invoices, plus the things
+// no source computes: realization rate, profitability by practice area (a named pain point) and a
+// calendar of court dates — the highest-stakes dates in the whole practice.
+//
+// CONFIDENTIALITY: the sources rely on access rules and "ethical walls". This widget publishes, so
+// matters are identified by number + practice area with no party names, and the copy tells firms to
+// keep matter detail and rates behind Grist access rules and publish only the roll-ups.
+const LG_PRACTICE = ['Corporate', 'Litigation', 'Employment', 'Real Estate', 'Intellectual Property', 'Family', 'Immigration'];
+const LG_ATTORNEYS = ['R. Whitfield', 'S. Okafor', 'M. Delgado', 'A. Lindqvist', 'J. Chen', 'P. Nair', 'T. Brennan'];
+const LG_STATUSES = ['Intake', 'Open', 'In discovery', 'Trial prep', 'Settled', 'Closed'];
+const LG_FEE_TYPES = ['Hourly', 'Contingency', 'Flat fee'];
+const LG_CLIENTS = [
+  ['Harbour Freight Ltd', 'Dana Cole', 'Boston', 'MA', 42.36, -71.06, 420],
+  ['Meridian Biotech', 'Erik Olsen', 'Cambridge', 'MA', 42.37, -71.11, 480],
+  ['Cedar Mills Group', 'Priya Nair', 'Chicago', 'IL', 41.88, -87.63, 350],
+  ['Northgate Realty', 'Tom Becker', 'Denver', 'CO', 39.74, -104.99, 310],
+  ['Vantage Robotics', 'Aisha Khan', 'San Francisco', 'CA', 37.77, -122.42, 550],
+  ['Ashcroft Holdings', 'Liu Wei', 'New York', 'NY', 40.71, -74.01, 620],
+  ['Bluewater Shipping', 'Sofia Rossi', 'Miami', 'FL', 25.76, -80.19, 390],
+  ['Orchard Health Partners', 'Grace Kim', 'Atlanta', 'GA', 33.75, -84.39, 445],
+];
+// Two-level expertise taxonomy, mirroring the source's Primary_Fields / Secondary_Fields pair.
+const LG_EXPERT_FIELDS = [
+  ['Medical', ['Orthopaedics', 'Neurology', 'Toxicology', 'Emergency medicine']],
+  ['Engineering', ['Structural', 'Automotive', 'Electrical', 'Materials failure']],
+  ['Financial', ['Forensic accounting', 'Business valuation', 'Economic loss']],
+  ['Technology', ['Software forensics', 'Cybersecurity', 'Patent analysis']],
+  ['Human factors', ['Accident reconstruction', 'Ergonomics']],
+];
+const LG_EXPERT_NAMES = ['Dr. Helen Ward', 'Dr. Marcus Reyes', 'Dr. Anika Sharma', 'Prof. David Kaur',
+  'Dr. Elena Fischer', 'Dr. Samuel Adeyemi', 'Prof. Yuki Nakamura', 'Dr. Claire Dubois',
+  'Dr. Omar Haddad', 'Prof. Ingrid Larsen', 'Dr. Nathan Cole', 'Dr. Rosa Martinez'];
+const LG_WORK_DESCS = ['Document review', 'Client conference', 'Drafting motion', 'Deposition prep',
+  'Court appearance', 'Discovery review', 'Contract negotiation', 'Legal research', 'Settlement conference'];
+
+const lgIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const LG_MATTERS_COLUMNS = [
+  { id: 'MatterNumber', label: 'Matter', type: 'Text' }, { id: 'Client', label: 'Client', type: 'Text' },
+  { id: 'PracticeArea', label: 'Practice Area', type: 'Choice' }, { id: 'Status', label: 'Status', type: 'Choice' },
+  { id: 'NextHearing', label: 'Next Court Date', type: 'Date' }, { id: 'LeadAttorney', label: 'Lead Attorney', type: 'Text' },
+  { id: 'FeeType', label: 'Fee Type', type: 'Choice' }, { id: 'OpenedDate', label: 'Opened', type: 'Date' },
+  { id: 'BudgetHours', label: 'Budget (hrs)', type: 'Numeric' }, { id: 'HoursLogged', label: 'Hours Logged', type: 'Numeric' },
+  { id: 'Fees', label: 'Fees', type: 'Numeric' }, { id: 'IsOpen', label: 'Open', type: 'Numeric' },
+];
+const LG_TIME_COLUMNS = [
+  { id: 'Date', label: 'Date', type: 'Date' }, { id: 'MatterNumber', label: 'Matter', type: 'Text' },
+  { id: 'Attorney', label: 'Attorney', type: 'Text' }, { id: 'Description', label: 'Description', type: 'Text' },
+  { id: 'Hours', label: 'Hours', type: 'Numeric' }, { id: 'Rate', label: 'Rate', type: 'Numeric' },
+  { id: 'Amount', label: 'Amount', type: 'Numeric' }, { id: 'Billable', label: 'Billable', type: 'Bool' },
+  { id: 'BillableHours', label: 'Billable Hours', type: 'Numeric' }, { id: 'Invoiced', label: 'Invoiced', type: 'Bool' },
+];
+const LG_CLIENTS_COLUMNS = [
+  { id: 'Name', label: 'Client', type: 'Text' }, { id: 'Contact', label: 'Contact', type: 'Text' },
+  { id: 'Email', label: 'Email', type: 'Text' }, { id: 'City', label: 'City', type: 'Text' },
+  { id: 'State', label: 'State', type: 'Text' }, { id: 'RatePerHour', label: 'Rate / Hour', type: 'Numeric' },
+  { id: 'OpenMatters', label: 'Open Matters', type: 'Numeric' }, { id: 'TotalFees', label: 'Total Fees', type: 'Numeric' },
+  { id: 'Latitude', label: 'Latitude', type: 'Numeric' }, { id: 'Longitude', label: 'Longitude', type: 'Numeric' },
+];
+const LG_EXPERTS_COLUMNS = [
+  { id: 'Name', label: 'Expert', type: 'Text' }, { id: 'PrimaryField', label: 'Primary Field', type: 'Choice' },
+  { id: 'SecondaryField', label: 'Secondary Field', type: 'Choice' }, { id: 'WorkedForUs', label: 'Worked For Us', type: 'Bool' },
+  { id: 'CourtAppearances', label: 'Court Appearances', type: 'Numeric' }, { id: 'Publications', label: 'Publications', type: 'Numeric' },
+  { id: 'Email', label: 'Email', type: 'Text' }, { id: 'Phone', label: 'Phone', type: 'Text' },
+  { id: 'DayRate', label: 'Day Rate', type: 'Numeric' },
+];
+const LG_INVOICES_COLUMNS = [
+  { id: 'InvoiceNumber', label: 'Invoice', type: 'Text' }, { id: 'Client', label: 'Client', type: 'Text' },
+  { id: 'InvoiceDate', label: 'Invoice Date', type: 'Date' }, { id: 'DueDate', label: 'Due Date', type: 'Date' },
+  { id: 'Hours', label: 'Hours', type: 'Numeric' }, { id: 'Amount', label: 'Amount', type: 'Numeric' },
+  { id: 'Status', label: 'Status', type: 'Choice' }, { id: 'Outstanding', label: 'Outstanding', type: 'Numeric' },
+  { id: 'Collected', label: 'Collected', type: 'Numeric' },
+];
+
+function buildLegalData() {
+  const rnd = mulberry32(10001);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const pick = (a) => a[Math.floor(rnd() * a.length)];
+  const r2 = (n) => Math.round(n * 100) / 100;
+
+  // Matters. Court dates use the two-regime trick: live matters get a hearing in the next few
+  // weeks (that's what fills the calendar's current month); resolved ones have none.
+  const matters = [];
+  for (let i = 0; i < 26; i++) {
+    const client = pick(LG_CLIENTS);
+    const st = rnd();
+    const status = st < 0.10 ? 'Intake' : st < 0.36 ? 'Open' : st < 0.56 ? 'In discovery'
+      : st < 0.68 ? 'Trial prep' : st < 0.84 ? 'Settled' : 'Closed';
+    const isOpen = !['Settled', 'Closed'].includes(status);
+    const opened = new Date(today.getTime() - Math.round(20 + rnd() * 700) * 86400000);
+    // Only live matters have a next court date, and only litigation-ish ones reliably do.
+    const hearing = isOpen && rnd() < 0.8
+      ? (() => { const d = new Date(today); d.setDate(d.getDate() + Math.round(-6 + rnd() * 52)); return lgIso(d); })()
+      : null;
+    const budget = [40, 60, 80, 120, 200, 300][Math.floor(rnd() * 6)];
+    const logged = r2(budget * (0.2 + rnd() * 0.95));
+    matters.push({
+      id: i + 1, MatterNumber: `M-${2400 + i}`, Client: client[0], PracticeArea: pick(LG_PRACTICE),
+      Status: status, NextHearing: hearing, LeadAttorney: pick(LG_ATTORNEYS), FeeType: pick(LG_FEE_TYPES),
+      OpenedDate: lgIso(opened), BudgetHours: budget, HoursLogged: logged,
+      Fees: Math.round(logged * client[6]), IsOpen: isOpen ? 1 : 0,
+    });
+  }
+
+  // Time entries, priced off the client's rate exactly like the source's
+  // Amount = Duration_hrs × Client.Rate_per_Hour.
+  const timeEntries = [];
+  for (let i = 0; i < 60; i++) {
+    const matter = pick(matters);
+    const client = LG_CLIENTS.find((c) => c[0] === matter.Client);
+    const date = new Date(today.getTime() - Math.round(rnd() * 120) * 86400000);
+    const hours = r2(0.25 + rnd() * 6.5);
+    const billable = rnd() < 0.82; // the other ~18% is what makes realization interesting
+    const rate = client[6];
+    timeEntries.push({
+      id: i + 1, Date: lgIso(date), MatterNumber: matter.MatterNumber, Attorney: matter.LeadAttorney,
+      Description: pick(LG_WORK_DESCS), Hours: hours, Rate: rate,
+      Amount: billable ? Math.round(hours * rate) : 0, Billable: billable,
+      BillableHours: billable ? hours : 0, Invoiced: billable ? rnd() < 0.7 : false,
+    });
+  }
+
+  const clients = LG_CLIENTS.map(([name, contact, city, state, lat, lon, rate], i) => {
+    const mine = matters.filter((m) => m.Client === name);
+    return {
+      id: i + 1, Name: name, Contact: contact,
+      Email: contact.toLowerCase().replace(/[^a-z]+/g, '.') + '@' + name.toLowerCase().replace(/[^a-z0-9]+/g, '') + '.com',
+      City: city, State: state, RatePerHour: rate,
+      OpenMatters: mine.reduce((s, m) => s + m.IsOpen, 0),
+      TotalFees: mine.reduce((s, m) => s + m.Fees, 0), Latitude: lat, Longitude: lon,
+    };
+  });
+
+  const experts = LG_EXPERT_NAMES.map((name, i) => {
+    const [primary, secondaries] = LG_EXPERT_FIELDS[i % LG_EXPERT_FIELDS.length];
+    return {
+      id: i + 1, Name: name, PrimaryField: primary, SecondaryField: pick(secondaries),
+      WorkedForUs: rnd() < 0.45, CourtAppearances: Math.round(rnd() * 40),
+      Publications: Math.round(rnd() * 60),
+      Email: name.toLowerCase().replace(/^(dr|prof)\.\s*/, '').replace(/[^a-z]+/g, '.') + '@experts.example.com',
+      Phone: '+1 (555) 0' + String(20 + i).padStart(2, '0') + '-' + String(1000 + i * 7).slice(0, 4),
+      DayRate: Math.round((2200 + rnd() * 5800) / 50) * 50,
+    };
+  });
+
+  // Invoices — Due = invoice date + 30 days, exactly as the source computes it. Date arithmetic
+  // goes through setDate(), not millisecond addition: adding 30×86400000 ms across a daylight-saving
+  // boundary lands on a different local wall-clock time, so the formatted dates come out 31 days
+  // apart instead of 30 and the "+30 days" promise quietly breaks twice a year.
+  const invoices = [];
+  for (let i = 0; i < 22; i++) {
+    const client = pick(LG_CLIENTS);
+    const invDate = new Date(today); invDate.setDate(invDate.getDate() - Math.round(5 + rnd() * 150));
+    const due = new Date(invDate); due.setDate(due.getDate() + 30);
+    const hours = r2(4 + rnd() * 60);
+    const amount = Math.round(hours * client[6]);
+    let status;
+    if (due < today) status = rnd() < 0.75 ? 'Paid' : 'Overdue';
+    else status = rnd() < 0.85 ? 'Sent' : 'Draft';
+    invoices.push({
+      id: i + 1, InvoiceNumber: 'LI-' + (5100 + i), Client: client[0], InvoiceDate: lgIso(invDate),
+      DueDate: lgIso(due), Hours: hours, Amount: amount, Status: status,
+      Outstanding: (status === 'Sent' || status === 'Overdue') ? amount : 0,
+      Collected: status === 'Paid' ? amount : 0,
+    });
+  }
+
+  return {
+    defaultTable: 'Matters',
+    tables: {
+      Matters: { id: 'Matters', label: 'Matters', columns: LG_MATTERS_COLUMNS, records: matters },
+      TimeEntries: { id: 'TimeEntries', label: 'Time entries', columns: LG_TIME_COLUMNS, records: timeEntries },
+      Clients: { id: 'Clients', label: 'Clients', columns: LG_CLIENTS_COLUMNS, records: clients },
+      ExpertWitnesses: { id: 'ExpertWitnesses', label: 'Expert witnesses', columns: LG_EXPERTS_COLUMNS, records: experts },
+      Invoices: { id: 'Invoices', label: 'Invoices', columns: LG_INVOICES_COLUMNS, records: invoices },
+    },
+  };
+}
+
 function buildRows(seed, { categories, sites, valueRange, count = 24 }) {
   const rnd = mulberry32(seed);
   const rows = [];
@@ -756,11 +946,7 @@ function dataset(seed, spec) {
 export const TEMPLATE_SAMPLE_DATA = {
   'research-labs': buildResearchLabsData(),
   nonprofits: buildNonprofitData(),
-  legal: dataset(4003, {
-    categories: ['Litigation', 'Corporate', 'Intellectual Property', 'Family Law', 'Real Estate'],
-    sites: [site('New York Office', 40.71, -74.01), site('London Office', 51.51, -0.13), site('Chicago Office', 41.88, -87.63), site('Toronto Office', 43.65, -79.38), site('Singapore Office', 1.35, 103.82)],
-    valueRange: [5, 85],
-  }),
+  legal: buildLegalData(),
   'higher-education': dataset(4004, {
     categories: ['Computer Science', 'Business', 'Biology', 'Psychology', 'Engineering'],
     sites: [site('North Campus', 42.36, -71.06), site('Riverside Campus', 30.27, -97.74), site('Lakeside Campus', 43.65, -79.38), site('Old Town Campus', 52.52, 13.40), site('Harbor Campus', -33.87, 151.21)],
