@@ -60,8 +60,17 @@ export function textInput(value, onInput, opts = {}) {
 }
 
 export function selectInput(options, value, onChange) {
-  const sel = el('select', { class: 'ap-select' },
-    options.map((o) => el('option', { value: o.value, text: o.label, selected: String(o.value) === String(value) })));
+  const opts = options.map((o) => el('option', { value: o.value, text: o.label, selected: String(o.value) === String(value) }));
+  // A saved value that isn't among the options (a template block naming a table this document
+  // doesn't have, a column since renamed in Grist) would otherwise leave nothing selected — and a
+  // <select> with no selection displays its *first* option, so the field looks set to something it
+  // isn't and closing the editor silently keeps the broken value. Surface it as its own entry so
+  // the mismatch is visible and picking a real option is an obvious, deliberate act.
+  const hasValue = value !== null && value !== undefined && value !== '';
+  if (hasValue && !options.some((o) => String(o.value) === String(value))) {
+    opts.unshift(el('option', { value: String(value), text: `${value} — not in this document`, selected: true }));
+  }
+  const sel = el('select', { class: 'ap-select' }, opts);
   sel.addEventListener('change', () => onChange(sel.value));
   return sel;
 }

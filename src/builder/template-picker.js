@@ -82,6 +82,29 @@ export function openTemplatePicker({ provider, onApply }) {
     return host;
   }
 
+  // Templates that name real tables (Research Labs' Samples/Reagents/Tasks/People) only connect to
+  // your data where a table of that name actually exists — the rest install intact for you to point
+  // at your own tables afterward. Say which is which up front, so an unconnected block on the
+  // applied page reads as expected rather than broken. Skipped for the templates authored against
+  // the shared 'Data' placeholder, where there's nothing meaningful to name.
+  function tablesSection(t) {
+    const wanted = [...new Set((t.config.tabs || []).flatMap((tab) => (tab.blocks || [])
+      .map((b) => b.config?.table).filter((x) => x && x !== 'Data')))];
+    if (!wanted.length) return [];
+    const have = new Set((provider.tables() || []).map((x) => x.id));
+    const missing = wanted.filter((x) => !have.has(x));
+    return [
+      subhead('Tables this template uses'),
+      el('ul', { class: 'ap-consent-list' }, wanted.map((name) => el('li', {}, [
+        icon(have.has(name) ? 'check' : 'database'),
+        el('span', { text: have.has(name) ? `${name} — found in this document` : `${name} — not in this document yet` }),
+      ]))),
+      missing.length ? el('div', { class: 'ap-muted', style: { fontSize: '12px', lineHeight: '1.5', marginTop: '6px' } , text:
+        `Blocks using ${missing.length === 1 ? 'that table' : 'those tables'} will install as-is and show a “needs a table” note until you point them at your own data — everything else connects automatically.` }) : null,
+      divider(),
+    ];
+  }
+
   function confirmBody() {
     const t = state.picked;
     return [
@@ -95,6 +118,7 @@ export function openTemplatePicker({ provider, onApply }) {
       subhead('Pages included'),
       el('ul', { class: 'ap-consent-list' }, t.config.tabs.map((tab) => el('li', {}, [icon('layout'), el('span', { text: tab.title })]))),
       divider(),
+      ...tablesSection(t),
       subhead('Preview with sample data'),
       buildLivePreview(t),
       divider(),

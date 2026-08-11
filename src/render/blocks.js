@@ -37,8 +37,43 @@ function breakdownAsChart(block) {
     dims: [c.column], measures: [], agg: 'count', sortByValue: true, limit: c.limit, colors: c.colors } };
 }
 
+// Block types that read rows from a table; everything else (text, spacer, qrcode, …) renders the
+// same regardless of what data is around.
+const TABLE_BOUND = new Set(['stat', 'chart', 'breakdown', 'map', 'livetable', 'calendar']);
+
+// A block pointing at a table this document doesn't have — the normal state right after installing
+// a template that names its own tables (see adaptTemplateToTable in data/provider.js: it leaves a
+// block intact rather than guessing it onto an unrelated table) — used to render as a silently
+// empty card: a blank world map, a KPI reading 0, a headerless grid. That reads as "broken" when
+// it actually just means "not pointed at your data yet", so say so instead, keeping the block's own
+// title visible so the template's structure still reads.
+function missingTableNotice(block, ctx) {
+  const c = block.config || {};
+  const wanted = c.table;
+  if (!wanted) return null;
+  if (!TABLE_BOUND.has(block.type) && !(block.type === 'progress' && c.mode === 'data')) return null;
+  const tables = ctx.provider?.tables?.() || [];
+  if (!tables.length) return null; // no schema to judge against (not connected yet) — leave it alone
+  if (tables.some((t) => t.id === wanted)) return null;
+
+  const title = c.title || c.label || '';
+  return el('div', { class: 'ap-card ap-needstable' }, [
+    title ? el('div', { class: 'ap-needstable__title', text: title }) : null,
+    el('div', { class: 'ap-needstable__row' }, [
+      icon('database'),
+      el('div', {}, [
+        el('div', { class: 'ap-needstable__lead', text: `Needs a table named “${wanted}”` }),
+        el('div', { class: 'ap-needstable__hint', text: ctx.edit?.active
+          ? 'This document doesn\'t have that table. Click to point this block at one of yours.'
+          : 'This block hasn\'t been pointed at a table in this document yet.' }),
+      ]),
+    ]),
+  ]);
+}
+
 export function renderBlock(block, ctx) {
-  let inner;
+  let inner = missingTableNotice(block, ctx);
+  if (inner) return finishBlock(block, ctx, inner);
   if (block.type === 'stat') inner = renderStat(block, ctx);
   else if (block.type === 'text') inner = renderText(block, ctx);
   else if (block.type === 'breakdown') inner = (block.config?.display === 'chart')
@@ -62,6 +97,12 @@ export function renderBlock(block, ctx) {
   else if (block.type === 'calendar') inner = renderCalendar(block, ctx);
   else inner = renderChartCard(block, ctx);
 
+  return finishBlock(block, ctx, inner);
+}
+
+// Grid wrapper + (in edit mode) the per-block chrome. Shared by the normal render path and the
+// "needs a table" notice above, so an unconfigured block is still draggable/editable/deletable.
+function finishBlock(block, ctx, inner) {
   const wrap = el('div', { class: 'ap-block', dataset: { span: String(block.span || 12), blockId: block.id } }, [inner]);
 
   if (ctx.edit?.active) {

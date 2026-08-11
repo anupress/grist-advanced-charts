@@ -93,6 +93,14 @@
 .ap-textblock { padding: 18px 22px; border-radius: var(--ap-radius); }
 .ap-textblock h2 { font-size: var(--ap-fs-xl); }
 
+/* ---- "Needs a table" notice (a block whose table isn't in this document — see blocks.js) ---- */
+.ap-needstable { padding: 18px 20px; border-radius: var(--ap-radius); border: 1px dashed var(--ap-border); background: var(--ap-bg-soft); display: flex; flex-direction: column; gap: 10px; height: 100%; }
+.ap-needstable__title { font-size: var(--ap-fs-md); font-weight: 700; color: var(--ap-text); }
+.ap-needstable__row { display: flex; align-items: flex-start; gap: 10px; }
+.ap-needstable__row > svg { width: 20px; height: 20px; flex: none; color: var(--ap-text-mute); margin-top: 1px; }
+.ap-needstable__lead { font-size: var(--ap-fs-sm); font-weight: 700; color: var(--ap-text-soft); }
+.ap-needstable__hint { font-size: var(--ap-fs-xs); color: var(--ap-text-mute); line-height: 1.5; margin-top: 2px; }
+
 /* ---- Empty state ---- */
 .ap-empty { text-align: center; padding: 48px 24px; color: var(--ap-text-mute); }
 .ap-empty svg { width: 120px; height: auto; margin: 0 auto 14px; opacity: .9; }
