@@ -82,7 +82,7 @@ export const TEMPLATE = {
               title: 'Booking log', table: 'Bookings',
               columns: ['Date', 'Facility', 'StartTime', 'Hours', 'BookedBy', 'Type', 'Revenue'],
               pageSize: 8, searchable: true, sortable: true, defaultSort: null,
-              highlights: [{ ranges: 'G1:G70', color: '#ffe3e3' }],
+              highlights: [{ ranges: 'G1:G500', color: '#ffe3e3' }],
             },
           },
         ],

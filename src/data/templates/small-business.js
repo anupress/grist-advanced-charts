@@ -110,7 +110,7 @@ export const TEMPLATE = {
               title: 'Contacts', table: 'Contacts',
               columns: ['FullName', 'Title', 'Company', 'Owner', 'LastInteraction', 'Interactions'],
               pageSize: 8, searchable: true, sortable: true, defaultSort: null,
-              highlights: [{ ranges: 'E1:E18', color: '#e7f5ff' }],
+              highlights: [{ ranges: 'E1:E19', color: '#e7f5ff' }],
             },
           },
           text('sb27', '', '<b>Last contacted</b> is highlighted — the single most useful column on this page. A customer nobody has spoken to in two months is a renewal you are about to lose.'),

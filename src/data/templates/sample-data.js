@@ -1376,8 +1376,16 @@ function buildSportsFacilityData() {
     const type = pick(SF_MEMBER_TYPES);
     const join = new Date(today); join.setDate(join.getDate() - Math.round(20 + rnd() * 1200));
     // Renewal is a year on from joining, rolled forward to the next one still ahead of us.
-    const renew = new Date(join);
-    while (renew < today) renew.setFullYear(renew.getFullYear() + 1);
+    // Rebuilt from components each step rather than a bare setFullYear(+1): someone who joined on
+    // 29 February would otherwise roll to 1 March in every non-leap year and never renew on their
+    // real anniversary again. Clamping to the last day of the month is what membership systems
+    // actually do.
+    const renew = new Date(join.getFullYear(), join.getMonth(), join.getDate());
+    while (renew < today) {
+      const y = renew.getFullYear() + 1;
+      const lastDayOfMonth = new Date(y, join.getMonth() + 1, 0).getDate();
+      renew.setFullYear(y, join.getMonth(), Math.min(join.getDate(), lastDayOfMonth));
+    }
     const status = rnd() < 0.88 ? 'Active' : (rnd() < 0.6 ? 'Lapsed' : 'Frozen');
     const fee = { Individual: 45, Family: 85, Team: 160, Student: 28 }[type];
     members.push({
@@ -1467,52 +1475,265 @@ function buildSportsFacilityData() {
   };
 }
 
-function buildRows(seed, { categories, sites, valueRange, count = 24 }) {
-  const rnd = mulberry32(seed);
-  const rows = [];
-  for (let i = 0; i < count; i++) {
-    const category = categories[Math.floor(rnd() * categories.length)];
-    const site = sites[Math.floor(rnd() * sites.length)];
-    const [lat, lon] = site.coords;
-    rows.push({
-      id: i + 1,
-      Category: category,
-      Site: site.name,
-      Latitude: Math.round((lat + (rnd() - 0.5) * 0.3) * 10000) / 10000,
-      Longitude: Math.round((lon + (rnd() - 0.5) * 0.3) * 10000) / 10000,
-      Value: Math.round(valueRange[0] + rnd() * (valueRange[1] - valueRange[0])),
-    });
-  }
-  return rows;
-}
+// ---- Marketing: campaigns, content/SEO, the social calendar, events and NPS ----
+// Modeled on the five real docs in Grist's own Marketing workspace (see data/templates/marketing.js
+// for the mapping). The one thing every source doc leaves on the table is the NPS number itself:
+// the official template buckets each response into Promoter/Passive/Detractor but never computes
+// %promoters − %detractors. NpsPoints below (+100 / 0 / −100) exists so a plain average of it IS
+// the NPS score, exactly, with no special-case block needed.
 
-// Order matters here, not just for display: adaptConfigToTable() (data/provider.js) picks a
-// stat/chart's measure as the *first* numeric-typed column, so Value must precede the
-// Latitude/Longitude pair — otherwise every remapped chart/stat would summarize coordinates.
-const COLUMNS = [
-  { id: 'Category', label: 'Category', type: 'Choice' },
-  { id: 'Site', label: 'Site', type: 'Text' },
-  { id: 'Value', label: 'Value', type: 'Numeric' },
-  { id: 'Latitude', label: 'Latitude', type: 'Numeric' },
-  { id: 'Longitude', label: 'Longitude', type: 'Numeric' },
+const MK_CAMPAIGN_COLUMNS = [
+  { id: 'Name', label: 'Campaign', type: 'Text' }, { id: 'Channel', label: 'Channel', type: 'Choice' },
+  { id: 'Status', label: 'Status', type: 'Choice' }, { id: 'Owner', label: 'Owner', type: 'Text' },
+  { id: 'StartDate', label: 'Start Date', type: 'Date' }, { id: 'EndDate', label: 'End Date', type: 'Date' },
+  { id: 'Budget', label: 'Budget', type: 'Numeric' }, { id: 'Spend', label: 'Spend', type: 'Numeric' },
+  { id: 'Impressions', label: 'Impressions', type: 'Numeric' }, { id: 'Clicks', label: 'Clicks', type: 'Numeric' },
+  { id: 'Leads', label: 'Leads', type: 'Numeric' }, { id: 'Customers', label: 'Customers', type: 'Numeric' },
+  { id: 'Revenue', label: 'Revenue', type: 'Numeric' }, { id: 'CTR', label: 'CTR %', type: 'Numeric' },
+  { id: 'CostPerLead', label: 'Cost / Lead', type: 'Numeric' }, { id: 'ROAS', label: 'ROAS', type: 'Numeric' },
+];
+const MK_CONTENT_COLUMNS = [
+  { id: 'Title', label: 'Page Title', type: 'Text' }, { id: 'Slug', label: 'Slug', type: 'Text' },
+  { id: 'Section', label: 'Website Section', type: 'Choice' }, { id: 'Status', label: 'Status', type: 'Choice' },
+  { id: 'Author', label: 'Responsible', type: 'Text' }, { id: 'PublishDate', label: 'Published', type: 'Date' },
+  { id: 'Words', label: 'Words', type: 'Numeric' }, { id: 'InboundLinks', label: 'Links In', type: 'Numeric' },
+  { id: 'OutboundLinks', label: 'Links Out', type: 'Numeric' },
+  { id: 'Pageviews', label: 'Pageviews (30d)', type: 'Numeric' },
+  { id: 'Orphaned', label: 'Orphaned', type: 'Numeric' },
+];
+const MK_POST_COLUMNS = [
+  { id: 'Date', label: 'Publication Date', type: 'Date' }, { id: 'Topic', label: 'Topic', type: 'Text' },
+  { id: 'Platform', label: 'Platform', type: 'Choice' }, { id: 'Campaign', label: 'Campaign', type: 'Text' },
+  { id: 'Status', label: 'Status', type: 'Choice' }, { id: 'Author', label: 'Author', type: 'Text' },
+  { id: 'Characters', label: 'Characters', type: 'Numeric' },
+  { id: 'Engagements', label: 'Engagements', type: 'Numeric' },
+];
+const MK_EVENT_COLUMNS = [
+  { id: 'Name', label: 'Event', type: 'Text' }, { id: 'StartDate', label: 'Start Date', type: 'Date' },
+  { id: 'Location', label: 'Location', type: 'Text' }, { id: 'Coordinator', label: 'Coordinator', type: 'Text' },
+  { id: 'Capacity', label: 'Capacity', type: 'Numeric' }, { id: 'Registered', label: 'Registered', type: 'Numeric' },
+  { id: 'PctFull', label: '% Full', type: 'Numeric' }, { id: 'TicketRevenue', label: 'Ticket Revenue', type: 'Numeric' },
+  { id: 'SponsorCount', label: 'Sponsors', type: 'Numeric' },
+  { id: 'Latitude', label: 'Latitude', type: 'Numeric' }, { id: 'Longitude', label: 'Longitude', type: 'Numeric' },
+];
+const MK_FEEDBACK_COLUMNS = [
+  { id: 'Submitted', label: 'Submitted', type: 'Date' }, { id: 'Score', label: 'NPS Score', type: 'Numeric' },
+  { id: 'Type', label: 'Type', type: 'Choice' }, { id: 'Segment', label: 'Segment', type: 'Choice' },
+  { id: 'Reason', label: 'Reason For Score', type: 'Text' }, { id: 'Month', label: 'Month', type: 'Text' },
+  { id: 'NpsPoints', label: 'NPS Points', type: 'Numeric' },
+  { id: 'Contacted', label: 'Contacted', type: 'Numeric' },
 ];
 
-const site = (name, lat, lon) => ({ name, coords: [lat, lon] });
+// Each channel behaves the way it really does: search converts well but costs more per click,
+// display buys enormous cheap reach that barely converts, events cost a fortune per head but
+// close. Flat random numbers across every channel would make the cost-per-lead and ROAS charts
+// meaningless, which are the two the page is built around.
+//
+// The cost column is FULLY-LOADED cost per click — media plus the content, tooling and time
+// behind it — not just media spend. That matters: an earlier pass priced organic and email at
+// media cost alone (2c and 5c a click, since nobody bids on their own newsletter), which made
+// them look infinitely profitable and pushed blended ROAS to 466x. Owned channels are cheap,
+// not free, and costing them honestly is what keeps the comparison worth making.
+const MK_CHANNELS = [
+  // name,            ctr%,  click->lead%, cost/click, lead->customer%
+  ['Paid search',     3.2,   2.5,          5.00,       15],
+  ['Paid social',     1.1,   1.8,          2.20,       10],
+  ['Display',         0.35,  0.7,          0.90,        5],
+  ['Email',           2.6,   4.5,          3.00,       18],
+  ['Organic / SEO',   4.1,   2.2,          2.40,       14],
+  ['Partnerships',    2.2,   5.0,          6.00,       22],
+  ['Events',          1.8,   7.0,         14.00,       26],
+];
+const MK_CAMPAIGN_NAMES = [
+  ['Spring Product Launch', 'Paid search'], ['Always-On Brand', 'Paid social'],
+  ['Retargeting — Pricing Page', 'Display'], ['Monthly Newsletter', 'Email'],
+  ['Comparison Guides', 'Organic / SEO'], ['Integrations Co-Marketing', 'Partnerships'],
+  ['Summit Booth & Sessions', 'Events'], ['Free Trial Push', 'Paid search'],
+  ['Founder Story Series', 'Paid social'], ['Onboarding Drip', 'Email'],
+  ['Template Library SEO', 'Organic / SEO'], ['Q3 Webinar Series', 'Events'],
+];
+const MK_OWNERS = ['Rina Achebe', 'Tom Delacroix', 'Sana Qureshi', 'Ben Halvorsen'];
+const MK_SECTIONS = ['Blog', 'Guides', 'Product', 'Docs', 'Case studies', 'Landing pages'];
+const MK_PLATFORMS = ['LinkedIn', 'X', 'Instagram', 'YouTube', 'Facebook'];
+const MK_CONTENT_TITLES = [
+  ['How to build a marketing dashboard without a BI tool', 'Guides'],
+  ['Spreadsheet vs database: which do you actually need?', 'Blog'],
+  ['UTM parameters explained (with a builder you can copy)', 'Guides'],
+  ['Internal linking: finding the pages nobody links to', 'Guides'],
+  ['What a good NPS actually looks like in B2B', 'Blog'],
+  ['Pricing', 'Landing pages'], ['Product tour', 'Product'],
+  ['Migrating from Airtable', 'Docs'], ['API quickstart', 'Docs'],
+  ['Access rules, explained', 'Docs'],
+  ['How MissionSource cut reporting time by 80%', 'Case studies'],
+  ['A nonprofit tracking 4,000 donations a year', 'Case studies'],
+  ['Event registration without the reconciliation', 'Blog'],
+  ['Content calendars that survive contact with reality', 'Blog'],
+  ['The orphan page problem', 'Blog'], ['Formulas for marketers', 'Guides'],
+  ['Webhooks 101', 'Docs'], ['Custom widgets', 'Docs'],
+  ['Book a demo', 'Landing pages'], ['Free trial', 'Landing pages'],
+  ['Charts that answer a question', 'Guides'], ['Reporting templates', 'Product'],
+  ['Why we went open source', 'Blog'], ['Self-hosting guide', 'Docs'],
+  ['From spreadsheet chaos to one source of truth', 'Case studies'],
+  ['Attribution without a data team', 'Guides'],
+];
+const MK_POST_TOPICS = [
+  'Template of the week', 'Customer spotlight', 'Feature drop', 'Behind the build',
+  'Tip: pivot tables', 'Webinar reminder', 'Hiring: data engineer', 'Community Q&A',
+  'Benchmark report teaser', 'Changelog highlights', 'Founder AMA', 'Poll: biggest reporting pain',
+];
+const MK_EVENTS = [
+  ['SaaS Growth Summit', 'San Francisco, CA', 37.77, -122.42, 420, 89],
+  ['Marketing Ops Meetup', 'Austin, TX', 30.27, -97.74, 120, 25],
+  ['No-Code Conf', 'New York, NY', 40.71, -74.01, 650, 149],
+  ['Data & Dashboards Day', 'Chicago, IL', 41.88, -87.63, 200, 59],
+  ['Open Source Forum', 'Berlin, DE', 52.52, 13.40, 300, 0],
+  ['Product Analytics Workshop', 'London, UK', 51.51, -0.13, 90, 199],
+  ['Nonprofit Tech Gathering', 'Boston, MA', 42.36, -71.06, 260, 35],
+  ['Partner Roadshow', 'Toronto, ON', 43.65, -79.38, 150, 45],
+];
+const MK_NPS_REASONS = {
+  promoter: ['Replaced three tools for us — reporting takes minutes now.',
+    'Support answered in under an hour on a weekend.', 'Formulas are genuinely powerful once it clicks.',
+    'Access rules let us share one doc with the whole board safely.', 'Best migration experience we have had.'],
+  passive: ['Works well, but the mobile view needs attention.', 'Good product; onboarding took us longer than expected.',
+    'Happy overall — pricing is a bit steep for our size.', 'Solid, though we still export to slides for the board.'],
+  detractor: ['Hit a limit on large imports and had to split the file.',
+    'Took three weeks to get an answer on our billing question.', 'Too much setup before it was useful to us.'],
+};
 
-function dataset(seed, spec) {
-  return { defaultTable: 'Data', tables: { Data: { id: 'Data', label: 'Sample data', columns: COLUMNS, records: buildRows(seed, spec) } } };
+function buildMarketingData() {
+  const rnd = mulberry32(17001);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const pick = (a) => a[Math.floor(rnd() * a.length)];
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const r2 = (n) => Math.round(n * 100) / 100;
+  const chan = Object.fromEntries(MK_CHANNELS.map((c) => [c[0], c]));
+
+  // --- Campaigns: the funnel, derived so every ratio is internally consistent ---
+  const campaigns = MK_CAMPAIGN_NAMES.map(([name, channel], i) => {
+    const [, ctrPct, leadPct, cpc, custPct] = chan[channel];
+    const start = new Date(today); start.setDate(start.getDate() - Math.round(10 + rnd() * 160));
+    const end = new Date(start); end.setDate(end.getDate() + Math.round(30 + rnd() * 90));
+    const status = end < today ? 'Complete' : (start > today ? 'Planned' : 'Live');
+    const impressions = Math.round((40000 + rnd() * 900000) / 1000) * 1000;
+    const ctr = r2(ctrPct * (0.75 + rnd() * 0.5));
+    const clicks = Math.round(impressions * (ctr / 100));
+    const leads = Math.round(clicks * (leadPct / 100) * (0.8 + rnd() * 0.4));
+    const customers = Math.round(leads * (custPct / 100) * (0.8 + rnd() * 0.4));
+    const spend = Math.round(clicks * cpc * (0.9 + rnd() * 0.25));
+    // Budget is set ahead of the campaign, so spend lands near it but rarely on it.
+    const budget = Math.round((spend * (1.02 + rnd() * 0.3)) / 100) * 100;
+    // Average contract value for a mid-market B2B product — this and the cost/click above are
+    // what set ROAS, so both have to be defensible for the headline number to mean anything.
+    const revenue = Math.round(customers * (2500 + rnd() * 4500));
+    return {
+      id: i + 1, Name: name, Channel: channel, Status: status, Owner: MK_OWNERS[i % MK_OWNERS.length],
+      StartDate: iso(start), EndDate: iso(end), Budget: budget, Spend: spend,
+      Impressions: impressions, Clicks: clicks, Leads: leads, Customers: customers, Revenue: revenue,
+      CTR: ctr, CostPerLead: leads ? r2(spend / leads) : 0, ROAS: spend ? r2(revenue / spend) : 0,
+    };
+  });
+
+  // --- Content: the SEO register. Orphaned reproduces the source's
+  // Orphaned_ = len(Links.lookupRecords(To=$id))<1 — nothing on the site links TO this page. ---
+  const content = MK_CONTENT_TITLES.map(([title, section], i) => {
+    const pub = new Date(today); pub.setDate(pub.getDate() - Math.round(15 + rnd() * 700));
+    // Cornerstone pages (pricing, product, trial) are linked from everywhere; deep blog posts
+    // and older docs are where orphans actually accumulate, which is the whole point of the audit.
+    // Roughly a fifth of non-cornerstone pages are deliberately orphaned — leaving it to chance
+    // gave a single orphan across 26 pages, which makes the KPI and the highlighted column on the
+    // Content page look broken rather than clean.
+    const cornerstone = section === 'Landing pages' || section === 'Product';
+    const inbound = cornerstone ? Math.round(8 + rnd() * 30)
+      : (rnd() < 0.22 ? 0 : Math.round(1 + rnd() * 7));
+    const outbound = Math.round(1 + rnd() * 9);
+    const orphaned = inbound === 0 ? 1 : 0;
+    // Traffic follows inbound links, with a floor so nothing reads as exactly dead.
+    const views = Math.round((60 + inbound * (90 + rnd() * 260)) * (0.6 + rnd() * 0.9));
+    return {
+      id: i + 1, Title: title, Slug: '/' + title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 42),
+      Section: section, Status: rnd() < 0.82 ? 'Published' : (rnd() < 0.6 ? 'Draft' : 'Needs update'),
+      Author: pick(MK_OWNERS), PublishDate: iso(pub), Words: Math.round((600 + rnd() * 2400) / 50) * 50,
+      InboundLinks: inbound, OutboundLinks: outbound, Pageviews: views, Orphaned: orphaned,
+    };
+  });
+
+  // --- Posts: the social calendar. 1-3 a day across the current month keeps the month grid
+  // readable (unlike a booking calendar, a content team genuinely does post this often). ---
+  const posts = [];
+  for (let i = 0; i < 78; i++) {
+    const d = new Date(today); d.setDate(d.getDate() + Math.round(-30 + rnd() * 52));
+    const past = d < today;
+    const platform = pick(MK_PLATFORMS);
+    const chars = platform === 'X' ? Math.round(90 + rnd() * 180) : Math.round(180 + rnd() * 900);
+    posts.push({
+      id: i + 1, Date: iso(d), Topic: pick(MK_POST_TOPICS), Platform: platform,
+      Campaign: pick(campaigns).Name, Author: pick(MK_OWNERS),
+      // A post can only be Published once its date has passed; ahead of that it is
+      // still moving through Drafted -> Reviewed, mirroring the source's three bool flags.
+      Status: past ? 'Published' : (rnd() < 0.45 ? 'Reviewed' : (rnd() < 0.7 ? 'Drafted' : 'Idea')),
+      Characters: chars,
+      Engagements: past ? Math.round(rnd() * rnd() * 2400) : 0,
+    });
+  }
+
+  // --- Events: Registered/Capacity and ticket revenue, per the source's Full_ and
+  // Ticket_Revenue formulas. ---
+  const events = MK_EVENTS.map(([name, location, lat, lon, capacity, price], i) => {
+    const start = new Date(today); start.setDate(start.getDate() + Math.round(-40 + rnd() * 120));
+    const fill = 0.55 + rnd() * 0.42;
+    const registered = Math.min(capacity, Math.round(capacity * fill));
+    return {
+      id: i + 1, Name: name, StartDate: iso(start), Location: location, Coordinator: pick(MK_OWNERS),
+      Capacity: capacity, Registered: registered, PctFull: Math.round((registered / capacity) * 100),
+      TicketRevenue: registered * price, SponsorCount: Math.round(1 + rnd() * 7),
+      Latitude: lat, Longitude: lon,
+    };
+  });
+
+  // --- Feedback: NPS. Type reproduces the source's 0-6 / 7-8 / 9-10 bucketing exactly.
+  // NpsPoints is ours: +100 promoter / 0 passive / -100 detractor, so mean(NpsPoints) == NPS. ---
+  const feedback = [];
+  for (let i = 0; i < 64; i++) {
+    const sub = new Date(today); sub.setDate(sub.getDate() - Math.round(rnd() * 165));
+    // A healthy but not fantastical B2B product: mostly promoters, a real detractor tail.
+    const roll = rnd();
+    const score = roll < 0.52 ? 9 + Math.round(rnd()) : roll < 0.79 ? 7 + Math.round(rnd()) : Math.round(rnd() * 6);
+    const type = score <= 6 ? 'Detractor' : score >= 9 ? 'Promoter' : 'Passive';
+    const bucket = type === 'Promoter' ? 'promoter' : type === 'Detractor' ? 'detractor' : 'passive';
+    feedback.push({
+      id: i + 1, Submitted: iso(sub), Score: score, Type: type,
+      Segment: pick(['Starter', 'Team', 'Business', 'Enterprise']),
+      Reason: pick(MK_NPS_REASONS[bucket]),
+      Month: `${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
+        'September', 'October', 'November', 'December'][sub.getMonth()]} ${sub.getFullYear()}`,
+      NpsPoints: type === 'Promoter' ? 100 : type === 'Detractor' ? -100 : 0,
+      // Detractors are the ones you chase; a good team has reached most of them.
+      Contacted: type === 'Detractor' ? (rnd() < 0.8 ? 1 : 0) : (rnd() < 0.2 ? 1 : 0),
+    });
+  }
+
+  return {
+    defaultTable: 'Campaigns',
+    tables: {
+      Campaigns: { id: 'Campaigns', label: 'Campaigns', columns: MK_CAMPAIGN_COLUMNS, records: campaigns },
+      Content: { id: 'Content', label: 'Site content', columns: MK_CONTENT_COLUMNS, records: content },
+      Posts: { id: 'Posts', label: 'Social posts', columns: MK_POST_COLUMNS, records: posts },
+      Events: { id: 'Events', label: 'Events', columns: MK_EVENT_COLUMNS, records: events },
+      Feedback: { id: 'Feedback', label: 'NPS responses', columns: MK_FEEDBACK_COLUMNS, records: feedback },
+    },
+  };
 }
+
+// The generic {Category, Site, Value, Latitude, Longitude} dataset that used to back the
+// not-yet-written templates is gone: all nine now ship bespoke, industry-shaped data.
 
 export const TEMPLATE_SAMPLE_DATA = {
   'research-labs': buildResearchLabsData(),
   nonprofits: buildNonprofitData(),
   legal: buildLegalData(),
   'higher-education': buildHigherEdData(),
-  marketing: dataset(4005, {
-    categories: ['Retail', 'Healthcare', 'Technology', 'Finance', 'Hospitality'],
-    sites: [site('New York Studio', 40.71, -74.01), site('London Studio', 51.51, -0.13), site('Singapore Studio', 1.35, 103.82), site('São Paulo Studio', -23.55, -46.63), site('Sydney Studio', -33.87, 151.21)],
-    valueRange: [2000, 60000],
-  }),
+  marketing: buildMarketingData(),
   'finance-accounting': buildFinanceData(),
   developers: buildDevelopersData(),
   'small-business': buildSmallBusinessData(),

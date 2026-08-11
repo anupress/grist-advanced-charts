@@ -161,7 +161,7 @@ export const TEMPLATE = {
               title: 'Recent test runs', table: 'TestRuns',
               columns: ['Suite', 'RunDate', 'Platform', 'Total', 'Failed', 'PassRate', 'Coverage'],
               pageSize: 8, searchable: true, sortable: true, defaultSort: null,
-              highlights: [{ ranges: 'E1:E30', color: '#4a2230' }],
+              highlights: [{ ranges: 'D1:D30', color: '#4a2230' }],
             },
           },
           accordion('dv43', 'How we verify what we build', [
