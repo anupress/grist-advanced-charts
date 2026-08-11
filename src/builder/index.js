@@ -134,7 +134,7 @@ function defaultBlock(type, tabId) {
   if (type === 'calendar') {
     const dateCol = cols.find((c) => /date/i.test(c.type)) || cols[0];
     const titleCol = cols.find((c) => c.id !== dateCol?.id && /text|choice/i.test(c.type)) || cols.find((c) => c.id !== dateCol?.id) || cols[0];
-    return { id: uid('blk'), type: 'calendar', span: 12, __isNew: true, config: { title: 'Calendar', table, dateColumn: dateCol?.id, titleColumn: titleCol?.id, detailColumn: null, colorBy: null, draggable: true } };
+    return { id: uid('blk'), type: 'calendar', span: 12, __isNew: true, config: { title: 'Calendar', table, dateColumn: dateCol?.id, titleColumn: titleCol?.id, detailColumns: [], colorBy: null, draggable: true } };
   }
   return { id: uid('blk'), type: 'chart', span: 6, __isNew: true, config: { table, title: 'New chart', ...autoPick(cols) } };
 }

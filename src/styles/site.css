@@ -304,6 +304,7 @@
   border: 1px solid var(--ap-border); border-radius: var(--ap-radius-sm); box-shadow: var(--ap-shadow-lg); padding: 10px 12px; }
 .ap-calendar__pop-title { font-weight: 700; font-size: var(--ap-fs-sm); color: var(--ap-text); }
 .ap-calendar__pop-detail { font-size: var(--ap-fs-xs); color: var(--ap-text-soft); margin-top: 4px; line-height: 1.5; }
+.ap-calendar__pop-label { font-weight: 700; color: var(--ap-text-mute); }
 @media (max-width: 560px) {
   .ap-calendar__grid { grid-auto-rows: minmax(44px, auto); }
   .ap-calendar__event { font-size: 0; padding: 3px; } /* collapse to a plain color bar on very small widths */

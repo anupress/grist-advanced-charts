@@ -157,7 +157,8 @@ function repairBlockColumns(b, cols) {
   } else if (b.type === 'calendar') {
     if (!has(b.config.dateColumn)) b.config.dateColumn = dateCol(cols)?.id ?? null;
     if (!has(b.config.titleColumn)) b.config.titleColumn = dimCol(cols, b.config.dateColumn)?.id ?? null;
-    if (!has(b.config.detailColumn)) b.config.detailColumn = null;
+    if (b.config.detailColumn && !has(b.config.detailColumn)) b.config.detailColumn = null; // legacy single field
+    if ((b.config.detailColumns || []).length) b.config.detailColumns = b.config.detailColumns.filter(has);
     if (!has(b.config.colorBy)) b.config.colorBy = null;
   } else if (b.type === 'map') {
     if (!has(b.config.latColumn) || !has(b.config.lonColumn)) {

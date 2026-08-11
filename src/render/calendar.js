@@ -51,6 +51,15 @@ export function renderCalendar(block, ctx) {
   const state = { view: new Date(), rows: ctx.provider.records(table) || [] };
   state.view.setDate(1);
 
+  // Detail fields shown in the click popover — plural now, mirroring the map's tooltip. Reads the
+  // new `detailColumns` array, falling back to the old single `detailColumn` so configs/templates
+  // saved before this still work. Each field renders as "Label: value" using the real column label.
+  const columns = ctx.provider.columns(table) || [];
+  const colLabel = (id) => columns.find((x) => x.id === id)?.label || id;
+  const detailCols = (c.detailColumns && c.detailColumns.length
+    ? c.detailColumns
+    : (c.detailColumn ? [c.detailColumn] : [])).filter(Boolean);
+
   const monthLabel = el('span', { class: 'ap-calendar__monthlabel' });
   const grid = el('div', { class: 'ap-calendar__grid' });
   const popover = el('div', { class: 'ap-calendar__popover' });
@@ -59,10 +68,15 @@ export function renderCalendar(block, ctx) {
   function closePopover() { popover.hidden = true; }
   function showPopover(anchorEl, row) {
     const body = grid.parentElement;
+    const detailEls = detailCols
+      .filter((col) => row[col] != null && row[col] !== '')
+      .map((col) => el('div', { class: 'ap-calendar__pop-detail' }, [
+        el('span', { class: 'ap-calendar__pop-label', text: colLabel(col) + ': ' }),
+        el('span', { text: String(row[col]) }),
+      ]));
     popover.replaceChildren(
       el('div', { class: 'ap-calendar__pop-title', text: String(row[c.titleColumn] ?? 'Untitled') }),
-      c.detailColumn && row[c.detailColumn] != null && row[c.detailColumn] !== ''
-        ? el('div', { class: 'ap-calendar__pop-detail', text: String(row[c.detailColumn]) }) : null,
+      ...detailEls,
     );
     const hostRect = body.getBoundingClientRect(), r = anchorEl.getBoundingClientRect();
     popover.hidden = false;

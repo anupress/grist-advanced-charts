@@ -121,7 +121,7 @@ export const DEFAULT_SITE = {
         { id: 'sh8', type: 'livetable', span: 12, config: { title: 'Recent transactions', table: 'Sales', columns: ['Month', 'Region', 'Category', 'Revenue', 'Profit'], pageSize: 6, searchable: true, sortable: true, defaultSort: null,
           highlights: [{ ranges: 'D1:E3', color: '#d3f9d8' }] } },
         { id: 'sh8d', type: 'divider', span: 12, config: { style: 'dashed', thickness: 1, color: null } },
-        { id: 'sh8e', type: 'calendar', span: 12, config: { title: 'Task calendar', table: 'Tasks', dateColumn: 'DueDate', titleColumn: 'Task', detailColumn: 'Notes', colorBy: 'Priority', draggable: true } },
+        { id: 'sh8e', type: 'calendar', span: 12, config: { title: 'Task calendar', table: 'Tasks', dateColumn: 'DueDate', titleColumn: 'Task', detailColumns: ['AssignedTo', 'Project', 'Status', 'Notes'], colorBy: 'Priority', draggable: true } },
         { id: 'sh8f', type: 'text', span: 12, config: { heading: '', html: 'On the published page, dragging an event to a new day writes the new date straight back to your table — and the calendar picks up anything changed directly in Grist within about 15 seconds, no refresh needed.' } },
         { id: 'sh8g', type: 'divider', span: 12, config: { style: 'dashed', thickness: 1, color: null } },
         { id: 'sh9', type: 'timeline', span: 12, config: { title: 'Where we\'ve been', items: [

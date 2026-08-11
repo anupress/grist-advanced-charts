@@ -83,7 +83,7 @@ export const TEMPLATE = {
         id: 'tab-projects', title: 'Projects & Team',
         hero: { title: 'Projects, tasks and the people running them', subtitle: 'A calendar of due dates that stays in sync with your Tasks table both ways.' },
         blocks: [
-          { id: 'rl15', type: 'calendar', span: 12, config: { title: 'Task calendar', table: 'Tasks', dateColumn: 'DueDate', titleColumn: 'Task', detailColumn: 'Outcome', colorBy: 'Priority', draggable: true } },
+          { id: 'rl15', type: 'calendar', span: 12, config: { title: 'Task calendar', table: 'Tasks', dateColumn: 'DueDate', titleColumn: 'Task', detailColumns: ['AssignedTo', 'Priority', 'Status', 'Outcome'], colorBy: 'Priority', draggable: true } },
           text('rl15n', '', 'Drag a task to a new day to reschedule it — on the published page, that writes the new date straight back to your Tasks table. Try it above (in demo mode, it edits this preview\'s own copy of the data).'),
           spacer('rl15s', 10),
           iconBlock('rl16', 'target', 'l', '#1c7ed6', '#ffffff', 'center', 3),

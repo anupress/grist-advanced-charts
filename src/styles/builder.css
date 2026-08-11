@@ -30,6 +30,12 @@
 .ap-consent-list svg { width: 18px; height: 18px; flex: none; color: var(--ap-primary); margin-top: 1px; }
 .ap-fineprint { font-size: var(--ap-fs-xs); color: var(--ap-text-mute); margin-top: 14px; }
 
+/* ---- Template table setup / column mapping (template-picker confirm step) ---- */
+.ap-maptable { border: 1px solid var(--ap-border); border-radius: var(--ap-radius-sm); padding: 12px 14px; margin-bottom: 10px; background: var(--ap-surface-2); }
+.ap-mapcols { margin-top: 4px; padding-top: 10px; border-top: 1px dashed var(--ap-border); }
+.ap-mapcols__head { font-size: var(--ap-fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ap-text-mute); margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; }
+.ap-mapcols .ap-field { margin-bottom: 8px; }
+
 /* ---- Edit-mode shell ---- */
 .ap-root.is-editing { --ap-pad: 22px; }
 .ap-editbar {

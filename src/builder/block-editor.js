@@ -981,18 +981,31 @@ function openCalendarEditor(block, ctx) {
     previewHost.replaceChildren(renderBlock(clone(wb), { provider, config: {} }));
   }, 150);
 
+  // Migrate any pre-existing single detailColumn onto the new detailColumns array so old configs
+  // keep their detail field when reopened here.
+  if (!wb.config.detailColumns) wb.config.detailColumns = wb.config.detailColumn ? [wb.config.detailColumn] : [];
+  delete wb.config.detailColumn;
+
   const dynHost = el('div');
   function buildDyn() {
     const cols = provider.columns(wb.config.table);
     if (cols.length && !cols.find((c) => c.id === wb.config.dateColumn)) wb.config.dateColumn = (cols.find((c) => /date/i.test(c.type)) || cols[0])?.id;
     if (cols.length && !cols.find((c) => c.id === wb.config.titleColumn)) wb.config.titleColumn = cols[0]?.id;
     const optional = (label) => [{ value: '', label }].concat(cols.map((c) => ({ value: c.id, label: c.label })));
+    // Up to four detail fields shown in the click popover, same pattern as the map's tooltip fields.
+    const dc = wb.config.detailColumns || [];
+    const detail = [dc[0] || '', dc[1] || '', dc[2] || '', dc[3] || ''];
+    const setDetail = (i, v) => { detail[i] = v; wb.config.detailColumns = detail.filter(Boolean); refreshPreview(); };
     dynHost.replaceChildren(
       field('Date column', selectInput(cols.map((c) => ({ value: c.id, label: c.label })), wb.config.dateColumn, (v) => { wb.config.dateColumn = v; refreshPreview(); }),
         'Dragging an event to a new day on the live page writes the new date back to this column.'),
       field('Event title column', selectInput(cols.map((c) => ({ value: c.id, label: c.label })), wb.config.titleColumn, (v) => { wb.config.titleColumn = v; refreshPreview(); })),
-      field('Extra detail shown on click (optional)', selectInput(optional('— none —'), wb.config.detailColumn || '', (v) => { wb.config.detailColumn = v || null; refreshPreview(); })),
       field('Color events by (optional)', selectInput(optional('— single color —'), wb.config.colorBy || '', (v) => { wb.config.colorBy = v || null; refreshPreview(); })),
+      subhead('Details shown on click (optional)'),
+      field('Detail field 1', selectInput(optional('— none —'), detail[0], (v) => setDetail(0, v))),
+      field('Detail field 2', selectInput(optional('— none —'), detail[1], (v) => setDetail(1, v))),
+      field('Detail field 3', selectInput(optional('— none —'), detail[2], (v) => setDetail(2, v))),
+      field('Detail field 4', selectInput(optional('— none —'), detail[3], (v) => setDetail(3, v))),
     );
   }
 
