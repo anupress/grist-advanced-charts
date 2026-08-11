@@ -1,22 +1,20 @@
 // One small bundled sample dataset per industry template, used only to preview a template
 // before it's applied (see builder/template-picker.js) — so what you see before committing to a
 // template already looks like real data for that industry, instead of generic Sales numbers with
-// different labels. Every template's stat/chart blocks get remapped onto whichever real table the
-// user is actually adapting the template to (adaptConfigToTable, data/provider.js) at apply time;
-// this data never reaches a real site. Breakdown and map blocks are never remapped (a documented,
-// accepted limitation — see templates/_helpers.js), so every dataset here deliberately includes
-// literal "Category"/"Latitude"/"Longitude" columns, matching what every template's breakdown()/
-// mapBlock() calls already reference, so those blocks also preview correctly.
+// different labels. Every dataset here is keyed by the same table name(s) its template's blocks
+// already reference, so adaptTemplateToTable (data/provider.js) treats it as a genuine match at
+// preview time and repairs every table-bound block type's columns to fit — this data never
+// reaches a real site, it's preview-only.
 
 import { mulberry32 } from '../dummy-data.js';
 
 // ---- Research Labs: a bespoke, 4-table dataset ----
 // Every other template below shares one generic {Category, Site, Value, Latitude, Longitude}
-// shape — enough since their blocks are all remapped onto a single table on apply anyway. Research
-// Labs is deliberately different (see data/templates/research-labs.js's file header): it names
-// four *real* tables — Samples, Reagents, Tasks, People — modeled directly on Grist's own three
-// official lab templates plus a real case study, and adaptConfigToTable() now preserves a block's
-// table when it already matches a real table here, instead of collapsing everything onto one.
+// shape keyed to the 'Data' placeholder table — enough since those templates' blocks are all
+// authored against 'Data' too. Research Labs is deliberately different (see
+// data/templates/research-labs.js's file header): it names four *real* tables — Samples,
+// Reagents, Tasks, People — modeled directly on Grist's own three official lab templates plus a
+// real case study, matched here by using those same table names.
 
 const SAMPLE_PROFILES = [
   { type: 'Blood', storage: 'Freezer -20°C', staff: 'John Doe', notes: 'CBC performed, Blood Group done',

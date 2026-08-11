@@ -5,9 +5,10 @@
 // analysis→export pipeline), a Reagent inventory (a Purchase/Use transaction ledger, not a
 // static stock count), Tasks (assigned, due-dated, calendar-worthy), and People. Every block
 // below references one of those four tables by name; data/templates/sample-data.js's
-// research-labs entry provides matching demo rows, and adaptConfigToTable() (data/provider.js)
-// now preserves a block's own table when it already names a real table on the target provider,
-// instead of collapsing everything onto one — see that function's comment for why.
+// research-labs entry provides matching demo rows, and adaptTemplateToTable() (data/provider.js)
+// only ever repoints a block's table when a table by that exact name genuinely exists on the
+// target provider, leaving everything else intact rather than collapsing onto an unrelated table
+// — see that function's comment for why.
 
 import {
   text, accordion, counter, iconBlock, button, urlTarget, tabTarget,
@@ -98,7 +99,7 @@ export const TEMPLATE = {
             id: 'rl24', type: 'livetable', span: 12,
             config: { title: 'Team directory', table: 'People', columns: ['Name', 'Title', 'Email'], pageSize: 8, searchable: true, sortable: true, defaultSort: null, highlights: [] },
           },
-          button('rl25', 'Contact our research office', 'primary', 'left', urlTarget('https://anupress.com'), 4),
+          button('rl25', 'Contact our research office', 'primary', 'left', urlTarget('https://anupress.com/advanced-charts-grist-widget-guide/'), 4),
         ],
       },
       {
@@ -131,7 +132,7 @@ export const TEMPLATE = {
               title: 'Core facility service rates', plans: [
                 { name: 'Academic', price: '$45', period: '/sample', features: ['Standard turnaround (48 hrs)', 'Shared instrument queue', 'Digital results only'], highlighted: false, buttonLabel: 'Request access', buttonTarget: tabTarget('tab-overview') },
                 { name: 'Priority', price: '$85', period: '/sample', features: ['Everything in Academic', 'Under 24-hour turnaround', 'Dedicated staff time'], highlighted: true, buttonLabel: 'Request access', buttonTarget: tabTarget('tab-overview') },
-                { name: 'Industry', price: 'Custom', period: '', features: ['Volume pricing', 'Data use agreement included', 'Named point of contact'], highlighted: false, buttonLabel: 'Contact us', buttonTarget: urlTarget('https://anupress.com') },
+                { name: 'Industry', price: 'Custom', period: '', features: ['Volume pricing', 'Data use agreement included', 'Named point of contact'], highlighted: false, buttonLabel: 'Contact us', buttonTarget: urlTarget('https://anupress.com/advanced-charts-grist-widget-guide/') },
               ],
             },
           },

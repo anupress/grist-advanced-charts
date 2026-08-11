@@ -1,19 +1,21 @@
 // Industry starter-template picker: pick -> confirm-before-replace (a real rendered preview,
 // using that industry's own sample dataset, + an explicit "can't be undone" callout) -> apply.
 // Same {state; render()->openDrawer()} shape as wizard.js. Applying always runs through
-// adaptConfigToTable() (data/provider.js) — the same remap used for the demo->first-real-table
-// jump on connect — so every template's stat/chart blocks point at the user's actual
-// table/columns immediately, in demo mode too. The PREVIEW runs that exact same remap, just
-// against a small bundled per-industry dataset (data/templates/sample-data.js) instead of the
-// real provider — so breakdown/map (which adaptConfigToTable does NOT remap, a documented
-// limitation) also show industry-appropriate categories and locations before you commit,
-// rather than generic Sales categories with different labels stuck on top.
+// adaptTemplateToTable() (data/provider.js) — deliberately NOT the more aggressive
+// adaptConfigToTable() used for the demo->first-real-table jump on connect. A template should
+// install *intact*: a block only gets repointed at a different table when its own table name
+// genuinely exists on the target, or it uses 'Data' (the shared placeholder every simple
+// template is authored against) — never guessed onto an unrelated real table just because it was
+// open. The PREVIEW runs the same function against a small bundled per-industry dataset
+// (data/templates/sample-data.js) whose table names always match the template's own, so every
+// block (including breakdown/map, which don't get column-level remapping when guessing) shows
+// real industry-appropriate data before you commit.
 
 import { el, clone } from '../util.js';
 import { icon } from '../assets/icons.js';
 import { openDrawer, closeDrawer, primaryBtn, ghostBtn, subhead, divider } from './ui.js';
 import { TEMPLATES } from '../data/templates/index.js';
-import { adaptConfigToTable, DummyProvider } from '../data/provider.js';
+import { adaptTemplateToTable, DummyProvider } from '../data/provider.js';
 import { TEMPLATE_SAMPLE_DATA } from '../data/templates/sample-data.js';
 import { renderBlock, mountCharts } from '../render/blocks.js';
 import { mountMaps } from '../render/map.js';
@@ -68,7 +70,7 @@ export function openTemplatePicker({ provider, onApply }) {
     const sample = TEMPLATE_SAMPLE_DATA[t.id];
     if (!sample) return el('div', { class: 'ap-muted', text: 'Preview unavailable for this template.' });
     const previewProvider = new DummyProvider(sample);
-    const previewConfig = adaptConfigToTable(t.config, previewProvider);
+    const previewConfig = adaptTemplateToTable(t.config, previewProvider);
     const host = el('div', { class: 'ap-preview', style: { maxHeight: '380px', overflowY: 'auto' } });
     for (const tab of previewConfig.tabs || []) {
       host.append(
@@ -109,7 +111,7 @@ export function openTemplatePicker({ provider, onApply }) {
     return [
       ghostBtn('Back', () => { state.picked = null; render(); }),
       primaryBtn('Apply this template', 'check', () => {
-        const applied = adaptConfigToTable(state.picked.config, provider);
+        const applied = adaptTemplateToTable(state.picked.config, provider);
         closeDrawer();
         onApply(applied);
       }),

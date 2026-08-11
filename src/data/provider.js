@@ -104,77 +104,95 @@ export function tablesInConfig(config) {
   return [...ids];
 }
 
-// When a fresh user opens the demo and connects Grist, point demo blocks at their table so
-// they see *something* immediately; they can then remap columns in the builder.
-//
-// Most templates author every block against one placeholder table ('Data') on the assumption
-// this collapses everything onto the user's single default table — deliberate, since a template
-// can't know a real doc's schema in advance. A template that instead names *real* multi-table
-// structure (e.g. Research Labs' Samples/Reagents/Tasks/People) wants the opposite: leave a
-// block's table alone whenever it already names a table that genuinely exists on the target
-// provider, and only fall back to the single-table collapse for blocks that don't.
-//
-// Column remapping is per-block, not per-call: every table-bound block type gets its own column
-// references validated against whichever table it actually ends up on (kept or collapsed), and
-// only touched if something's actually missing — a block that already points at valid columns
-// (including one that "kept its own table" by name but doesn't share every column, e.g. two
-// templates both naming a table 'People' with a different shape) is left alone. Earlier this only
-// covered stat/chart, which was fine while every template's other table-bound blocks (breakdown/
-// map/livetable/progress, all authored via templates/_helpers.js) pointed at the single shared
-// 'Data' placeholder table — but it left those block types (and any template naming its own real
-// tables, like Research Labs) showing blank/broken content whenever applied somewhere that didn't
-// happen to share the original column names. Map is the one type that can't always be rescued —
-// there's no way to invent latitude/longitude out of a table that has none — so it degrades to an
-// empty map (render/map.js already treats missing lat/lon as "no points") rather than erroring.
+const dimCol = (cols, exclude) => cols.find((x) => x.id !== exclude && /text|choice|date/i.test(x.type)) || cols.find((x) => x.id !== exclude) || null;
+const measureCol = (cols, exclude) => cols.find((x) => x.id !== exclude && /int|numeric|number|currency/i.test(x.type)) || cols.find((x) => x.id !== exclude) || null;
+const dateCol = (cols) => cols.find((x) => /date/i.test(x.type)) || null;
+const geoCol = (cols, pattern) => cols.find((x) => pattern.test(x.id) || pattern.test(x.label || '')) || null;
+
+// Validates + repairs one block's column references against whichever table it's already been
+// resolved onto (mutates b.config in place). Shared by both adapt functions below — table
+// *selection* differs between them (see each function's own comment), but once a block is on a
+// table, "does this block's column still exist on it" is the same question either way.
+function repairBlockColumns(b, cols) {
+  const has = (id) => id != null && cols.some((x) => x.id === id);
+  if (b.type === 'stat') {
+    if (!has(b.config.column)) b.config.column = measureCol(cols)?.id ?? null;
+  } else if (b.type === 'chart') {
+    const dims = b.config.dims || [], measures = b.config.measures || [];
+    if (!dims.every(has)) { const d = dimCol(cols); b.config.dims = d ? [d.id] : []; }
+    if (!measures.every(has)) { const m = measureCol(cols, b.config.dims?.[0]); b.config.measures = m ? [m.id] : []; }
+  } else if (b.type === 'breakdown') {
+    if (!has(b.config.column)) b.config.column = dimCol(cols)?.id ?? null;
+  } else if (b.type === 'progress' && b.config.mode === 'data') {
+    if (!has(b.config.valueColumn)) b.config.valueColumn = measureCol(cols)?.id ?? null;
+    if (b.config.targetColumn && !has(b.config.targetColumn)) b.config.targetColumn = null;
+  } else if (b.type === 'livetable') {
+    const cfgCols = b.config.columns || [];
+    if (cfgCols.length && !cfgCols.every(has)) { b.config.columns = []; b.config.highlights = []; } // [] => show every real column; stale highlight ranges would now paint the wrong cells
+  } else if (b.type === 'calendar') {
+    if (!has(b.config.dateColumn)) b.config.dateColumn = dateCol(cols)?.id ?? null;
+    if (!has(b.config.titleColumn)) b.config.titleColumn = dimCol(cols, b.config.dateColumn)?.id ?? null;
+    if (!has(b.config.detailColumn)) b.config.detailColumn = null;
+    if (!has(b.config.colorBy)) b.config.colorBy = null;
+  } else if (b.type === 'map') {
+    if (!has(b.config.latColumn) || !has(b.config.lonColumn)) {
+      const lat = geoCol(cols, /lat/i), lon = lat && geoCol(cols, /lon|lng/i);
+      b.config.latColumn = lat && lon ? lat.id : null;
+      b.config.lonColumn = lat && lon && lon.id !== lat.id ? lon.id : null;
+    }
+    if (!has(b.config.labelColumn)) b.config.labelColumn = dimCol(cols)?.id ?? null;
+    if (!has(b.config.colorBy)) b.config.colorBy = null;
+    if ((b.config.popupColumns || []).length) b.config.popupColumns = b.config.popupColumns.filter(has);
+  }
+}
+
+// First-connect remap: when a fresh user opens the demo and connects Grist, point the *bundled
+// default site* (Sales/People, not a template) at their table so they see something immediately
+// — there's no table name in DEFAULT_SITE that could ever match a real doc, so this always
+// force-collapses every block onto the target's default table and repairs columns to match.
+// This is the "before you've configured anything, show *something*" first-run experience —
+// deliberately more aggressive than adaptTemplateToTable below, which is for a different moment
+// (browsing a template library, not your first-ever connect).
 export function adaptConfigToTable(config, provider) {
+  const table = provider.defaultTable();
+  if (!table) return config;
+  const c = clone(config);
+  c.dataTable = table;
+  for (const tab of c.tabs || []) for (const b of tab.blocks || []) {
+    if (!b.config) continue;
+    b.config.table = table;
+    repairBlockColumns(b, provider.columns(table));
+  }
+  return c;
+}
+
+// Template-apply remap: only ever repoints a block's table when there's a real reason to believe
+// it's right — either the table name matches one that genuinely exists on the target (e.g.
+// Research Labs' own 'Samples'/'Reagents'/'Tasks'/'People'), or the block uses 'Data', the
+// deliberate shared placeholder every simple template (templates/_helpers.js) is authored
+// against specifically so it collapses onto "whatever your main table is". Anything else is left
+// completely intact — table AND columns unchanged — rather than guessed onto an unrelated real
+// table. Feedback (2026-08-11): silently forcing a template's blocks onto whatever table happened
+// to be open produced technically-non-blank but *wrong*-looking results (e.g. a "Samples Logged"
+// stat card quietly showing a Sales row count) — worse than an honest "not configured yet" block,
+// which is what an unmatched block now renders as (records()/columns() on a table id that doesn't
+// exist on this provider just come back empty). The user then repoints it manually via Edit, same
+// as any other block — that's the intended flow: install intact, customize afterward.
+export function adaptTemplateToTable(config, provider) {
   const table = provider.defaultTable();
   if (!table) return config;
   const realTableIds = new Set(provider.tables().map((t) => t.id));
   const c = clone(config);
   c.dataTable = table;
-
-  const dimCol = (cols, exclude) => cols.find((x) => x.id !== exclude && /text|choice|date/i.test(x.type)) || cols.find((x) => x.id !== exclude) || null;
-  const measureCol = (cols, exclude) => cols.find((x) => x.id !== exclude && /int|numeric|number|currency/i.test(x.type)) || cols.find((x) => x.id !== exclude) || null;
-  const dateCol = (cols) => cols.find((x) => /date/i.test(x.type)) || null;
-  const geoCol = (cols, pattern) => cols.find((x) => pattern.test(x.id) || pattern.test(x.label || '')) || null;
-
   for (const tab of c.tabs || []) for (const b of tab.blocks || []) {
     if (!b.config) continue;
-    const keepsOwnTable = b.config.table && realTableIds.has(b.config.table);
-    const bTable = keepsOwnTable ? b.config.table : table;
+    const ownTable = b.config.table;
+    const isRealMatch = ownTable && realTableIds.has(ownTable);
+    const isFallbackPlaceholder = ownTable === 'Data';
+    if (!isRealMatch && !isFallbackPlaceholder) continue; // leave this block exactly as authored
+    const bTable = isRealMatch ? ownTable : table;
     b.config.table = bTable;
-    const cols = provider.columns(bTable);
-    const has = (id) => id != null && cols.some((x) => x.id === id);
-
-    if (b.type === 'stat') {
-      if (!has(b.config.column)) b.config.column = measureCol(cols)?.id ?? null;
-    } else if (b.type === 'chart') {
-      const dims = b.config.dims || [], measures = b.config.measures || [];
-      if (!dims.every(has)) { const d = dimCol(cols); b.config.dims = d ? [d.id] : []; }
-      if (!measures.every(has)) { const m = measureCol(cols, b.config.dims?.[0]); b.config.measures = m ? [m.id] : []; }
-    } else if (b.type === 'breakdown') {
-      if (!has(b.config.column)) b.config.column = dimCol(cols)?.id ?? null;
-    } else if (b.type === 'progress' && b.config.mode === 'data') {
-      if (!has(b.config.valueColumn)) b.config.valueColumn = measureCol(cols)?.id ?? null;
-      if (b.config.targetColumn && !has(b.config.targetColumn)) b.config.targetColumn = null;
-    } else if (b.type === 'livetable') {
-      const cfgCols = b.config.columns || [];
-      if (cfgCols.length && !cfgCols.every(has)) { b.config.columns = []; b.config.highlights = []; } // [] => show every real column; stale highlight ranges would now paint the wrong cells
-    } else if (b.type === 'calendar') {
-      if (!has(b.config.dateColumn)) b.config.dateColumn = dateCol(cols)?.id ?? null;
-      if (!has(b.config.titleColumn)) b.config.titleColumn = dimCol(cols, b.config.dateColumn)?.id ?? null;
-      if (!has(b.config.detailColumn)) b.config.detailColumn = null;
-      if (!has(b.config.colorBy)) b.config.colorBy = null;
-    } else if (b.type === 'map') {
-      if (!has(b.config.latColumn) || !has(b.config.lonColumn)) {
-        const lat = geoCol(cols, /lat/i), lon = lat && geoCol(cols, /lon|lng/i);
-        b.config.latColumn = lat && lon ? lat.id : null;
-        b.config.lonColumn = lat && lon && lon.id !== lat.id ? lon.id : null;
-      }
-      if (!has(b.config.labelColumn)) b.config.labelColumn = dimCol(cols)?.id ?? null;
-      if (!has(b.config.colorBy)) b.config.colorBy = null;
-      if ((b.config.popupColumns || []).length) b.config.popupColumns = b.config.popupColumns.filter(has);
-    }
+    repairBlockColumns(b, provider.columns(bTable));
   }
   return c;
 }

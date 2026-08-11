@@ -1,13 +1,14 @@
 // Shared block constructors for the industry template library — same shapes as
 // data/default-site.js's local stat()/chart() helpers, generalized for reuse across templates.
 //
-// Every stat/chart's table/column/dims/measures below is a placeholder: applying a template
-// always runs adaptConfigToTable() (data/provider.js) first, which overwrites every stat and
-// chart block's table/column/dims/measures to point at the user's actual table and columns.
-// That remap does NOT touch breakdown or map blocks (their column/latColumn/lonColumn refs
-// aren't remapped) — so templates deliberately stick to stat/chart plus the fully-static block
-// types for everything else, so every template looks right immediately, before any manual
-// reconfiguration, regardless of what the user's real table looks like.
+// Every block's table/column/dims/measures below uses 'Data', a deliberate shared placeholder —
+// applying a template runs adaptTemplateToTable() (data/provider.js), which recognizes 'Data'
+// specifically as "map this onto the target's default table" and repairs every block type's
+// columns to match (stat/chart/breakdown/map/progress/livetable/calendar), not just stat/chart.
+// A block naming a *real*, specific table instead (e.g. Research Labs' 'Samples') is only ever
+// repointed when a table by that exact name genuinely exists on the target — otherwise it's left
+// completely alone rather than guessed onto an unrelated table. See adaptTemplateToTable's own
+// comment for why (2026-08-11 feedback: guessing produced working-but-wrong results).
 
 export const stat = (id, label, column, agg, icon, fmt, span = 3) =>
   ({ id, type: 'stat', span, config: { table: 'Data', label, column, agg, icon, format: fmt || {} } });
@@ -52,11 +53,10 @@ export const image = (id, imageData, alt, caption, span = 6) =>
 export const testimonials = (id, title, entries, span = 12) =>
   ({ id, type: 'testimonials', span, config: { title, mode: 'manual', entries, table: null, nameColumn: null, quoteColumn: null, ratingColumn: null, photoColumn: null, limit: 6 } });
 
-// Column refs are placeholders, same caveat as stat/chart's table — but adaptConfigToTable does
-// NOT remap breakdown's `column` or map's `latColumn`/`lonColumn`, only `.config.table` (set
-// unconditionally for every block). Until the user picks real columns these degrade gracefully
-// (breakdown: one "—" bucket; map: "missing coordinates") rather than breaking, matching how
-// every other block in this app already handles absent/mismatched data.
+// Column refs are placeholders, same as stat/chart's — adaptTemplateToTable repairs breakdown's
+// `column` and map's `latColumn`/`lonColumn` too when 'Data' maps onto a real table. If the
+// target has nothing suitable (e.g. no lat/lon-shaped column for map), these still degrade
+// gracefully (breakdown: one "—" bucket; map: "missing coordinates") rather than breaking.
 export const breakdown = (id, title, span = 4) =>
   ({ id, type: 'breakdown', span, config: { table: 'Data', title, column: 'Category', limit: 12 } });
 

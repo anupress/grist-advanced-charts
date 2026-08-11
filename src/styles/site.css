@@ -38,6 +38,11 @@
 .ap-hero.ap-va-center { justify-content: center; }
 .ap-hero.ap-va-bottom { justify-content: flex-end; }
 .ap-hero--stretched { border-radius: 0; } /* edge-to-edge — rounded corners would float mid-page */
+/* Boxed (contained) heroes sit a little wider than .ap-container's own content width — the pre-
+   existing look before Boxed/Stretched became an explicit choice — via a negative-margin bleed on
+   an auto-width box (grows it symmetrically) rather than an explicit width, so it still centers
+   correctly at any viewport. Scoped to .ap-main so it never affects a smaller preview context. */
+.ap-main .ap-hero:not(.ap-hero--stretched) { margin-left: calc(-1 * var(--ap-hero-bleed)); margin-right: calc(-1 * var(--ap-hero-bleed)); }
 .ap-hero::after { content: ""; position: absolute; inset: 0; background: radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,.25), transparent 55%); pointer-events: none; }
 .ap-hero h1 { font-size: var(--ap-fs-2xl); margin: 0 0 .25em; position: relative; z-index: 1; }
 .ap-hero p { font-size: var(--ap-fs-lg); opacity: .92; max-width: 60ch; margin: 0; position: relative; z-index: 1; }
@@ -109,7 +114,9 @@
 
 /* ---- Hero image slider (full-width by default, capped at 340px) ---- */
 .ap-hero-slider { position: relative; width: 100%; height: clamp(190px, 40vw, 340px); overflow: hidden; background: var(--ap-bg-soft); }
-.ap-hero-slider--boxed { border-radius: var(--ap-radius-lg); margin-bottom: var(--ap-gap); } /* contained — needs its own rounding + spacing that edge-to-edge doesn't */
+/* Boxed slider needs an explicit wider width to match (unlike .ap-hero above, this has its own
+   width:100% rather than auto, so a negative margin alone would only shift it, not grow it). */
+.ap-main .ap-hero-slider--boxed { width: calc(100% + 2 * var(--ap-hero-bleed)); margin-left: calc(-1 * var(--ap-hero-bleed)); margin-right: calc(-1 * var(--ap-hero-bleed)); border-radius: var(--ap-radius-lg); margin-bottom: var(--ap-gap); } /* contained — needs its own rounding + spacing that edge-to-edge doesn't */
 .ap-slider__track { display: flex; height: 100%; transition: transform .55s var(--ap-ease); will-change: transform; }
 /* Caption vertical position lives on .ap-slide itself (a flex column, like .ap-hero's own
    ap-va-* handling) so top/center/bottom actually move the caption instead of it always sitting

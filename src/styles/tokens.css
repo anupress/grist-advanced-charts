@@ -49,6 +49,7 @@
   --ap-gap: 18px;
   --ap-pad: 22px;
   --ap-maxw: 1180px;
+  --ap-hero-bleed: clamp(0px, 2vw, 40px); /* how much wider than .ap-container a *boxed* hero sits, each side — never more than .ap-container's own side padding, so it can't overflow the viewport */
 
   /* Decorative gradient derived from palette */
   --ap-grad: linear-gradient(135deg,
