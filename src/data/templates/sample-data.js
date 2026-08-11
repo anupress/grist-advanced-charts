@@ -160,6 +160,59 @@ const PEOPLE_COLUMNS = [
   { id: 'Email', label: 'Email', type: 'Text' }, { id: 'Phone', label: 'Phone', type: 'Text' },
 ];
 
+// Instruments — the one lab function the first pass didn't model. Real labs run a calibration /
+// maintenance register (and the Jozef Stefan case study specifically integrates instrument data),
+// so this carries a NextCalibration date the Equipment page plots on a draggable calendar and
+// highlights when it slips. CalibrationDue/Compliant are pre-split 1/0 helper columns because a
+// stat block can only SUM a column — it can't filter by status (same trick as Finance's Invoices).
+const INSTRUMENTS = [
+  ['Mass Spectrometer', 'Thermo Fisher', 'Lab A', 'Dr. Jane Smith'],
+  ['HPLC System', 'Agilent', 'Lab A', 'Michael Brown'],
+  ['PCR Thermocycler', 'Bio-Rad', 'Molecular Lab', 'Emily Johnson'],
+  ['Refrigerated Centrifuge', 'Eppendorf', 'Prep Room', 'David Lee'],
+  ['Microplate Reader', 'BioTek', 'Assay Room', 'Amanda Taylor'],
+  ['-80°C Freezer', 'Thermo Fisher', 'Cold Room', 'David Lee'],
+  ['Autoclave', 'Tuttnauer', 'Sterilization', 'John Doe'],
+  ['Fluorescence Microscope', 'Zeiss', 'Imaging Suite', 'Emily Johnson'],
+  ['UV-Vis Spectrophotometer', 'Shimadzu', 'Lab B', 'Michael Brown'],
+  ['CO₂ Incubator', 'Panasonic', 'Cell Culture', 'John Doe'],
+  ['Flow Cytometer', 'BD Biosciences', 'Imaging Suite', 'Amanda Taylor'],
+  ['Water Purification System', 'Milli-Q', 'Lab B', 'Sarah Wilson'],
+  ['Analytical Balance', 'Mettler Toledo', 'Prep Room', 'Sarah Wilson'],
+  ['Gas Chromatograph', 'Agilent', 'Lab A', 'Dr. Jane Smith'],
+];
+const INSTRUMENTS_COLUMNS = [
+  { id: 'InstrumentID', label: 'Asset ID', type: 'Text' }, { id: 'Name', label: 'Instrument', type: 'Text' },
+  { id: 'Location', label: 'Location', type: 'Text' }, { id: 'ResponsibleStaff', label: 'Responsible', type: 'Text' },
+  { id: 'Status', label: 'Status', type: 'Choice' }, { id: 'NextCalibration', label: 'Next Calibration', type: 'Date' },
+  { id: 'Manufacturer', label: 'Manufacturer', type: 'Text' }, { id: 'LastCalibration', label: 'Last Calibration', type: 'Date' },
+  { id: 'UtilisationHours', label: 'Hours Logged', type: 'Numeric' },
+  { id: 'CalibrationDue', label: 'Due Within 30d', type: 'Numeric' }, { id: 'Compliant', label: 'In Compliance', type: 'Numeric' },
+];
+function buildInstruments() {
+  const rnd = mulberry32(5004);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return INSTRUMENTS.map(([name, mfr, loc, staff], i) => {
+    // Two regimes, so the page reads like a well-run lab rather than a negligent one: most
+    // instruments sit on a near-term schedule (-12..+45 days — this is what fills the calendar's
+    // current month and the "due soon" count, with only the occasional genuinely overdue one),
+    // the rest are calibrated and not due again for months.
+    const nearTerm = rnd() < 0.62;
+    const offset = nearTerm ? Math.round(-12 + rnd() * 57) : Math.round(60 + rnd() * 240);
+    const next = new Date(today); next.setDate(next.getDate() + offset);
+    const last = new Date(next); last.setDate(last.getDate() - 365);
+    const overdue = offset < 0;
+    const status = overdue ? 'Due calibration' : (rnd() < 0.12 ? 'Out for repair' : 'In service');
+    return {
+      id: i + 1, InstrumentID: 'INS-' + String(i + 1).padStart(3, '0'), Name: name, Location: loc,
+      ResponsibleStaff: staff, Status: status, NextCalibration: iso(next), Manufacturer: mfr,
+      LastCalibration: iso(last), UtilisationHours: Math.round(80 + rnd() * 900),
+      CalibrationDue: offset <= 30 ? 1 : 0, Compliant: overdue ? 0 : 1,
+    };
+  });
+}
+
 function buildResearchLabsData() {
   return {
     defaultTable: 'Samples',
@@ -168,6 +221,167 @@ function buildResearchLabsData() {
       Reagents: { id: 'Reagents', label: 'Reagent inventory', columns: REAGENTS_COLUMNS, records: buildReagents() },
       Tasks: { id: 'Tasks', label: 'Tasks', columns: TASKS_COLUMNS, records: buildTasks() },
       People: { id: 'People', label: 'People', columns: PEOPLE_COLUMNS, records: PEOPLE_ROWS },
+      Instruments: { id: 'Instruments', label: 'Instruments', columns: INSTRUMENTS_COLUMNS, records: buildInstruments() },
+    },
+  };
+}
+
+// ---- Finance & Accounting: a unified money-in / money-out cockpit ----
+// Modeled on Grist's own three finance templates (Invoicing, Payroll, Expense Tracking) but
+// unified the way a small business actually runs its books, and extended past what those separate
+// docs track: invoices carry a Status + PaidDate (so AR aging, overdue emphasis and a due-date
+// calendar are possible — the base invoicing template has none of that), expenses have an
+// approval Status, and a CashFlow summary ties money in vs out by month.
+
+const FIN_CLIENTS = [
+  ['Physically Fit', 'Dana Cole', 'Austin', 'TX', 30.27, -97.74],
+  ['Bluewave Media', 'Marcus Lin', 'San Francisco', 'CA', 37.77, -122.42],
+  ['Northwind Traders', 'Priya Nair', 'Chicago', 'IL', 41.88, -87.63],
+  ['Summit Analytics', 'Erik Olsen', 'Denver', 'CO', 39.74, -104.99],
+  ['Harbor & Vale', 'Sofia Rossi', 'Boston', 'MA', 42.36, -71.06],
+  ['Cedar Foods Co.', 'Tom Becker', 'Portland', 'OR', 45.52, -122.68],
+  ['Vertex Robotics', 'Aisha Khan', 'Seattle', 'WA', 47.61, -122.33],
+  ['Maple & Third', 'Liu Wei', 'New York', 'NY', 40.71, -74.01],
+  ['Orchard Health', 'Grace Kim', 'Atlanta', 'GA', 33.75, -84.39],
+  ['Pioneer Freight', 'Sam Duarte', 'Miami', 'FL', 25.76, -80.19],
+];
+const FIN_EMPLOYEES = [
+  ['Ava Bennett', 'Account Executive', 'Sales', 55],
+  ['Diego Alvarez', 'Designer', 'Marketing', 48],
+  ['Nadia Petrov', 'Accountant', 'Finance', 60],
+  ['Owen Clarke', 'Operations Lead', 'Operations', 52],
+  ['Mei Tanaka', 'Developer', 'Engineering', 68],
+  ['Jamal Wright', 'Support Specialist', 'Support', 38],
+  ['Elena Novak', 'Marketing Manager', 'Marketing', 58],
+];
+const EXPENSE_CATS = [ // [Category, Account]
+  ['Software', 'Administration'], ['Travel', 'Sales'], ['Meals & Entertainment', 'Sales'],
+  ['Office Supplies', 'Administration'], ['Advertising', 'Marketing'], ['Equipment', 'Operations'],
+  ['Contractors', 'Operations'], ['Training', 'Finance'], ['Utilities', 'Administration'], ['Shipping', 'Operations'],
+];
+const EXPENSE_DESCS = {
+  Software: ['Figma annual seats', 'Grist Team plan', 'Slack subscription', 'AWS usage'],
+  Travel: ['Client visit flights', 'Conference hotel', 'Rideshare to airport', 'Rail tickets'],
+  'Meals & Entertainment': ['Client dinner', 'Team lunch', 'Coffee with prospect'],
+  'Office Supplies': ['Printer paper & toner', 'Desk chairs', 'Whiteboard markers'],
+  Advertising: ['Google Ads', 'LinkedIn campaign', 'Sponsored newsletter'],
+  Equipment: ['Laptop refresh', 'Monitor', 'Warehouse scanner'],
+  Contractors: ['Freelance copywriter', 'Contract QA', 'Design contractor'],
+  Training: ['Accounting CPE course', 'Sales workshop', 'Security training'],
+  Utilities: ['Office electricity', 'Internet', 'Water & waste'],
+  Shipping: ['FedEx samples', 'Courier to client', 'Pallet freight'],
+};
+
+// Format LOCAL date components (not toISOString, which converts to UTC and can shift the date back
+// a day in timezones ahead of UTC — that would push month-boundary dates like the 1st onto the
+// previous month, and nudge calendar due-dates a day early).
+const finIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const finMonthStart = (d) => new Date(d.getFullYear(), d.getMonth(), 1);
+
+const FIN_INVOICES_COLUMNS = [
+  { id: 'InvoiceNumber', label: 'Invoice #', type: 'Text' }, { id: 'Client', label: 'Client', type: 'Text' },
+  { id: 'IssueDate', label: 'Issue Date', type: 'Date' }, { id: 'DueDate', label: 'Due Date', type: 'Date' },
+  { id: 'Amount', label: 'Amount', type: 'Numeric' }, { id: 'Status', label: 'Status', type: 'Choice' },
+  { id: 'PaidDate', label: 'Paid Date', type: 'Date' }, { id: 'Outstanding', label: 'Outstanding', type: 'Numeric' },
+  { id: 'Collected', label: 'Collected', type: 'Numeric' }, { id: 'OverdueAmount', label: 'Overdue Amount', type: 'Numeric' },
+];
+const FIN_EXPENSES_COLUMNS = [
+  { id: 'Date', label: 'Date', type: 'Date' }, { id: 'Account', label: 'Account', type: 'Choice' },
+  { id: 'Category', label: 'Category', type: 'Choice' }, { id: 'Description', label: 'Description', type: 'Text' },
+  { id: 'Amount', label: 'Amount', type: 'Numeric' }, { id: 'Reimbursable', label: 'Reimbursable', type: 'Bool' },
+  { id: 'Status', label: 'Status', type: 'Choice' }, { id: 'Employee', label: 'Employee', type: 'Text' },
+];
+const FIN_PAYROLL_COLUMNS = [
+  { id: 'Employee', label: 'Employee', type: 'Text' }, { id: 'Role', label: 'Role', type: 'Text' },
+  { id: 'Department', label: 'Department', type: 'Choice' }, { id: 'PayPeriod', label: 'Pay Period', type: 'Date' },
+  { id: 'Hours', label: 'Hours', type: 'Numeric' }, { id: 'HourlyRate', label: 'Hourly Rate', type: 'Numeric' },
+  { id: 'Payment', label: 'Payment', type: 'Numeric' },
+];
+const FIN_CLIENTS_COLUMNS = [
+  { id: 'Name', label: 'Client', type: 'Text' }, { id: 'Contact', label: 'Contact', type: 'Text' },
+  { id: 'Email', label: 'Email', type: 'Text' }, { id: 'City', label: 'City', type: 'Text' },
+  { id: 'State', label: 'State', type: 'Text' }, { id: 'TotalBilled', label: 'Total Billed', type: 'Numeric' },
+  { id: 'Latitude', label: 'Latitude', type: 'Numeric' }, { id: 'Longitude', label: 'Longitude', type: 'Numeric' },
+];
+const FIN_CASHFLOW_COLUMNS = [
+  { id: 'Month', label: 'Month', type: 'Date' }, { id: 'Invoiced', label: 'Invoiced', type: 'Numeric' },
+  { id: 'Expenses', label: 'Expenses', type: 'Numeric' }, { id: 'Payroll', label: 'Payroll', type: 'Numeric' },
+  { id: 'Net', label: 'Net', type: 'Numeric' },
+];
+
+function buildFinanceData() {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const rnd = mulberry32(7001);
+  const round2 = (n) => Math.round(n * 100) / 100;
+  const inMonth = (dStr, ms) => { const d = new Date(dStr); return d.getFullYear() === ms.getFullYear() && d.getMonth() === ms.getMonth(); };
+
+  // Invoices — spread so some Due Dates land in the current month (for the calendar) and a realistic
+  // mix of Paid / Sent / Overdue / Draft. Outstanding/Collected/OverdueAmount are per-row splits so
+  // the KPI stats can be plain SUMs (stat blocks can't filter by status).
+  const invoices = [];
+  for (let i = 0; i < 30; i++) {
+    const cname = FIN_CLIENTS[Math.floor(rnd() * FIN_CLIENTS.length)][0];
+    const issue = new Date(today.getTime() - Math.round(5 + rnd() * 150) * 86400000);
+    const due = new Date(issue.getTime() + 30 * 86400000);
+    const amount = Math.round((800 + rnd() * 23000) / 10) * 10;
+    let status, paidDate = null;
+    if (due < today) { if (rnd() < 0.72) { status = 'Paid'; paidDate = finIso(new Date(due.getTime() - Math.round(rnd() * 10) * 86400000)); } else status = 'Overdue'; }
+    else status = rnd() < 0.85 ? 'Sent' : 'Draft';
+    invoices.push({
+      id: i + 1, InvoiceNumber: 'INV-' + (1001 + i), Client: cname, IssueDate: finIso(issue), DueDate: finIso(due),
+      Amount: amount, Status: status, PaidDate: paidDate,
+      Outstanding: (status === 'Sent' || status === 'Overdue') ? amount : 0,
+      Collected: status === 'Paid' ? amount : 0,
+      OverdueAmount: status === 'Overdue' ? amount : 0,
+    });
+  }
+
+  const clients = FIN_CLIENTS.map((c, i) => {
+    const [name, contact, city, state, lat, lon] = c;
+    const billed = invoices.filter((v) => v.Client === name).reduce((s, v) => s + v.Amount, 0);
+    return { id: i + 1, Name: name, Contact: contact,
+      Email: contact.toLowerCase().replace(/[^a-z]+/g, '.') + '@' + name.toLowerCase().replace(/[^a-z0-9]+/g, '') + '.com',
+      City: city, State: state, TotalBilled: billed, Latitude: lat, Longitude: lon };
+  });
+
+  const payroll = []; let pid = 1;
+  for (let m = 3; m >= 0; m--) {
+    const period = finMonthStart(new Date(today.getFullYear(), today.getMonth() - m, 1));
+    for (const [name, role, dept, rate] of FIN_EMPLOYEES) {
+      const hours = 140 + Math.round(rnd() * 40);
+      const hr = rate + (rnd() < 0.2 ? 2 : 0);
+      payroll.push({ id: pid++, Employee: name, Role: role, Department: dept, PayPeriod: finIso(period), Hours: hours, HourlyRate: hr, Payment: round2(hours * hr) });
+    }
+  }
+
+  const expenses = [];
+  for (let i = 0; i < 42; i++) {
+    const [cat, account] = EXPENSE_CATS[Math.floor(rnd() * EXPENSE_CATS.length)];
+    const descs = EXPENSE_DESCS[cat];
+    const date = new Date(today.getTime() - Math.round(rnd() * 150) * 86400000);
+    const emp = FIN_EMPLOYEES[Math.floor(rnd() * FIN_EMPLOYEES.length)][0];
+    const amount = round2(20 + rnd() * (cat === 'Equipment' || cat === 'Contractors' ? 3400 : 800));
+    expenses.push({ id: i + 1, Date: finIso(date), Account: account, Category: cat, Description: descs[Math.floor(rnd() * descs.length)],
+      Amount: amount, Reimbursable: rnd() < 0.4, Status: rnd() < 0.75 ? 'Approved' : 'Pending', Employee: emp });
+  }
+
+  const cashflow = [];
+  for (let m = 5; m >= 0; m--) {
+    const ms = finMonthStart(new Date(today.getFullYear(), today.getMonth() - m, 1));
+    const invoiced = invoices.filter((v) => inMonth(v.IssueDate, ms)).reduce((s, v) => s + v.Amount, 0);
+    const exp = expenses.filter((e) => inMonth(e.Date, ms)).reduce((s, e) => s + e.Amount, 0);
+    const pay = payroll.filter((p) => inMonth(p.PayPeriod, ms)).reduce((s, p) => s + p.Payment, 0);
+    cashflow.push({ id: cashflow.length + 1, Month: finIso(ms), Invoiced: Math.round(invoiced), Expenses: Math.round(exp), Payroll: Math.round(pay), Net: Math.round(invoiced - exp - pay) });
+  }
+
+  return {
+    defaultTable: 'Invoices',
+    tables: {
+      Invoices: { id: 'Invoices', label: 'Invoices', columns: FIN_INVOICES_COLUMNS, records: invoices },
+      Expenses: { id: 'Expenses', label: 'Expenses', columns: FIN_EXPENSES_COLUMNS, records: expenses },
+      Payroll: { id: 'Payroll', label: 'Payroll', columns: FIN_PAYROLL_COLUMNS, records: payroll },
+      Clients: { id: 'Clients', label: 'Clients', columns: FIN_CLIENTS_COLUMNS, records: clients },
+      CashFlow: { id: 'CashFlow', label: 'Cash flow', columns: FIN_CASHFLOW_COLUMNS, records: cashflow },
     },
   };
 }
@@ -230,11 +444,7 @@ export const TEMPLATE_SAMPLE_DATA = {
     sites: [site('New York Studio', 40.71, -74.01), site('London Studio', 51.51, -0.13), site('Singapore Studio', 1.35, 103.82), site('São Paulo Studio', -23.55, -46.63), site('Sydney Studio', -33.87, 151.21)],
     valueRange: [2000, 60000],
   }),
-  'finance-accounting': dataset(4006, {
-    categories: ['Equities', 'Fixed Income', 'Real Estate', 'Cash & Equivalents', 'Alternatives'],
-    sites: [site('New York Office', 40.71, -74.01), site('London Office', 51.51, -0.13), site('Singapore Office', 1.35, 103.82), site('Toronto Office', 43.65, -79.38), site('Chicago Office', 41.88, -87.63)],
-    valueRange: [10000, 500000],
-  }),
+  'finance-accounting': buildFinanceData(),
   developers: dataset(4007, {
     categories: ['JavaScript', 'Python', 'iOS', 'Android', 'Java'],
     sites: [site('SF Bay Area', 37.77, -122.42), site('Berlin', 52.52, 13.40), site('Singapore', 1.35, 103.82), site('Austin', 30.27, -97.74), site('Dublin', 53.35, -6.26)],

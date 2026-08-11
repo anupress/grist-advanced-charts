@@ -27,7 +27,8 @@ export const TEMPLATE = {
       logoData: null, title: 'Anupress Lab', slogan: 'Advancing science, one study at a time',
       menu: [
         { label: 'Overview', tab: 'tab-overview' }, { label: 'Samples', tab: 'tab-samples' },
-        { label: 'Projects & Team', tab: 'tab-projects' }, { label: 'Inventory', tab: 'tab-inventory' },
+        { label: 'Projects & Team', tab: 'tab-projects' }, { label: 'Equipment', tab: 'tab-equipment' },
+        { label: 'Inventory', tab: 'tab-inventory' },
       ],
     },
     footer: { text: '© 2026 Anupress Lab.', links: [{ label: 'Overview', tab: 'tab-overview' }, { label: 'Samples', tab: 'tab-samples' }], showCredit: true },
@@ -100,6 +101,41 @@ export const TEMPLATE = {
             config: { title: 'Team directory', table: 'People', columns: ['Name', 'Title', 'Email'], pageSize: 8, searchable: true, sortable: true, defaultSort: null, highlights: [] },
           },
           button('rl25', 'Contact our research office', 'primary', 'left', urlTarget('https://anupress.com/advanced-charts-grist-widget-guide/'), 4),
+        ],
+      },
+      {
+        id: 'tab-equipment', title: 'Equipment',
+        hero: { title: 'Instruments & calibration', subtitle: 'Every instrument, who owns it, and when it is next due for calibration — before an audit asks.' },
+        blocks: [
+          { id: 'rl50', type: 'stat', span: 3, config: { table: 'Instruments', label: 'Instruments tracked', column: 'InstrumentID', agg: 'count', icon: 'sliders', format: {} } },
+          { id: 'rl51', type: 'stat', span: 3, config: { table: 'Instruments', label: 'Due within 30 days', column: 'CalibrationDue', agg: 'sum', icon: 'calendar', format: {} } },
+          { id: 'rl52', type: 'stat', span: 3, config: { table: 'Instruments', label: 'In compliance', column: 'Compliant', agg: 'sum', icon: 'shield', format: {} } },
+          { id: 'rl53', type: 'stat', span: 3, config: { table: 'Instruments', label: 'Instrument hours', column: 'UtilisationHours', agg: 'sum', icon: 'pulse', format: { compact: true } } },
+          { id: 'rl54', type: 'progress', span: 8, config: { title: 'Calibration compliance', mode: 'data', table: 'Instruments', valueColumn: 'Compliant', agg: 'sum', target: 14, suffix: ' instruments', color: '#1c7ed6' } },
+          { id: 'rl55', type: 'breakdown', span: 4, config: { table: 'Instruments', title: 'By status', column: 'Status', limit: 6, display: 'chart', chartType: 'doughnut' } },
+          {
+            id: 'rl56', type: 'calendar', span: 12,
+            config: { title: 'Calibration schedule', table: 'Instruments', dateColumn: 'NextCalibration', titleColumn: 'Name', detailColumns: ['InstrumentID', 'Location', 'ResponsibleStaff', 'Status'], colorBy: 'Status', draggable: true },
+          },
+          text('rl57', '', 'Drag an instrument to a new day to move its calibration date — on the published page that writes straight back to your Instruments table, so the schedule stays true both ways.'),
+          spacer('rl57s', 10),
+          {
+            id: 'rl58', type: 'livetable', span: 12,
+            config: {
+              title: 'Instrument register', table: 'Instruments',
+              columns: ['InstrumentID', 'Name', 'Location', 'ResponsibleStaff', 'Status', 'NextCalibration'],
+              pageSize: 8, searchable: true, sortable: true, defaultSort: null,
+              highlights: [{ ranges: 'F1:F14', color: '#ffe3e3' }],
+            },
+          },
+          text('rl59', '', 'The highlighted column is <b>Next Calibration</b> — the quickest way to spot an instrument about to fall out of certification.'),
+          { id: 'rl60', type: 'chart', span: 6, config: { table: 'Instruments', title: 'Instruments by location', chartType: 'column', dims: ['Location'], measures: ['InstrumentID'], agg: 'count', sortByValue: true } },
+          { id: 'rl61', type: 'chart', span: 6, config: { table: 'Instruments', title: 'Hours logged by instrument', chartType: 'bar', dims: ['Name'], measures: ['UtilisationHours'], agg: 'sum', sortByValue: true, limit: 8 } },
+          accordion('rl62', 'Maintenance & calibration SOPs', [
+            { q: 'How often is each instrument calibrated?', a: 'Annually by default, and immediately after any repair or relocation. The Next Calibration column drives both the calendar above and the compliance bar.' },
+            { q: 'What happens when an instrument goes out for repair?', a: 'Set its status to “Out for repair” — it drops out of the in-service count, and any samples queued on it get reassigned by the lab manager.' },
+            { q: 'Who signs off a calibration?', a: 'The responsible staff member listed against the instrument, countersigned by the Lab Manager. Certificates are attached to the instrument record in Grist.' },
+          ]),
         ],
       },
       {
