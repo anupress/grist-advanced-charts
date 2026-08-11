@@ -49,7 +49,7 @@ export const TEMPLATE = {
           { id: 'sb4', type: 'stat', span: 3, config: { table: 'Expenses', label: 'Running costs', column: 'Amount', agg: 'sum', icon: 'cart', format: { compact: true, currency: '$' } } },
           { id: 'sb5', type: 'chart', span: 8, config: { table: 'Deals', title: 'Pipeline value by stage', chartType: 'column', dims: ['Stage'], measures: ['Amount'], agg: 'sum', sortByValue: true } },
           { id: 'sb6', type: 'breakdown', span: 4, config: { table: 'Deals', title: 'Deals by stage', column: 'Stage', limit: 8, display: 'chart', chartType: 'doughnut' } },
-          { id: 'sb7', type: 'progress', span: 8, config: { title: 'Won against this year’s target', mode: 'data', table: 'Deals', valueColumn: 'WonAmount', agg: 'sum', target: 320000, suffix: '$', color: CLAY } },
+          { id: 'sb7', type: 'progress', span: 8, config: { title: 'Won against this year’s target', mode: 'data', table: 'Deals', valueColumn: 'WonAmount', agg: 'sum', target: 320000, prefix: '$', color: CLAY } },
           { id: 'sb8', type: 'countdown', span: 4, config: { title: 'Quarter ends', targetDate: new Date(Date.now() + 21 * 86400000).toISOString(), expiredText: 'New quarter — pipeline resets.', color: CLAY } },
           text('sb9', 'Our story', 'We started as a single van and grew one repeat customer at a time. This page reads straight from our own records — deals, customers, team hours and running costs — so we always know where we stand without building a report first.'),
           accordion('sb10', 'Frequently asked questions', [
@@ -147,7 +147,7 @@ export const TEMPLATE = {
           { id: 'sb38', type: 'breakdown', span: 4, config: { table: 'Expenses', title: 'By account', column: 'Account', limit: 8, display: 'chart', chartType: 'doughnut' } },
           { id: 'sb39', type: 'breakdown', span: 4, config: { table: 'Expenses', title: 'Approval status', column: 'Status', limit: 4 } },
           { id: 'sb40', type: 'chart', span: 8, config: { table: 'Expenses', title: 'Spend by category', chartType: 'bar', dims: ['Category'], measures: ['Amount'], agg: 'sum', sortByValue: true } },
-          { id: 'sb41', type: 'progress', span: 4, config: { title: 'Operating budget used', mode: 'data', table: 'Expenses', valueColumn: 'Amount', agg: 'sum', target: 30000, suffix: '$', color: AMBER } },
+          { id: 'sb41', type: 'progress', span: 4, config: { title: 'Operating budget used', mode: 'data', table: 'Expenses', valueColumn: 'Amount', agg: 'sum', target: 30000, prefix: '$', color: AMBER } },
           {
             id: 'sb42', type: 'livetable', span: 12,
             config: {

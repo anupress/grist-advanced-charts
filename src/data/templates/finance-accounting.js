@@ -45,7 +45,7 @@ export const TEMPLATE = {
           { id: 'fa6', type: 'breakdown', span: 4, config: { table: 'Invoices', title: 'Invoices by status', column: 'Status', limit: 6, display: 'chart', chartType: 'doughnut' } },
           { id: 'fa7', type: 'chart', span: 8, config: { table: 'CashFlow', title: 'Net cash by month', chartType: 'area', dims: ['Month'], measures: ['Net'], agg: 'sum', smooth: true } },
           { id: 'fa8c', type: 'countdown', span: 4, config: { title: 'Next payroll run', targetDate: new Date(Date.now() + 12 * 86400000).toISOString(), expiredText: 'Payroll runs today — approve timesheets.', color: BLUE } },
-          { id: 'fa8', type: 'progress', span: 12, config: { title: 'Annual revenue target', mode: 'data', table: 'Invoices', valueColumn: 'Amount', agg: 'sum', target: 750000, suffix: '$', color: BLUE } },
+          { id: 'fa8', type: 'progress', span: 12, config: { title: 'Annual revenue target', mode: 'data', table: 'Invoices', valueColumn: 'Amount', agg: 'sum', target: 750000, prefix: '$', color: BLUE } },
           text('fa9', 'About this dashboard', 'This cockpit reads five tables your business already keeps — Invoices, Expenses, Payroll, Clients and a monthly CashFlow summary. Click <b>Edit</b> to connect your own Grist document: create these tables with sample data in one click, or map each block onto tables you already have.'),
           accordion('fa10', 'Frequently asked questions', [
             { q: 'Where does this data live?', a: 'Entirely inside your own Grist document. This dashboard reads it in your browser and never sends financial data to a third-party server.' },
@@ -103,7 +103,7 @@ export const TEMPLATE = {
           { id: 'fa24', type: 'breakdown', span: 4, config: { table: 'Expenses', title: 'By account', column: 'Account', limit: 12, display: 'chart', chartType: 'doughnut' } },
           { id: 'fa25', type: 'breakdown', span: 4, config: { table: 'Expenses', title: 'Approval status', column: 'Status', limit: 6 } },
           { id: 'fa26', type: 'chart', span: 8, config: { table: 'CashFlow', title: 'Spend by month', chartType: 'column', dims: ['Month'], measures: ['Expenses'], agg: 'sum' } },
-          { id: 'fa27', type: 'progress', span: 4, config: { title: 'Quarterly expense budget', mode: 'data', table: 'Expenses', valueColumn: 'Amount', agg: 'sum', target: 60000, suffix: '$', color: BLUE } },
+          { id: 'fa27', type: 'progress', span: 4, config: { title: 'Quarterly expense budget', mode: 'data', table: 'Expenses', valueColumn: 'Amount', agg: 'sum', target: 60000, prefix: '$', color: BLUE } },
           {
             id: 'fa28', type: 'livetable', span: 12,
             config: { title: 'Expense log', table: 'Expenses', columns: ['Date', 'Account', 'Category', 'Description', 'Amount', 'Reimbursable', 'Status'], pageSize: 8, searchable: true, sortable: true, defaultSort: null, highlights: [{ ranges: 'E1:E42', color: '#fff3b0' }] },

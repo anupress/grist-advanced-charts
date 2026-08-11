@@ -29,6 +29,27 @@ function tooltipCfg(trigger = 'axis') {
            backgroundColor: readVar('--ap-surface') || '#fff', borderColor: gridLine(),
            textStyle: { color: readVar('--ap-text') || '#1f2233' }, extraCssText: 'border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);' };
 }
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// A category axis built from a Date column arrives as raw ISO strings. Twelve of "2025-01-01" is
+// long enough to trip the rotation heuristic below, so a simple monthly trend rendered as a wall
+// of angled timestamps. Shortening to "Jan"/"Feb" (or "Jan 25" when the range crosses a year, or
+// "12 Aug" for daily data) is both readable and short enough that rotation stops being needed.
+// Safe to do here because groupAggregate has already sorted temporal categories lexically — this
+// only changes how they are LABELLED, never their order.
+function shortenDateCategories(cats) {
+  if (cats.length < 2 || !cats.every((c) => ISO_DATE.test(String(c)))) return cats;
+  const sameYear = new Set(cats.map((c) => String(c).slice(0, 4))).size === 1;
+  const monthly = cats.every((c) => String(c).slice(8, 10) === '01');
+  return cats.map((c) => {
+    const s = String(c);
+    const mon = MON[Number(s.slice(5, 7)) - 1] || s.slice(5, 7);
+    const yy = s.slice(2, 4);
+    if (monthly) return sameYear ? mon : `${mon} ${yy}`;
+    return sameYear ? `${Number(s.slice(8, 10))} ${mon}` : `${Number(s.slice(8, 10))} ${mon} ${yy}`;
+  });
+}
+
 const catAxis = (data, { rotate = 0, showAll = false } = {}) => ({
   type: 'category', data, boundaryGap: true,
   axisLine: { lineStyle: { color: gridLine() } }, axisTick: { show: false },
@@ -60,8 +81,11 @@ export function buildOption(block, ctx) {
     sortByValue: cfg.sortByValue ?? SINGLE_SERIES.has(type), limit: cfg.limit || 0,
   });
 
+  // Display labels only — the aggregation above already used the raw values.
+  const cats = shortenDateCategories(g.categories);
+
   if (SINGLE_SERIES.has(type)) {
-    const data = g.categories.map((c, i) => ({ name: c, value: g.series[0]?.data[i] ?? 0 }));
+    const data = cats.map((c, i) => ({ name: c, value: g.series[0]?.data[i] ?? 0 }));
     if (type === 'treemap') return treemapOption(data, colors);
     if (type === 'funnel') return funnelOption(data, colors);
     return pieOption(data, colors, type === 'doughnut');
@@ -75,11 +99,13 @@ export function buildOption(block, ctx) {
   // and force every one to show while rotation keeps them legible. Only past ~18 categories do we
   // fall back to letting echarts hide overlaps — beyond that even angled labels become a wall.
   const nCats = g.categories.length;
-  const maxLabelLen = g.categories.reduce((m, c) => Math.max(m, String(c).length), 0);
-  // Rotate only when horizontal labels would actually collide: several moderately-long labels, or
-  // a genuinely long one, or simply a lot of them. A few short-ish labels stay flat and readable.
-  const catRotate = ((nCats > 4 && maxLabelLen > 6) || maxLabelLen > 12 || nCats > 8)
-    ? (maxLabelLen > 14 || nCats > 12 ? 45 : 30) : 0;
+  const maxLabelLen = cats.reduce((m, c) => Math.max(m, String(c).length), 0);
+  // Rotate only when the labels genuinely will not fit flat. Judge that on the total width they
+  // need — count AND length together — rather than on either alone: a bare "more than 8 categories"
+  // rule tilted twelve three-letter month labels that had room to spare, while six names like
+  // "Emily Johnson" must still tilt. At 11px a card's axis fits roughly 55 characters laid flat.
+  const flatWidth = nCats * (maxLabelLen + 1);
+  const catRotate = flatWidth > 55 ? (maxLabelLen > 14 || nCats > 12 ? 45 : 30) : 0;
   const showAllCats = catRotate > 0 && nCats <= 18;
 
   const series = g.series.map((s) => {
@@ -96,8 +122,8 @@ export function buildOption(block, ctx) {
   return {
     color: colors, animationDuration: 600, animationEasing: 'cubicOut',
     grid: baseGrid(showLegend), legend: legendCfg(showLegend), tooltip: tooltipCfg('axis'),
-    xAxis: isBar ? valAxis() : catAxis(g.categories, { rotate: catRotate, showAll: showAllCats }),
-    yAxis: isBar ? catAxis(g.categories, { showAll: nCats <= 18 }) : valAxis(),
+    xAxis: isBar ? valAxis() : catAxis(cats, { rotate: catRotate, showAll: showAllCats }),
+    yAxis: isBar ? catAxis(cats, { showAll: nCats <= 18 }) : valAxis(),
     series,
   };
 }
@@ -156,7 +182,11 @@ function gaugeOption(cfg, rows, colors) {
     axisLabel: { show: false }, anchor: { show: false },
     title: { show: false }, detail: { valueAnimation: true, fontSize: 30, fontWeight: 800, offsetCenter: [0, 0],
       color: readVar('--ap-text') || '#1f2233', formatter: (v) => fmtNumber(v, { compact: true }) },
-    data: [{ value: Math.round(val) }] }] };
+    // Pass the real value, not Math.round(val): the detail formatter above already decides how to
+    // display it, so rounding here only threw away precision — and on a small-magnitude metric it
+    // is the whole number. An average satisfaction of 4.26 on a 0-5 dial rendered as a flat "4",
+    // with the arc drawn at the wrong place to match.
+    data: [{ value: val }] }] };
 }
 function niceMax(v) { if (v <= 0) return 100; const mag = Math.pow(10, Math.floor(Math.log10(v))); return Math.ceil(v / mag) * mag; }
 

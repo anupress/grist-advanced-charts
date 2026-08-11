@@ -27,9 +27,20 @@ function buildSales() {
       const region = REGIONS[Math.floor(rnd() * REGIONS.length)];
       const channel = CHANNELS[Math.floor(rnd() * CHANNELS.length)];
       const product = PRODUCTS[Math.floor(rnd() * PRODUCTS.length)];
-      const seasonal = 1 + 0.35 * Math.sin((MONTHS.indexOf(month) / 12) * Math.PI * 2);
+      // Seasonality alone (a pure sine over the year) peaks in spring and troughs in autumn, so
+      // the back half of the year always sits below the front half. The KPI cards on the demo's
+      // landing page compare exactly those two halves — which meant the first thing anyone saw was
+      // Revenue, Units and Profit all down 40-45% in red. A demo should show a business worth
+      // copying, so there is now a growth trend underneath the seasonal wobble: the year still
+      // undulates (that is what makes the line chart interesting) but it climbs.
+      // The -8 phase shift puts the seasonal peak in November/December and the trough in early
+      // summer, which is how retail categories like these actually behave — and it stops the
+      // spring peak from cancelling out the growth trend in the half-vs-half KPI comparison.
+      const i = MONTHS.indexOf(month);
+      const growth = 1 + 0.7 * (i / (MONTHS.length - 1));
+      const seasonal = 1 + 0.18 * Math.sin(((i - 8) / 12) * Math.PI * 2);
       const base = { Electronics: 1900, Apparel: 1200, Home: 950, Sports: 760 }[cat];
-      const units = Math.round((base * seasonal * (0.7 + rnd() * 0.7)) / 10);
+      const units = Math.round((base * growth * seasonal * (0.8 + rnd() * 0.4)) / 10);
       const price = { Electronics: 240, Apparel: 65, Home: 120, Sports: 95 }[cat] * (0.9 + rnd() * 0.3);
       const revenue = Math.round(units * price);
       const cost = Math.round(revenue * (0.52 + rnd() * 0.16));

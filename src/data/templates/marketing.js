@@ -233,9 +233,9 @@ export const TEMPLATE = {
             id: 'mk66', type: 'timeline', span: 6,
             config: {
               title: 'How we got here', items: [
-                { date: 'Q1', title: 'Five spreadsheets', text: 'Campaigns, content, posts, events and survey replies each lived in their own file, and nothing reconciled.' },
-                { date: 'Q2', title: 'One document', text: 'Everything moved into a single relational doc, so a campaign could finally be linked to the posts and pages that carried it.' },
-                { date: 'Q3', title: 'One scoreboard', text: 'This dashboard replaced the monthly deck. The numbers update themselves; the review is now about what to do next.' },
+                { date: 'Q1', title: 'Five spreadsheets', description: 'Campaigns, content, posts, events and survey replies each lived in their own file, and nothing reconciled.' },
+                { date: 'Q2', title: 'One document', description: 'Everything moved into a single relational doc, so a campaign could finally be linked to the posts and pages that carried it.' },
+                { date: 'Q3', title: 'One scoreboard', description: 'This dashboard replaced the monthly deck. The numbers update themselves; the review is now about what to do next.' },
               ],
             },
           },

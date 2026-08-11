@@ -436,7 +436,9 @@ function openProgressEditor(block, ctx) {
     field('Value comes from', segmented([{ value: 'manual', label: 'Type a number' }, { value: 'data', label: 'From my data' }], wb.config.mode || 'manual', (v) => { wb.config.mode = v; buildDyn(); refreshPreview(); })),
     dynHost,
     field('Target (goal)', textInput(String(wb.config.target ?? 100), (v) => { wb.config.target = Number(v) || 0; refreshPreview(); }, { type: 'number' })),
-    field('Suffix (optional)', textInput(wb.config.suffix || '', (v) => { wb.config.suffix = v; refreshPreview(); }, { placeholder: 'e.g. signups, $' })),
+    // Two fields, not one: a currency symbol has to lead the number and a unit has to follow it.
+    field('Prefix (optional)', textInput(wb.config.prefix || '', (v) => { wb.config.prefix = v; refreshPreview(); }, { placeholder: 'e.g. $, £ — goes before the number' })),
+    field('Suffix (optional)', textInput(wb.config.suffix || '', (v) => { wb.config.suffix = v; refreshPreview(); }, { placeholder: 'e.g. signups, hrs — goes after' })),
     colorField('Bar color', wb.config.color, '#6d5efc', (v) => { wb.config.color = v; refreshPreview(); }),
     field('Block width', segmented(SPANS, wb.span || 4, (v) => { wb.span = v; })),
     subhead('Live preview'), previewHost,

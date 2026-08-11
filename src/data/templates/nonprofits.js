@@ -51,7 +51,7 @@ export const TEMPLATE = {
           { id: 'np4', type: 'stat', span: 3, config: { table: 'Programs', label: 'People served', column: 'PeopleServed', agg: 'sum', icon: 'target', format: { compact: true } } },
           { id: 'np5', type: 'chart', span: 8, config: { table: 'Donations', title: 'Giving over time', chartType: 'area', dims: ['Date'], measures: ['Amount'], agg: 'sum', smooth: true } },
           { id: 'np6', type: 'breakdown', span: 4, config: { table: 'Donations', title: 'By campaign', column: 'Campaign', limit: 8, display: 'chart', chartType: 'doughnut' } },
-          { id: 'np7', type: 'progress', span: 8, config: { title: 'Individual giving goal this year', mode: 'data', table: 'Donations', valueColumn: 'Received', agg: 'sum', target: 45000, suffix: '$', color: GREEN } },
+          { id: 'np7', type: 'progress', span: 8, config: { title: 'Individual giving goal this year', mode: 'data', table: 'Donations', valueColumn: 'Received', agg: 'sum', target: 45000, prefix: '$', color: GREEN } },
           { id: 'np8', type: 'countdown', span: 4, config: { title: 'Winter Appeal closes', targetDate: new Date(Date.now() + 24 * 86400000).toISOString(), expiredText: 'Thank you — the appeal has closed!', color: GREEN } },
           text('np9', 'Where your donation goes', 'We publish our finances openly. This page reads directly from our own Grist records — the same numbers our board sees — so you always know exactly how donations are used before you give.'),
           accordion('np10', 'Frequently asked questions', [
@@ -122,7 +122,7 @@ export const TEMPLATE = {
           { id: 'np32', type: 'breakdown', span: 4, config: { table: 'Programs', title: 'Programs by focus', column: 'Focus', limit: 8 } },
           { id: 'np33', type: 'chart', span: 8, config: { table: 'Programs', title: 'People served by program', chartType: 'bar', dims: ['Program'], measures: ['PeopleServed'], agg: 'sum', sortByValue: true } },
           { id: 'np34', type: 'chart', span: 12, config: { table: 'Programs', title: 'Budget vs spent by program', chartType: 'column', dims: ['Program'], measures: ['Budget', 'Spent'], agg: 'sum' } },
-          { id: 'np35', type: 'progress', span: 12, config: { title: 'Program budget used this year', mode: 'data', table: 'Programs', valueColumn: 'Spent', agg: 'sum', target: 250000, suffix: '$', color: GREEN } },
+          { id: 'np35', type: 'progress', span: 12, config: { title: 'Program budget used this year', mode: 'data', table: 'Programs', valueColumn: 'Spent', agg: 'sum', target: 250000, prefix: '$', color: GREEN } },
           {
             id: 'np36', type: 'livetable', span: 12,
             config: {

@@ -52,7 +52,7 @@ export const TEMPLATE = {
           { id: 'he4', type: 'stat', span: 3, config: { table: 'Faculty', label: 'Faculty', column: 'Name', agg: 'count', icon: 'star', format: {} } },
           { id: 'he5', type: 'chart', span: 8, config: { table: 'Students', title: 'Enrolment by programme', chartType: 'bar', dims: ['Programme'], measures: ['IsEnrolled'], agg: 'sum', sortByValue: true } },
           { id: 'he6', type: 'breakdown', span: 4, config: { table: 'Students', title: 'By year of study', column: 'Year', limit: 6, display: 'chart', chartType: 'doughnut' } },
-          { id: 'he7', type: 'progress', span: 8, config: { title: 'Research funding against annual goal', mode: 'data', table: 'Grants', valueColumn: 'AmountAwarded', agg: 'sum', target: 2500000, suffix: '$', color: NAVY } },
+          { id: 'he7', type: 'progress', span: 8, config: { title: 'Research funding against annual goal', mode: 'data', table: 'Grants', valueColumn: 'AmountAwarded', agg: 'sum', target: 2500000, prefix: '$', color: NAVY } },
           { id: 'he8', type: 'countdown', span: 4, config: { title: 'Term starts', targetDate: new Date(Date.now() + 27 * 86400000).toISOString(), expiredText: 'Term is under way — welcome back.', color: NAVY } },
           text('he9', 'How to read this page', 'Everything here is an aggregate. Students appear only as anonymised cohort records — an ID, programme, year and credits — never by name. Individual student records stay inside our Grist document behind access rules, which is how a published page and student privacy can coexist.'),
           accordion('he10', 'Frequently asked questions', [

@@ -266,11 +266,17 @@ function renderProgressBlock(block, ctx) {
   }
   const target = Number(c.target) || 0;
   const pct = target > 0 ? clamp(Math.round((value / target) * 100), 0, 100) : 0;
+  // Units go after the number ("9,000 leads"); currency goes before it. Without a prefix the only
+  // way to show money was suffix:'$', which rendered "1.2M $" — it did, on eight bars across five
+  // templates. The suffix keeps its automatic leading space; the prefix deliberately gets none,
+  // because "$ 1.2M" is wrong in every currency that leads.
   const suf = c.suffix ? ' ' + c.suffix : '';
+  const pre = c.prefix || '';
+  const amount = (n) => `${pre}${fmtNumber(n)}${suf}`;
   return el('div', { class: 'ap-card ap-progressblock', dataset: { blockId: block.id } }, [
     el('div', { class: 'ap-progressblock__head' }, [
       el('span', { class: 'ap-progressblock__title', text: c.title || 'Progress' }),
-      el('span', { class: 'ap-progressblock__val', text: `${fmtNumber(value)}${suf} / ${fmtNumber(target)}${suf}` }),
+      el('span', { class: 'ap-progressblock__val', text: `${amount(value)} / ${amount(target)}` }),
     ]),
     el('div', { class: 'ap-progressblock__track' }, [
       el('div', { class: 'ap-progressblock__fill', style: { width: pct + '%', background: c.color || 'var(--ap-primary)' } }),

@@ -1,13 +1,29 @@
-// The prebuilt demo site (this is "what we built previously"). It references the bundled
-// Sales table. When a real user starts editing, this is also the sensible starting template
-// before they remap blocks onto their own tables/columns.
+// The prebuilt demo site — the FIRST thing anyone sees after pasting the widget URL into Grist
+// (step 3 of the published guide: "explore sample data"). Its job is therefore not just to look
+// good but to TEACH: what this widget is, what it can build, and how to make it yours.
+//
+// It is organized so each page answers one question, rather than being a pile of blocks:
+//   Overview      — "what could my table look like?"      (the aspirational dashboard)
+//   Chart types   — "what can it draw?"                   (all 11 chart types, labelled)
+//   Live data     — "does it read my real rows?"          (table, breakdowns, map, calendar)
+//   Team          — "does it handle more than one table?" (a second table, People)
+//   Page elements — "is it only charts?"                  (the website blocks)
+//   Get started   — "how do I do this with my data?"      (the five steps, privacy, FAQ)
+//
+// It also doubles as the sensible starting point once a real user begins editing, and as the
+// coverage net for the block library: every one of the 21 block types and all 11 chart types
+// appear here, each in a place where it makes sense rather than dumped on one "showcase" page.
 
 import {
-  accordion, counter, iconBlock, button, urlTarget, spacer, image, testimonials,
+  text, accordion, counter, iconBlock, button, urlTarget, tabTarget, spacer, image, testimonials,
   clockEmbed, placeholderImage,
 } from './templates/_helpers.js';
 
 export const SITE_VERSION = 1;
+
+const GUIDE = 'https://anupress.com/advanced-charts-grist-widget-guide/';
+const VIOLET = '#6d5efc';
+const TEAL = '#16c4a6';
 
 // Lightweight gradient "photo" used only to demo the hero slider (no bundled image files).
 const demoSlide = (c1, c2) => 'data:image/svg+xml,' + encodeURIComponent(
@@ -25,25 +41,35 @@ export const DEFAULT_SITE = {
   dataTable: 'Sales',
   header: {
     logoData: null, // null => ANUPRESS brand mark
-    title: 'Anupress Analytics',
-    slogan: "Let's build something amazing",
+    title: 'Advanced Charts',
+    slogan: 'Turn any Grist table into a dashboard',
     menu: [
       { label: 'Overview', tab: 'tab-overview' },
-      { label: 'Trends', tab: 'tab-trends' },
-      { label: 'Breakdown', tab: 'tab-breakdown' },
+      { label: 'Chart types', tab: 'tab-charts' },
+      { label: 'Live data', tab: 'tab-live' },
       { label: 'Team', tab: 'tab-team' },
-      { label: 'Showcase', tab: 'tab-showcase' },
+      { label: 'Page elements', tab: 'tab-elements' },
+      { label: 'Get started', tab: 'tab-start' },
     ],
   },
   footer: {
-    text: '© 2026 Anupress Analytics.',
-    links: [ { label: 'Overview', tab: 'tab-overview' }, { label: 'Trends', tab: 'tab-trends' } ],
+    text: '© 2026 Advanced Charts — a free, open-source widget for Grist.',
+    links: [{ label: 'Overview', tab: 'tab-overview' }, { label: 'Get started', tab: 'tab-start' }],
     showCredit: true,
   },
   tabs: [
     {
       id: 'tab-overview', title: 'Overview',
-      hero: { title: 'Welcome back 👋', subtitle: 'A clear, friendly snapshot of how the business is performing this year.' },
+      hero: {
+        title: 'This is a Grist table 👋',
+        subtitle: 'Every number, chart and map on this page is read live from one ordinary table — no export, no BI tool, no server in the middle.',
+        align: 'left', vAlign: 'bottom', size: 'xl', autoplay: true, interval: 6,
+        slides: [
+          { image: demoSlide(VIOLET, TEAL), title: 'This is a Grist table 👋', subtitle: 'Read live from 48 rows of demo data — nothing here is hard-coded.' },
+          { image: demoSlide(TEAL, '#ff8a5b'), title: 'Point it at your own data', subtitle: 'Any table, any columns — text, number, choice, date, yes/no.' },
+          { image: demoSlide('#7048e8', '#e64980'), title: 'Publish it as a page', subtitle: 'Menus, themes, dark mode and twenty-one kinds of block.' },
+        ],
+      },
       blocks: [
         stat('s1', 'Total Revenue', 'Revenue', 'sum', 'coins', { compact: true, currency: '$' }),
         stat('s2', 'Units Sold', 'Units', 'sum', 'cart', { compact: true }),
@@ -53,99 +79,143 @@ export const DEFAULT_SITE = {
         chart('c2', 'Revenue by category', 'doughnut', ['Category'], ['Revenue'], {}, 4),
         chart('c3', 'Profit by region', 'column', ['Region'], ['Profit'], { sortByValue: true }, 6),
         chart('c4', 'Units by channel', 'column', ['Channel'], ['Units'], {}, 6),
+        { id: 'c5', type: 'progress', span: 12, config: { title: 'Annual revenue goal', mode: 'data', table: 'Sales', valueColumn: 'Revenue', agg: 'sum', target: 3000000, prefix: '$', suffix: '', color: VIOLET } },
+        text('c6', 'Everything above came from one table',
+          'Four KPI cards, four charts and a progress bar — all reading the same 48-row demo table, each pointed at a different column. Nothing was typed in by hand, so when the rows change the page changes with them. Use the menu to see what else the widget can draw, or jump straight to <b>Get started</b> to point it at your own document.'),
+        button('c7', 'Show me how to use my own data', 'primary', 'center', tabTarget('tab-start'), 12),
       ],
     },
     {
-      id: 'tab-trends', title: 'Trends',
-      hero: { title: 'Trends & momentum', subtitle: 'Track how revenue, profit and satisfaction move through the year.' },
+      id: 'tab-charts', title: 'Chart types',
+      hero: { title: 'Eleven ways to draw it 📊', subtitle: 'The same demo table, plotted every way the widget knows how — with a note on when each one is the right choice.' },
       blocks: [
-        chart('t1', 'Revenue & profit by month', 'line', ['Month'], ['Revenue', 'Profit'], { smooth: true }, 12),
-        chart('t2', 'Revenue by category & region', 'column', ['Category', 'Region'], ['Revenue'], { stacked: true }, 6),
-        chart('t3', 'Satisfaction by category', 'radar', ['Category'], ['Satisfaction'], { agg: 'avg' }, 6),
+        text('g0', 'Not sure which to pick?',
+          'The <b>guided chart wizard</b> reads the shape of your data and recommends one, so you never have to know what a treemap is for. This page shows the full set anyway, because seeing them side by side is the fastest way to recognise the one you want.'),
+        chart('g1', 'Column — compare categories', 'column', ['Region'], ['Revenue'], { sortByValue: true }, 6),
+        chart('g2', 'Bar — the same, but for long labels', 'bar', ['Product'], ['Revenue'], { sortByValue: true, limit: 8 }, 6),
+        chart('g3', 'Line — change over time', 'line', ['Month'], ['Revenue', 'Profit'], { smooth: true }, 6),
+        chart('g4', 'Area — a total that accumulates', 'area', ['Month'], ['Units'], { smooth: true }, 6),
+        chart('g5', 'Pie — share of a whole', 'pie', ['Channel'], ['Revenue'], {}, 4),
+        chart('g6', 'Doughnut — the same, with room in the middle', 'doughnut', ['Category'], ['Revenue'], {}, 4),
+        chart('g7', 'Treemap — many parts at once', 'treemap', ['Product'], ['Revenue'], {}, 4),
+        chart('g8', 'Funnel — stages that narrow', 'funnel', ['Channel'], ['Units'], { sortByValue: true }, 4),
+        chart('g9', 'Radar — several categories compared', 'radar', ['Category'], ['Satisfaction'], { agg: 'avg' }, 4),
+        // A gauge wants one number and no category dimension, so dims:[] is deliberate here —
+        // groupAggregate treats an empty dims list as "aggregate the whole table to a single value".
+        chart('g10', 'Gauge — one number against a scale', 'gauge', [], ['Satisfaction'], { agg: 'avg' }, 4),
+        chart('g11', 'Scatter — is one thing driving another?', 'scatter', ['Category'], ['Units', 'Revenue'], {}, 6),
+        chart('g12', 'Stacked column — parts within a whole', 'column', ['Category', 'Region'], ['Revenue'], { stacked: true }, 6),
+        text('g13', 'Every chart is configurable',
+          'Chart type, columns, how values are grouped (sum, average, count, distinct count, minimum, maximum, median, standard deviation), sort order, series limits, smoothing, stacking and colours are all editable from the panel — no formulas required.'),
       ],
     },
     {
-      id: 'tab-breakdown', title: 'Breakdown',
-      hero: { title: 'The full breakdown', subtitle: 'Slice the numbers by product, channel and margin.' },
+      id: 'tab-live', title: 'Live data',
+      hero: { title: 'It reads your actual rows 🔎', subtitle: 'Not a screenshot and not a copy — searchable tables, grouped counts, maps, and a calendar that writes back.' },
       blocks: [
-        chart('b1', 'Revenue share by channel', 'pie', ['Channel'], ['Revenue'], {}, 4),
-        chart('b2', 'Revenue by product', 'treemap', ['Product'], ['Revenue'], {}, 8),
-        chart('b3', 'Units vs revenue', 'scatter', ['Category'], ['Units', 'Revenue'], {}, 6),
-        chart('b4', 'Average margin by category', 'bar', ['Category'], ['Margin'], { agg: 'avg', sortByValue: true }, 6),
-        { id: 'b5', type: 'text', span: 12, config: { heading: 'About this report',
-          html: 'These figures are illustrative demo data. Click <b>Edit</b> to connect your own Grist table, choose any columns, pick chart types and colors, and publish your own version — your data never leaves your browser.' } },
+        {
+          id: 'l1', type: 'livetable', span: 12,
+          config: {
+            title: 'Every row, searchable and sortable', table: 'Sales',
+            columns: ['Month', 'Region', 'Category', 'Product', 'Units', 'Revenue', 'Profit', 'Margin'],
+            pageSize: 8, searchable: true, sortable: true, defaultSort: null,
+            // G = Profit in the RENDERED order, which follows the table's own column order
+            // (render/livetable.js filters allCols) — not the order of the array above.
+            highlights: [{ ranges: 'G1:G48', color: '#d3f9d8' }],
+          },
+        },
+        text('l2', '',
+          'Type in the search box, or click a column heading to sort. The <b>Profit</b> column is tinted using a spreadsheet-style range (<code>G1:G48</code>) — useful for drawing the eye to the column that matters, without touching your data.'),
+        { id: 'l3', type: 'breakdown', span: 4, config: { table: 'Sales', title: 'Rows by region', column: 'Region', limit: 12, subtitle: '%groups regions' } },
+        { id: 'l4', type: 'breakdown', span: 4, config: { table: 'Sales', title: 'Rows by category', column: 'Category', limit: 12 } },
+        { id: 'l5', type: 'breakdown', span: 4, config: { table: 'Sales', title: 'Rows by channel', column: 'Channel', limit: 12, display: 'chart', chartType: 'doughnut' } },
+        text('l6', 'Breakdowns count rows; charts measure them',
+          'A breakdown answers "how many of each?" and shows as either a list or a chart. Reach for it when you want a count of a choice column — and for a chart when you want to sum or average a number.'),
+        { id: 'l7', type: 'divider', span: 12, config: { style: 'dashed', thickness: 1, color: null } },
+        { id: 'l8', type: 'calendar', span: 12, config: { title: 'Anything with a date becomes a calendar', table: 'Tasks', dateColumn: 'DueDate', titleColumn: 'Task', detailColumns: ['AssignedTo', 'Project', 'Status', 'Notes'], colorBy: 'Priority', draggable: true } },
+        text('l9', '',
+          'Click an event for its details, or a day\'s <b>+N more</b> link to see everything on that date. On a published page, dragging an event to another day writes the new date straight back to your table — and anything changed directly in Grist shows up here within about 15 seconds, with no refresh.'),
       ],
     },
     {
       id: 'tab-team', title: 'Team',
-      hero: {
-        title: 'Meet the team', subtitle: 'People, not revenue', align: 'left', vAlign: 'bottom', size: 'xl',
-        autoplay: true, interval: 5,
-        slides: [
-          { image: demoSlide('#6d5efc', '#16c4a6'), title: 'Meet the team', subtitle: 'People, not revenue' },
-          { image: demoSlide('#16c4a6', '#ff8a5b'), title: 'Any table works', subtitle: 'Text, choice, date, number, yes/no' },
-          { image: demoSlide('#7048e8', '#e64980'), title: 'Map your data', subtitle: 'Plot lat / long with clustering' },
-        ],
-      },
+      hero: { title: 'More than one table 🧑‍🤝‍🧑', subtitle: 'Blocks on one page can each read a different table. This page is a 36-row People table — not the Sales data behind every other page.' },
       blocks: [
         { id: 'm1', type: 'stat', span: 3, config: { table: 'People', label: 'Headcount', column: 'Name', agg: 'count', icon: 'users', format: {} } },
         { id: 'm2', type: 'stat', span: 3, config: { table: 'People', label: 'Avg Age', column: 'Age', agg: 'avg', icon: 'pulse', format: { decimals: 0 } } },
         { id: 'm3', type: 'stat', span: 3, config: { table: 'People', label: 'Avg Salary', column: 'Salary', agg: 'avg', icon: 'coins', format: { compact: true, currency: '$' } } },
         { id: 'm4', type: 'stat', span: 3, config: { table: 'People', label: 'Avg Performance', column: 'Rating', agg: 'avg', icon: 'star', format: { decimals: 1 } } },
         { id: 'm5', type: 'chart', span: 6, config: { table: 'People', title: 'Headcount by department', chartType: 'column', dims: ['Department'], measures: ['Name'], agg: 'count', sortByValue: true } },
-        { id: 'm6', type: 'chart', span: 6, config: { table: 'People', title: 'Gender split', chartType: 'doughnut', dims: ['Gender'], measures: ['Name'], agg: 'count' } },
-        { id: 'm7', type: 'chart', span: 6, config: { table: 'People', title: 'Average salary by department', chartType: 'bar', dims: ['Department'], measures: ['Salary'], agg: 'avg', sortByValue: true } },
-        { id: 'm8', type: 'chart', span: 6, config: { table: 'People', title: 'Performance by role', chartType: 'column', dims: ['Role'], measures: ['Rating'], agg: 'avg' } },
-        { id: 'm10', type: 'breakdown', span: 4, config: { table: 'People', title: 'Department', column: 'Department', limit: 12, subtitle: '%groups departments' } },
-        { id: 'm11', type: 'breakdown', span: 4, config: { table: 'People', title: 'City', column: 'City', limit: 12 } },
-        { id: 'm12', type: 'breakdown', span: 4, config: { table: 'People', title: 'Gender', column: 'Gender', limit: 12, display: 'chart', chartType: 'doughnut' } },
-        { id: 'm13', type: 'map', span: 12, config: { table: 'People', title: 'Where the team is', subtitle: '%count team members mapped · %missing without coordinates', latColumn: 'Latitude', lonColumn: 'Longitude', labelColumn: 'Name', colorBy: 'Department', popupColumns: ['Role', 'City', 'Salary'] } },
+        { id: 'm6', type: 'chart', span: 6, config: { table: 'People', title: 'Average salary by department', chartType: 'bar', dims: ['Department'], measures: ['Salary'], agg: 'avg', sortByValue: true } },
+        { id: 'm7', type: 'map', span: 12, config: { table: 'People', title: 'Where the team is', subtitle: '%count team members mapped · %missing without coordinates', latColumn: 'Latitude', lonColumn: 'Longitude', labelColumn: 'Name', colorBy: 'Department', popupColumns: ['Role', 'City', 'Salary'] } },
+        text('m8', 'Any latitude/longitude pair becomes a map',
+          'Point the map block at two numeric columns and it plots and clusters your rows, colours the pins by any other column, and shows whichever fields you choose when a pin is clicked. Map tiles are the one and only thing this widget fetches from outside: the tile service sees the map area and your IP address, never your data.'),
         { id: 'm9', type: 'chart', span: 12, config: { table: 'People', title: 'Age vs salary by department', chartType: 'scatter', dims: ['Department'], measures: ['Age', 'Salary'], agg: 'avg' } },
       ],
     },
     {
-      id: 'tab-showcase', title: 'Showcase',
-      hero: { title: 'Every element, in one place 🧩', subtitle: 'A tour of every block type Advanced Charts can add to your site — mix and match freely on your own pages.' },
+      id: 'tab-elements', title: 'Page elements',
+      hero: { title: 'It builds pages, not just charts 🧩', subtitle: 'The blocks below hold no data at all — they are what turn a dashboard into something you would happily send to a client.' },
       blocks: [
-        iconBlock('sh1', 'sparkles', 'l', '#6d5efc', '#ffffff', 'center', 3),
-        iconBlock('sh2', 'target', 'l', '#16c4a6', '#ffffff', 'center', 3),
-        counter('sh3', 'Dashboards published', 0, 1250, { suffix: '+' }, 3),
-        counter('sh4', 'Avg. setup time', 0, 4, { suffix: ' min' }, 3),
-        { id: 'sh5', type: 'progress', span: 12, config: { title: 'Annual revenue goal', mode: 'data', table: 'Sales', valueColumn: 'Revenue', agg: 'sum', target: 1000000, suffix: '$', color: '#6d5efc' } },
-        { id: 'sh5d', type: 'divider', span: 12, config: { style: 'solid', thickness: 1, color: null } },
-        image('sh6', placeholderImage('#6d5efc', '#16c4a6'), 'A live dashboard on a laptop screen', 'Every block adapts to light and dark themes automatically', 6),
-        testimonials('sh7', 'What people say', [
+        iconBlock('e1', 'sparkles', 'l', VIOLET, '#ffffff', 'center', 3),
+        iconBlock('e2', 'target', 'l', TEAL, '#ffffff', 'center', 3),
+        iconBlock('e3', 'shield', 'l', '#7048e8', '#ffffff', 'center', 3),
+        iconBlock('e4', 'star', 'l', '#e64980', '#ffffff', 'center', 3),
+        counter('e5', 'Block types', 0, 21, {}, 3),
+        counter('e6', 'Chart types', 0, 11, {}, 3),
+        counter('e7', 'Starter templates', 0, 9, {}, 3),
+        counter('e8', 'Servers in the middle', 0, 0, {}, 3),
+        text('e9', 'Icons and counters',
+          'Counters animate upward when they scroll into view, and hold still if your system asks for reduced motion. Both take any icon from the built-in set, or an SVG of your own.'),
+        { id: 'e10', type: 'divider', span: 12, config: { style: 'solid', thickness: 1, color: null } },
+        image('e11', placeholderImage(VIOLET, TEAL), 'A published dashboard on a laptop screen', 'Images can be uploaded, or pulled from a Grist attachment column', 6),
+        testimonials('e12', 'What people say', [
           { name: 'Priya Patel', quote: 'We had a client-ready dashboard published before our coffee got cold.', rating: 5, photoData: null },
           { name: 'Diego Costa', quote: 'The only widget where our data genuinely never leaves our own document.', rating: 5, photoData: null },
         ], 6),
-        { id: 'sh8', type: 'livetable', span: 12, config: { title: 'Recent transactions', table: 'Sales', columns: ['Month', 'Region', 'Category', 'Revenue', 'Profit'], pageSize: 6, searchable: true, sortable: true, defaultSort: null,
-          highlights: [{ ranges: 'D1:E3', color: '#d3f9d8' }] } },
-        { id: 'sh8d', type: 'divider', span: 12, config: { style: 'dashed', thickness: 1, color: null } },
-        { id: 'sh8e', type: 'calendar', span: 12, config: { title: 'Task calendar', table: 'Tasks', dateColumn: 'DueDate', titleColumn: 'Task', detailColumns: ['AssignedTo', 'Project', 'Status', 'Notes'], colorBy: 'Priority', draggable: true } },
-        { id: 'sh8f', type: 'text', span: 12, config: { heading: '', html: 'On the published page, dragging an event to a new day writes the new date straight back to your table — and the calendar picks up anything changed directly in Grist within about 15 seconds, no refresh needed.' } },
-        { id: 'sh8g', type: 'divider', span: 12, config: { style: 'dashed', thickness: 1, color: null } },
-        { id: 'sh9', type: 'timeline', span: 12, config: { title: 'Where we\'ve been', items: [
-          { date: '2023', title: 'Anupress Analytics founded', description: 'Started as a side project to make Grist data look as good as it is useful.' },
-          { date: '2024', title: 'First 1,000 dashboards published', description: 'Teams across 20+ countries started publishing live, editable sites straight from their tables.' },
-          { date: '2025', title: 'Guided chart wizard & self-hosted support', description: 'Recommendations that pick the right chart for you, and full compatibility with self-hosted Grist.' },
-          { date: '2026', title: 'v3: 21 block types and counting', description: 'Testimonials, pricing tables, QR codes, a two-way synced calendar, live data tables with highlighting — this page.' },
+        { id: 'e13', type: 'pricing', span: 8, config: { title: 'Pricing tables, if you need one', plans: [
+          { name: 'Advanced Charts', price: '$0', period: 'forever', features: ['All 21 block types', 'All 11 chart types', '9 starter templates', 'Open source and self-hostable'], highlighted: true, buttonLabel: 'Read the guide', buttonTarget: urlTarget(GUIDE) },
+          { name: 'Your dashboard', price: 'Yours', period: 'to keep', features: ['Lives in your own document', 'No account, no sign-up', 'No analytics, no tracking', 'Works on self-hosted Grist'], highlighted: false, buttonLabel: 'Get started', buttonTarget: tabTarget('tab-start') },
         ] } },
-        accordion('sh10', 'Frequently asked questions', [
-          { q: 'Does my data ever leave my browser?', a: 'No. Every chart, table and calculation on this page runs client-side against your own Grist document — there is no ANUPRESS server in the loop.' },
-          { q: 'Can I use my own tables instead of this demo data?', a: 'Yes — click Edit, connect your document, and every block here can be repointed at your own tables and columns in a couple of clicks.' },
-          { q: 'What if I only need a few of these blocks?', a: 'Add exactly what you need from the Add Element panel — nothing here is required, this page just exists to show what\'s available.' },
+        { id: 'e14', type: 'countdown', span: 4, config: { title: 'Countdowns for launches & deadlines', targetDate: new Date(Date.now() + 21 * 86400000).toISOString(), expiredText: 'The date has passed — this message replaces the timer.', color: VIOLET } },
+        { id: 'e15', type: 'divider', span: 12, config: { style: 'dashed', thickness: 1, color: null } },
+        text('e16', 'And a sandbox for anything else',
+          'The embed block takes your own HTML, CSS and JavaScript and runs it in a sandboxed frame — useful for an iframe, a third-party snippet, or something small like the clock below. It is deliberately given no access to your Grist document.'),
+        clockEmbed('e17', 'Local time'),
+        spacer('e18', 20),
+        button('e19', 'See every block in the Add Element panel', 'ghost', 'center', urlTarget(GUIDE), 12),
+      ],
+    },
+    {
+      id: 'tab-start', title: 'Get started',
+      hero: { title: 'Make this yours in five steps ⚡', subtitle: 'You are already looking at step three. The rest takes a couple of minutes.' },
+      blocks: [
+        { id: 'x1', type: 'timeline', span: 12, config: { title: 'From demo data to your own dashboard', items: [
+          { date: 'Step 1', title: 'Add a custom widget in Grist', description: 'On any page choose Add New → Add Widget to Page, pick Custom, and select the table you want to start from.' },
+          { date: 'Step 2', title: 'Paste the widget URL', description: 'Open the three-dot menu → Widget options, and paste the Advanced Charts URL from the guide.' },
+          { date: 'Step 3', title: 'Explore the sample data', description: 'This page. Nothing here has touched your document yet — click around, switch pages, try the calendar and the search box.' },
+          { date: 'Step 4', title: 'Grant access, once', description: 'Click Edit and accept the consent screen. Full document access is what lets blocks read any table, and what lets the calendar write a moved date back.' },
+          { date: 'Step 5', title: 'Build and publish', description: 'Add elements, point them at your columns, pick a theme, and save. The layout is stored in the document itself, so anyone who can see the page sees the dashboard.' },
+        ] } },
+        text('x2', 'Or start from a template',
+          'Nine ready-made starter sites ship with the widget — Research Labs, Nonprofits, Legal, Higher Education, Marketing, Finance &amp; Accounting, Developers, Small Business and Sports Facility Management. Each arrives complete with its own demo tables, so you can see the finished shape first and swap in your own data afterwards. Click <b>Edit → Templates</b> to browse them.'),
+        { id: 'x3', type: 'stat', span: 3, config: { table: 'Sales', label: 'Rows in this demo', column: 'Product', agg: 'count', icon: 'database', format: {} } },
+        { id: 'x4', type: 'stat', span: 3, config: { table: 'Sales', label: 'Regions covered', column: 'Region', agg: 'countd', icon: 'globe', format: {} } },
+        counter('x5', 'Accounts required', 0, 0, {}, 3),
+        counter('x6', 'Minutes to first chart', 0, 2, {}, 3),
+        { id: 'x7', type: 'divider', span: 12, config: { style: 'solid', thickness: 1, color: null } },
+        accordion('x8', 'Frequently asked questions', [
+          { q: 'Does my data ever leave my browser?', a: 'No. Every chart, table and calculation runs client-side against your own Grist document. There is no ANUPRESS server, no analytics and no third-party calls. The single exception is map tiles, fetched from a public tile service that sees the map area and your IP address — never your data. If you use no map block, nothing is fetched at all.' },
+          { q: 'Why does it ask for full document access?', a: 'Read-only access is limited to the one table the widget was added to. Full access is what lets blocks on a single page read different tables — as the Team page here does — and what lets the calendar write a rescheduled date back. You are asked once, and you can decline and still use everything read-only.' },
+          { q: 'Where is my dashboard saved?', a: 'In the widget options of your own document, as plain configuration. There is nothing to back up separately, and copying the document copies the dashboard with it.' },
+          { q: 'Does it work with self-hosted Grist?', a: 'Yes. The widget is a static page with no backend of its own, so it behaves the same against hosted Grist, a self-hosted instance, or grist-core running on your laptop.' },
+          { q: 'What if I only want a couple of blocks?', a: 'Delete the rest. This demo is deliberately maximal so you can see what exists; a real page is usually four or five blocks. Nothing here is required.' },
         ]),
-        { id: 'sh10d', type: 'divider', span: 12, config: { style: 'solid', thickness: 1, color: null } },
-        { id: 'sh11', type: 'pricing', span: 12, config: { title: 'Choose your plan', plans: [
-          { name: 'Starter', price: '$0', period: '/mo', features: ['Unlimited dashboards', 'All 21 block types', 'Community support'], highlighted: false, buttonLabel: 'Get started', buttonTarget: urlTarget('https://anupress.com/advanced-charts-grist-widget-guide/') },
-          { name: 'Pro', price: '$0', period: '/mo', features: ['Everything in Starter', 'Priority feature requests', 'Early access to new blocks'], highlighted: true, buttonLabel: 'Get started', buttonTarget: urlTarget('https://anupress.com/advanced-charts-grist-widget-guide/') },
-        ] } },
-        { id: 'sh12', type: 'qrcode', span: 4, config: { text: 'https://anupress.com/advanced-charts-grist-widget-guide/', level: 'M', fg: '#000000', bg: '#ffffff', size: 180, caption: 'Scan to visit anupress.com' } },
-        { id: 'sh13', type: 'countdown', span: 8, config: { title: 'Next feature drop', targetDate: new Date(Date.now() + 21 * 86400000).toISOString(), expiredText: 'Just shipped — check the changelog!', color: '#6d5efc' } },
-        spacer('sh13s', 20),
-        clockEmbed('sh14', 'Local time'),
-        spacer('sh14s', 10),
-        button('sh15', 'See how it\'s built', 'primary', 'center', urlTarget('https://anupress.com/advanced-charts-grist-widget-guide/'), 4),
+        { id: 'x9', type: 'qrcode', span: 4, config: { text: GUIDE, level: 'M', fg: '#0b1020', bg: '#ffffff', size: 180, caption: 'Scan to open the full guide on your phone' } },
+        text('x10', 'Read the full guide',
+          'The guide covers installation, every block type, theming, publishing and self-hosting, plus release notes for each version. It is the same link as the QR code beside it — handy if you are reading this on a laptop and would rather have the docs in your hand.'),
+        spacer('x11', 10),
+        button('x12', 'Open the guide', 'primary', 'center', urlTarget(GUIDE), 12),
       ],
     },
   ],
