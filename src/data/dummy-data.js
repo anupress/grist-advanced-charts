@@ -2,7 +2,7 @@
 // whether data comes from Grist or from here. Deterministically generated => stable charts.
 // Shipped to GitHub Pages so the widget looks alive before anyone connects real data.
 
-function mulberry32(seed) {
+export function mulberry32(seed) {
   return function () {
     seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
     let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);

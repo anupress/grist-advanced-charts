@@ -6,6 +6,44 @@
 import { el } from '../util.js';
 import { icon } from '../assets/icons.js';
 
+// Spreadsheet-style column letters -> 0-indexed column position ("A"->0, "Z"->25, "AA"->26).
+function colLetterToIndex(letters) {
+  let n = 0;
+  for (const ch of letters.toUpperCase()) n = n * 26 + (ch.charCodeAt(0) - 64);
+  return n - 1;
+}
+
+// "A1:A9, B3, B4:B7, C1" -> Set of "col,row" keys (both 0-indexed). Column = position among the
+// table's *currently shown* columns (left to right); row = position in the table's natural,
+// as-loaded order — not the current sorted/searched view — so a highlight stays attached to the
+// same data cell even after a viewer sorts or searches, instead of jumping to whatever row now
+// happens to sit in that visual slot.
+export function parseCellRanges(text) {
+  const cells = new Set();
+  for (const part of String(text || '').split(',').map((s) => s.trim()).filter(Boolean)) {
+    const m = part.match(/^([A-Za-z]+)(\d+)(?::([A-Za-z]+)(\d+))?$/);
+    if (!m) continue;
+    const c1 = colLetterToIndex(m[1]), r1 = parseInt(m[2], 10) - 1;
+    const c2 = m[3] ? colLetterToIndex(m[3]) : c1;
+    const r2 = m[4] ? parseInt(m[4], 10) - 1 : r1;
+    const cMin = Math.min(c1, c2), cMax = Math.max(c1, c2), rMin = Math.min(r1, r2), rMax = Math.max(r1, r2);
+    for (let c = cMin; c <= cMax; c++) for (let r = rMin; r <= rMax; r++) cells.add(c + ',' + r);
+  }
+  return cells;
+}
+
+// Later groups paint over earlier ones where ranges overlap — simple "layers" model, matches
+// how a user would expect a second highlight added afterward to take visual precedence.
+function buildHighlightMap(highlights) {
+  const map = new Map();
+  for (const h of highlights || []) {
+    if (!h?.ranges) continue;
+    const color = h.color || '#fff3b0';
+    for (const key of parseCellRanges(h.ranges)) map.set(key, color);
+  }
+  return map;
+}
+
 export function renderLiveTable(block, ctx) {
   const c = block.config || {};
   const allCols = ctx.provider.columns(c.table) || [];
@@ -14,6 +52,10 @@ export function renderLiveTable(block, ctx) {
   const searchable = c.searchable !== false;
   const sortable = c.sortable !== false;
   const pageSize = Math.max(1, Number(c.pageSize) || 10);
+  const highlightMap = buildHighlightMap(c.highlights);
+  // Row identity in "natural" (as-loaded) order, keyed by object reference — stable across
+  // sort/search since those only filter/reorder this same array, never clone its row objects.
+  const naturalRow = new Map(allRows.map((r, i) => [r, i]));
 
   const state = { query: '', sortCol: c.defaultSort?.column || null, sortDir: c.defaultSort?.dir || 'asc', page: 0 };
 
@@ -59,7 +101,13 @@ export function renderLiveTable(block, ctx) {
     const pageRows = rows.slice(state.page * pageSize, (state.page + 1) * pageSize);
 
     tbody.replaceChildren(...(pageRows.length
-      ? pageRows.map((r) => el('tr', {}, cols.map((col) => el('td', { text: String(r[col.id] ?? ''), title: String(r[col.id] ?? '') }))))
+      ? pageRows.map((r) => {
+          const rowN = naturalRow.get(r);
+          return el('tr', {}, cols.map((col, ci) => {
+            const hl = highlightMap.size && rowN != null ? highlightMap.get(ci + ',' + rowN) : null;
+            return el('td', { text: String(r[col.id] ?? ''), title: String(r[col.id] ?? ''), style: hl ? { backgroundColor: hl } : null });
+          }));
+        })
       : [el('tr', {}, [el('td', { class: 'ap-muted', colspan: String(cols.length || 1), text: 'No matching rows.' })])]));
 
     pager.replaceChildren(

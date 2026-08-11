@@ -67,7 +67,7 @@ export const mapBlock = (id, title, span = 12) =>
 // whatever table it ends up bound to, rather than a hardcoded list of placeholder column ids
 // that would filter down to zero columns (an empty, headerless table shell) once remapped.
 export const livetable = (id, title, span = 12) =>
-  ({ id, type: 'livetable', span, config: { title, table: 'Data', columns: [], pageSize: 8, searchable: true, sortable: true, defaultSort: null } });
+  ({ id, type: 'livetable', span, config: { title, table: 'Data', columns: [], pageSize: 8, searchable: true, sortable: true, defaultSort: null, highlights: [] } });
 
 export const embed = (id, html, css, js, height = 160) =>
   ({ id, type: 'embed', span: 12, config: { html, css, js, height } });

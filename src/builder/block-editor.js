@@ -696,6 +696,31 @@ function openTestimonialsEditor(block, ctx) {
 }
 
 // ---------------- Live data table editor ----------------
+// Highlight ranges use spreadsheet A1 notation: column letter = position among the columns
+// currently shown (A = leftmost shown column, regardless of the underlying table's real column
+// order), row number = the row's position in the table as loaded (1 = first row) — stable even
+// if a viewer later sorts or searches, since that only changes what's *visible*, not row identity.
+function highlightsEditor(wb, refreshPreview) {
+  wb.config.highlights = wb.config.highlights?.length ? wb.config.highlights : [];
+  const host = el('div');
+  function render() {
+    host.replaceChildren(subhead('Highlighted cells (optional)'));
+    wb.config.highlights.forEach((h, i) => {
+      const row = el('div', { class: 'ap-tabedit', style: { alignItems: 'flex-start', gap: '10px' } }, [
+        el('div', { style: { flex: '1', display: 'flex', flexDirection: 'column', gap: '6px' } }, [
+          textInput(h.ranges || '', (v) => { h.ranges = v; refreshPreview(); }, { placeholder: 'e.g. A1:A9, B3, B4:B7, C1' }),
+          colorField('Highlight color', h.color, '#fff3b0', (v) => { h.color = v; refreshPreview(); }),
+        ]),
+        iconBtn('trash', 'Remove', () => { wb.config.highlights.splice(i, 1); render(); refreshPreview(); }, 'ap-btn--danger'),
+      ]);
+      host.append(row);
+    });
+    host.append(el('button', { class: 'ap-btn ap-btn--soft', onClick: () => { wb.config.highlights.push({ ranges: '', color: '#fff3b0' }); render(); refreshPreview(); } }, [icon('plus'), 'Add highlight']));
+  }
+  render();
+  return field(null, host, 'A = the first column shown, B = the second, and so on. Rows count from 1 in the order the table loads them, not the current sort.');
+}
+
 function openLiveTableEditor(block, ctx) {
   const wb = clone(block); wb.config = wb.config || {};
   const provider = ctx.provider;
@@ -721,6 +746,9 @@ function openLiveTableEditor(block, ctx) {
     field('Data table', selectInput(provider.tables().map((t) => ({ value: t.id, label: t.label })), wb.config.table,
       async (v) => { wb.config.table = v; wb.config.columns = null; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
     dynHost,
+    divider(),
+    highlightsEditor(wb, refreshPreview),
+    divider(),
     field('Rows per page', textInput(String(wb.config.pageSize || 10), (v) => { wb.config.pageSize = Math.max(3, Math.min(100, Number(v) || 10)); refreshPreview(); }, { type: 'number' })),
     checkboxRow('Let viewers search', wb.config.searchable !== false, (v) => { wb.config.searchable = v; refreshPreview(); }),
     checkboxRow('Let viewers sort by clicking column headers', wb.config.sortable !== false, (v) => { wb.config.sortable = v; refreshPreview(); }),

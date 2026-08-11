@@ -16,7 +16,7 @@ class BaseProvider {
 }
 
 export class DummyProvider extends BaseProvider {
-  constructor() { super(); this.data = DUMMY_DATA; }
+  constructor(data = DUMMY_DATA) { super(); this.data = data; }
   tables() { return Object.values(this.data.tables).map((t) => ({ id: t.id, label: t.label })); }
   columns(tableId) { return (this.data.tables[tableId || this.data.defaultTable]?.columns) || []; }
   records(tableId) { return (this.data.tables[tableId || this.data.defaultTable]?.records) || []; }
