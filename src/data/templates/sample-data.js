@@ -561,6 +561,162 @@ function buildNonprofitData() {
   };
 }
 
+// ---- Developers: an engineering cockpit across the delivery lifecycle ----
+// Grist's engineering material lives in separate, internal docs — Requirements Traceability
+// (ARS requirements ↔ Verifications with pass criteria ↔ Validation, plus Risks and
+// Non_compliance), Test Data Logger (Devices/Test_Setups/Test_Runs/Measurements) and Project
+// Management (Projects/All_Tasks). None of them is publishable. This widget publishes, so the win
+// is one live page covering build → test → ship → run → measure: Issues, TestRuns, Releases,
+// Incidents, Services. Beyond the sources: a draggable release calendar, incident MTTR, a
+// pass-rate trend, and a per-region services map.
+const DEV_COMPONENTS = ['API Gateway', 'Auth', 'Billing', 'Search', 'Notifications', 'Webhooks', 'Data Export', 'Web App'];
+const DEV_ENGINEERS = ['Mei Tanaka', 'Priya Natarajan', 'Tom Reilly', 'Sofia Alvarez', 'Kwame Boateng', 'Lars Eriksen', 'Hana Kim'];
+const DEV_ISSUE_TITLES = {
+  Bug: ['Race condition on token refresh', 'Pagination cursor skips last page', 'Webhook retries fire twice',
+    'Timezone off by one on export', 'Search returns stale results after delete', '500 on empty filter payload'],
+  Feature: ['Add cursor pagination to /records', 'Bulk upsert endpoint', 'Webhook signature verification',
+    'Per-key rate limit headers', 'CSV streaming export', 'Scoped API tokens'],
+  Chore: ['Bump Node to 22 LTS', 'Rotate staging credentials', 'Prune unused indexes', 'Upgrade CI runners'],
+  'Tech debt': ['Extract auth middleware', 'Replace ad-hoc retry logic', 'Consolidate error envelopes', 'Delete legacy v1 routes'],
+};
+const DEV_REGIONS = [
+  ['us-east-1', 38.95, -77.45], ['us-west-2', 45.87, -119.69], ['eu-west-1', 53.35, -6.26],
+  ['eu-central-1', 50.11, 8.68], ['ap-southeast-1', 1.35, 103.82], ['ap-northeast-1', 35.68, 139.69],
+];
+const DEV_SUITES = ['Unit', 'Integration', 'End-to-end', 'Contract', 'Load'];
+const DEV_INCIDENT_SUMMARIES = ['Elevated 5xx on write path', 'Auth token validation latency spike',
+  'Search index replication lag', 'Webhook delivery backlog', 'Billing webhook timeouts', 'Partial region failover'];
+
+const devIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const DEV_ISSUES_COLUMNS = [
+  { id: 'Key', label: 'Key', type: 'Text' }, { id: 'Title', label: 'Title', type: 'Text' },
+  { id: 'Type', label: 'Type', type: 'Choice' }, { id: 'Priority', label: 'Priority', type: 'Choice' },
+  { id: 'Status', label: 'Status', type: 'Choice' }, { id: 'Component', label: 'Component', type: 'Choice' },
+  { id: 'Assignee', label: 'Assignee', type: 'Text' }, { id: 'Opened', label: 'Opened', type: 'Date' },
+  { id: 'Points', label: 'Points', type: 'Numeric' }, { id: 'IsOpen', label: 'Open', type: 'Numeric' },
+  { id: 'IsBug', label: 'Is Bug', type: 'Numeric' },
+];
+const DEV_RELEASES_COLUMNS = [
+  { id: 'Version', label: 'Version', type: 'Text' }, { id: 'ReleaseDate', label: 'Release Date', type: 'Date' },
+  { id: 'Status', label: 'Status', type: 'Choice' }, { id: 'Owner', label: 'Release Owner', type: 'Text' },
+  { id: 'IssuesShipped', label: 'Issues Shipped', type: 'Numeric' }, { id: 'Notes', label: 'Notes', type: 'Text' },
+];
+const DEV_INCIDENTS_COLUMNS = [
+  { id: 'IncidentID', label: 'Incident', type: 'Text' }, { id: 'Service', label: 'Service', type: 'Text' },
+  { id: 'Severity', label: 'Severity', type: 'Choice' }, { id: 'StartedAt', label: 'Started', type: 'Date' },
+  { id: 'DowntimeMinutes', label: 'Downtime (min)', type: 'Numeric' }, { id: 'Status', label: 'Status', type: 'Choice' },
+  { id: 'Summary', label: 'Summary', type: 'Text' },
+];
+const DEV_SERVICES_COLUMNS = [
+  { id: 'Service', label: 'Service', type: 'Text' }, { id: 'Owner', label: 'Owner', type: 'Text' },
+  { id: 'Region', label: 'Region', type: 'Choice' }, { id: 'Uptime', label: 'Uptime %', type: 'Numeric' },
+  { id: 'P95Latency', label: 'p95 Latency (ms)', type: 'Numeric' }, { id: 'ErrorRate', label: 'Error Rate %', type: 'Numeric' },
+  { id: 'RequestsPerDay', label: 'Requests / Day', type: 'Numeric' },
+  { id: 'Latitude', label: 'Latitude', type: 'Numeric' }, { id: 'Longitude', label: 'Longitude', type: 'Numeric' },
+];
+const DEV_TESTRUNS_COLUMNS = [
+  { id: 'Suite', label: 'Suite', type: 'Choice' }, { id: 'RunDate', label: 'Run Date', type: 'Date' },
+  { id: 'Platform', label: 'Platform', type: 'Choice' }, { id: 'Passed', label: 'Passed', type: 'Numeric' },
+  { id: 'Failed', label: 'Failed', type: 'Numeric' }, { id: 'Total', label: 'Total', type: 'Numeric' },
+  { id: 'PassRate', label: 'Pass Rate %', type: 'Numeric' }, { id: 'Coverage', label: 'Coverage %', type: 'Numeric' },
+  { id: 'DurationMin', label: 'Duration (min)', type: 'Numeric' },
+];
+
+function buildDevelopersData() {
+  const rnd = mulberry32(9001);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const pick = (a) => a[Math.floor(rnd() * a.length)];
+  const r2 = (n) => Math.round(n * 100) / 100;
+
+  const services = [
+    ['API Gateway', 0.35], ['Auth', 0.18], ['Billing', 0.06], ['Search', 0.14],
+    ['Notifications', 0.09], ['Webhooks', 0.07], ['Data Export', 0.04], ['Web App', 0.07],
+  ].map(([name, share], i) => {
+    const [region, lat, lon] = DEV_REGIONS[i % DEV_REGIONS.length];
+    return {
+      id: i + 1, Service: name, Owner: DEV_ENGINEERS[i % DEV_ENGINEERS.length], Region: region,
+      Uptime: r2(99.5 + rnd() * 0.49), P95Latency: Math.round(45 + rnd() * 320),
+      ErrorRate: r2(0.02 + rnd() * 0.9), RequestsPerDay: Math.round(2_400_000 * share * (0.8 + rnd() * 0.4)),
+      Latitude: lat, Longitude: lon,
+    };
+  });
+
+  const issues = [];
+  for (let i = 0; i < 44; i++) {
+    // A healthy backlog mix — roughly a third bugs, a third new work, the rest upkeep. (An earlier
+    // pass made it ~60% bugs, which reads as a troubled product rather than a well-run one.)
+    const tr0 = rnd();
+    const type = tr0 < 0.34 ? 'Bug' : tr0 < 0.68 ? 'Feature' : tr0 < 0.84 ? 'Chore' : 'Tech debt';
+    const opened = new Date(today.getTime() - Math.round(rnd() * 120) * 86400000);
+    // P0s are rare and get closed; low-priority work lingers — that's what makes a backlog look real.
+    const pr = rnd();
+    const priority = pr < 0.06 ? 'P0' : pr < 0.28 ? 'P1' : pr < 0.66 ? 'P2' : 'P3';
+    const closedChance = priority === 'P0' ? 0.95 : priority === 'P1' ? 0.72 : priority === 'P2' ? 0.55 : 0.35;
+    const done = rnd() < closedChance;
+    const status = done ? 'Done' : (rnd() < 0.35 ? 'In progress' : (rnd() < 0.4 ? 'In review' : 'Backlog'));
+    issues.push({
+      id: i + 1, Key: 'ENG-' + (1200 + i), Title: pick(DEV_ISSUE_TITLES[type]), Type: type, Priority: priority,
+      Status: status, Component: pick(DEV_COMPONENTS), Assignee: pick(DEV_ENGINEERS), Opened: devIso(opened),
+      Points: [1, 2, 3, 5, 8][Math.floor(rnd() * 5)], IsOpen: status === 'Done' ? 0 : 1, IsBug: type === 'Bug' ? 1 : 0,
+    });
+  }
+
+  // Releases: shipped history plus scheduled work clustered near today, so the release calendar
+  // always has something in the current month to drag.
+  const releases = [];
+  for (let i = 0; i < 11; i++) {
+    const offset = i < 6 ? Math.round(-150 + (i * 22) + rnd() * 8) : Math.round(-10 + (i - 6) * 11 + rnd() * 5);
+    const date = new Date(today); date.setDate(date.getDate() + offset);
+    // Anything already past shipped (a couple got reverted); the next three weeks are in QA, and
+    // beyond that is still planned — which is the state the Quality page's accordion describes.
+    const status = offset < -3 ? (rnd() < 0.85 ? 'Released' : 'Rolled back') : (offset < 21 ? 'In QA' : 'Planned');
+    releases.push({
+      id: i + 1, Version: `v2.${i + 4}.0`, ReleaseDate: devIso(date), Status: status,
+      Owner: pick(DEV_ENGINEERS), IssuesShipped: Math.round(4 + rnd() * 22),
+      Notes: status === 'Rolled back' ? 'Reverted after elevated error rate on the write path.' : 'Routine release.',
+    });
+  }
+
+  const incidents = [];
+  for (let i = 0; i < 14; i++) {
+    const started = new Date(today.getTime() - Math.round(rnd() * 150) * 86400000);
+    const sv = rnd();
+    const severity = sv < 0.14 ? 'SEV1' : sv < 0.45 ? 'SEV2' : 'SEV3';
+    const downtime = severity === 'SEV1' ? Math.round(35 + rnd() * 130) : severity === 'SEV2' ? Math.round(12 + rnd() * 70) : Math.round(3 + rnd() * 25);
+    incidents.push({
+      id: i + 1, IncidentID: 'INC-' + (300 + i), Service: pick(services).Service, Severity: severity,
+      StartedAt: devIso(started), DowntimeMinutes: downtime,
+      Status: rnd() < 0.9 ? 'Resolved' : 'Monitoring', Summary: pick(DEV_INCIDENT_SUMMARIES),
+    });
+  }
+
+  const testRuns = [];
+  for (let i = 0; i < 30; i++) {
+    const runDate = new Date(today.getTime() - Math.round(rnd() * 75) * 86400000);
+    const suite = pick(DEV_SUITES);
+    const total = suite === 'Unit' ? Math.round(900 + rnd() * 700) : suite === 'Integration' ? Math.round(180 + rnd() * 220) : Math.round(30 + rnd() * 90);
+    const failed = Math.round(rnd() * (rnd() < 0.72 ? total * 0.02 : total * 0.09));
+    const passed = total - failed;
+    testRuns.push({
+      id: i + 1, Suite: suite, RunDate: devIso(runDate), Platform: pick(['Linux', 'macOS', 'Windows']),
+      Passed: passed, Failed: failed, Total: total, PassRate: r2((passed / total) * 100),
+      Coverage: r2(72 + rnd() * 21), DurationMin: r2(suite === 'Unit' ? 1 + rnd() * 4 : 4 + rnd() * 26),
+    });
+  }
+
+  return {
+    defaultTable: 'Issues',
+    tables: {
+      Issues: { id: 'Issues', label: 'Issues', columns: DEV_ISSUES_COLUMNS, records: issues },
+      Releases: { id: 'Releases', label: 'Releases', columns: DEV_RELEASES_COLUMNS, records: releases },
+      Incidents: { id: 'Incidents', label: 'Incidents', columns: DEV_INCIDENTS_COLUMNS, records: incidents },
+      Services: { id: 'Services', label: 'Services', columns: DEV_SERVICES_COLUMNS, records: services },
+      TestRuns: { id: 'TestRuns', label: 'Test runs', columns: DEV_TESTRUNS_COLUMNS, records: testRuns },
+    },
+  };
+}
+
 function buildRows(seed, { categories, sites, valueRange, count = 24 }) {
   const rnd = mulberry32(seed);
   const rows = [];
@@ -616,11 +772,7 @@ export const TEMPLATE_SAMPLE_DATA = {
     valueRange: [2000, 60000],
   }),
   'finance-accounting': buildFinanceData(),
-  developers: dataset(4007, {
-    categories: ['JavaScript', 'Python', 'iOS', 'Android', 'Java'],
-    sites: [site('SF Bay Area', 37.77, -122.42), site('Berlin', 52.52, 13.40), site('Singapore', 1.35, 103.82), site('Austin', 30.27, -97.74), site('Dublin', 53.35, -6.26)],
-    valueRange: [500, 25000],
-  }),
+  developers: buildDevelopersData(),
   'small-business': dataset(4008, {
     categories: ['Coffee & Drinks', 'Pastries', 'Merchandise', 'Catering', 'Gift Cards'],
     sites: [site('Downtown Shop', 30.27, -97.74), site('Uptown Shop', 47.61, -122.33), site('Riverside Shop', 41.88, -87.63), site('Market Street Shop', 43.65, -79.38), site('High Street Shop', 53.35, -6.26)],

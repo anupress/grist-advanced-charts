@@ -111,7 +111,7 @@ export const TEMPLATE = {
           { id: 'rl51', type: 'stat', span: 3, config: { table: 'Instruments', label: 'Due within 30 days', column: 'CalibrationDue', agg: 'sum', icon: 'calendar', format: {} } },
           { id: 'rl52', type: 'stat', span: 3, config: { table: 'Instruments', label: 'In compliance', column: 'Compliant', agg: 'sum', icon: 'shield', format: {} } },
           { id: 'rl53', type: 'stat', span: 3, config: { table: 'Instruments', label: 'Instrument hours', column: 'UtilisationHours', agg: 'sum', icon: 'pulse', format: { compact: true } } },
-          { id: 'rl54', type: 'progress', span: 8, config: { title: 'Calibration compliance', mode: 'data', table: 'Instruments', valueColumn: 'Compliant', agg: 'sum', target: 14, suffix: ' instruments', color: '#1c7ed6' } },
+          { id: 'rl54', type: 'progress', span: 8, config: { title: 'Calibration compliance', mode: 'data', table: 'Instruments', valueColumn: 'Compliant', agg: 'sum', target: 14, suffix: 'instruments', color: '#1c7ed6' } },
           { id: 'rl55', type: 'breakdown', span: 4, config: { table: 'Instruments', title: 'By status', column: 'Status', limit: 6, display: 'chart', chartType: 'doughnut' } },
           {
             id: 'rl56', type: 'calendar', span: 12,
