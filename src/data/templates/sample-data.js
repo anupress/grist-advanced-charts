@@ -907,6 +907,195 @@ function buildLegalData() {
   };
 }
 
+// ---- Small Business: running the business, not closing the books ----
+// Grounded in three Grist docs: Account-based Sales Team (Companies.Account_Owner cascading into
+// Contacts.Contact_Owner and Deals.Deal_Owner — the pattern its access rules rely on; Deal_Stage
+// runs Cold → Responsive → Negotiating → Deal Closed), Payroll (Payment = Hours × a rate looked up
+// per person+role) and Expense Tracking for Teams (Account + Expense_Type + receipt, employee
+// auto-filled). Deliberately positioned AGAINST our Finance template: that one closes the books
+// (invoices/AR/cash flow), this one runs the business — pipeline first, then the people and costs
+// behind it. Beyond the sources: a dated, draggable close-date forecast and a weighted pipeline,
+// both explicitly absent from the ABM doc.
+const SB_OWNERS = ['Ravi Patel', 'Jess Moreau', 'Dan Whitlock', 'Amara Osei'];
+const SB_INDUSTRIES = ['Construction', 'Hospitality', 'Retail', 'Healthcare', 'Manufacturing', 'Professional services', 'Education'];
+const SB_COMPANIES = [
+  ['Bridgeway Construction', 'Construction', 'Austin', 'TX', 30.27, -97.74],
+  ['The Copper Kettle', 'Hospitality', 'Portland', 'OR', 45.52, -122.68],
+  ['Fairfield Grocers', 'Retail', 'Chicago', 'IL', 41.88, -87.63],
+  ['Lakeside Dental Group', 'Healthcare', 'Minneapolis', 'MN', 44.98, -93.27],
+  ['Ironwood Fabrication', 'Manufacturing', 'Cleveland', 'OH', 41.50, -81.69],
+  ['Hartley & Rowe', 'Professional services', 'Boston', 'MA', 42.36, -71.06],
+  ['Northside Academy', 'Education', 'Denver', 'CO', 39.74, -104.99],
+  ['Maple Street Cafe', 'Hospitality', 'Nashville', 'TN', 36.16, -86.78],
+  ['Summit Auto Parts', 'Retail', 'Phoenix', 'AZ', 33.45, -112.07],
+  ['Riverbend Clinic', 'Healthcare', 'Kansas City', 'MO', 39.10, -94.58],
+  ['Granite Peak Builders', 'Construction', 'Salt Lake City', 'UT', 40.76, -111.89],
+  ['Wren & Co Printing', 'Professional services', 'Raleigh', 'NC', 35.78, -78.64],
+];
+const SB_FIRST = ['Alice', 'Marcus', 'Priya', 'Tom', 'Sofia', 'Chen', 'Grace', 'Miguel', 'Hana', 'Owen', 'Nadia', 'Sam'];
+const SB_LAST = ['Reed', 'Delgado', 'Kaur', 'Byrne', 'Rossi', 'Lin', 'Adeyemi', 'Santos', 'Ito', 'Fletcher', 'Volkov', 'Barnes'];
+const SB_TITLES = ['Owner', 'Operations Manager', 'Office Manager', 'Purchasing Lead', 'Finance Director', 'General Manager'];
+const SB_STAGES = ['Cold', 'Contacted', 'Responsive', 'Negotiating', 'Won', 'Lost'];
+const SB_TEAM = [
+  ['Ravi Patel', 'Sales Lead', 'Sales', 46], ['Jess Moreau', 'Account Executive', 'Sales', 38],
+  ['Dan Whitlock', 'Account Executive', 'Sales', 38], ['Amara Osei', 'Customer Success', 'Service', 34],
+  ['Leo Fontaine', 'Installer', 'Operations', 29], ['Marta Silva', 'Installer', 'Operations', 29],
+  ['Kofi Mensah', 'Bookkeeper', 'Admin', 32],
+];
+const SB_EXPENSE_CATS = [
+  ['Vehicle & fuel', 'Operations'], ['Tools & equipment', 'Operations'], ['Software', 'Administration'],
+  ['Advertising', 'Marketing'], ['Client entertainment', 'Sales'], ['Insurance', 'Administration'],
+  ['Materials', 'Operations'], ['Training', 'Administration'], ['Phone & internet', 'Administration'],
+  ['Trade show', 'Marketing'],
+];
+const SB_EXPENSE_DESCS = {
+  'Vehicle & fuel': ['Van fuel', 'Vehicle service', 'Parking & tolls'],
+  'Tools & equipment': ['Replacement drill set', 'Ladder', 'Safety gear'],
+  Software: ['Grist Team plan', 'Accounting software', 'Scheduling app'],
+  Advertising: ['Local radio spot', 'Google Ads', 'Sponsored newsletter'],
+  'Client entertainment': ['Client lunch', 'Coffee with prospect'],
+  Insurance: ['Liability premium', 'Vehicle insurance'],
+  Materials: ['Timber order', 'Fixings & fasteners', 'Paint supplies'],
+  Training: ['Safety certification', 'Sales workshop'],
+  'Phone & internet': ['Mobile plan', 'Office broadband'],
+  'Trade show': ['Booth fee', 'Trade show travel'],
+};
+
+const sbIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const SB_DEALS_COLUMNS = [
+  { id: 'DealNumber', label: 'Deal', type: 'Text' }, { id: 'Company', label: 'Company', type: 'Text' },
+  { id: 'LeadContact', label: 'Lead Contact', type: 'Text' }, { id: 'Stage', label: 'Stage', type: 'Choice' },
+  { id: 'ExpectedClose', label: 'Expected Close', type: 'Date' }, { id: 'Amount', label: 'Amount', type: 'Numeric' },
+  { id: 'Owner', label: 'Owner', type: 'Text' }, { id: 'OpenAmount', label: 'Open Value', type: 'Numeric' },
+  { id: 'WonAmount', label: 'Won Value', type: 'Numeric' }, { id: 'IsOpen', label: 'Open', type: 'Numeric' },
+  { id: 'IsWon', label: 'Won', type: 'Numeric' },
+];
+const SB_COMPANIES_COLUMNS = [
+  { id: 'Name', label: 'Company', type: 'Text' }, { id: 'Industry', label: 'Industry', type: 'Choice' },
+  { id: 'City', label: 'City', type: 'Text' }, { id: 'State', label: 'State', type: 'Text' },
+  { id: 'AccountOwner', label: 'Account Owner', type: 'Text' }, { id: 'Phone', label: 'Phone', type: 'Text' },
+  { id: 'OpenDeals', label: 'Open Deals', type: 'Numeric' }, { id: 'TotalValue', label: 'Pipeline Value', type: 'Numeric' },
+  { id: 'Latitude', label: 'Latitude', type: 'Numeric' }, { id: 'Longitude', label: 'Longitude', type: 'Numeric' },
+];
+const SB_CONTACTS_COLUMNS = [
+  { id: 'FullName', label: 'Contact', type: 'Text' }, { id: 'Title', label: 'Title', type: 'Text' },
+  { id: 'Company', label: 'Company', type: 'Text' }, { id: 'Owner', label: 'Owner', type: 'Text' },
+  { id: 'Email', label: 'Email', type: 'Text' }, { id: 'Phone', label: 'Phone', type: 'Text' },
+  { id: 'LastInteraction', label: 'Last Contacted', type: 'Date' }, { id: 'Interactions', label: 'Interactions', type: 'Numeric' },
+];
+const SB_TEAM_COLUMNS = [
+  { id: 'Name', label: 'Team Member', type: 'Text' }, { id: 'Role', label: 'Role', type: 'Text' },
+  { id: 'Department', label: 'Department', type: 'Choice' }, { id: 'PayPeriod', label: 'Pay Period', type: 'Date' },
+  { id: 'Hours', label: 'Hours', type: 'Numeric' }, { id: 'HourlyRate', label: 'Hourly Rate', type: 'Numeric' },
+  { id: 'Payment', label: 'Payment', type: 'Numeric' },
+];
+const SB_EXPENSES_COLUMNS = [
+  { id: 'Date', label: 'Date', type: 'Date' }, { id: 'Account', label: 'Account', type: 'Choice' },
+  { id: 'Category', label: 'Category', type: 'Choice' }, { id: 'Description', label: 'Description', type: 'Text' },
+  { id: 'Amount', label: 'Amount', type: 'Numeric' }, { id: 'Employee', label: 'Submitted By', type: 'Text' },
+  { id: 'Status', label: 'Status', type: 'Choice' }, { id: 'Reimbursable', label: 'Reimbursable', type: 'Bool' },
+];
+
+function buildSmallBusinessData() {
+  const rnd = mulberry32(11001);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const pick = (a) => a[Math.floor(rnd() * a.length)];
+  const r2 = (n) => Math.round(n * 100) / 100;
+
+  // Contacts first — one or two per company, owned by whoever owns the account (the source's
+  // Contact_Owner = $Company.Account_Owner cascade).
+  const companyOwner = {};
+  SB_COMPANIES.forEach(([name], i) => { companyOwner[name] = SB_OWNERS[i % SB_OWNERS.length]; });
+
+  const contacts = [];
+  SB_COMPANIES.forEach(([company], i) => {
+    const n = 1 + (rnd() < 0.5 ? 1 : 0);
+    for (let k = 0; k < n; k++) {
+      const first = SB_FIRST[(i * 2 + k) % SB_FIRST.length];
+      const last = SB_LAST[(i * 3 + k) % SB_LAST.length];
+      const last1 = new Date(today); last1.setDate(last1.getDate() - Math.round(rnd() * 70));
+      contacts.push({
+        id: contacts.length + 1, FullName: `${first} ${last}`, Title: pick(SB_TITLES), Company: company,
+        Owner: companyOwner[company],
+        Email: `${first.toLowerCase()}.${last.toLowerCase()}@${company.toLowerCase().replace(/[^a-z0-9]+/g, '')}.com`,
+        Phone: '+1 (555) ' + String(200 + contacts.length).padStart(3, '0') + '-' + String(1000 + contacts.length * 13).slice(0, 4),
+        LastInteraction: sbIso(last1), Interactions: Math.round(1 + rnd() * 11),
+      });
+    }
+  });
+
+  // Deals. Two regimes so the forecast reads honestly: settled history (won/lost, giving a real
+  // win rate) plus live deals closing in the next few weeks — which is what fills the calendar.
+  const deals = [];
+  for (let i = 0; i < 28; i++) {
+    const contact = pick(contacts);
+    const settled = rnd() < 0.45;
+    const offset = settled ? Math.round(-160 + rnd() * 145) : Math.round(-5 + rnd() * 55);
+    const close = new Date(today); close.setDate(close.getDate() + offset);
+    const amount = Math.round((1200 + rnd() * 46000) / 100) * 100;
+    let stage;
+    // ~48% expected win rate. A small trade business with warm referrals wins more than a cold
+    // outbound team would, but anything much above 60% reads as fantasy on a demo dashboard.
+    if (offset < 0) stage = rnd() < 0.48 ? 'Won' : 'Lost';
+    else { const s = rnd(); stage = s < 0.28 ? 'Cold' : s < 0.55 ? 'Contacted' : s < 0.8 ? 'Responsive' : 'Negotiating'; }
+    const isWon = stage === 'Won', isOpen = !['Won', 'Lost'].includes(stage);
+    deals.push({
+      id: i + 1, DealNumber: contact.Company.slice(0, 3).toUpperCase() + '-' + (400 + i),
+      Company: contact.Company, LeadContact: contact.FullName, Stage: stage,
+      ExpectedClose: sbIso(close), Amount: amount, Owner: companyOwner[contact.Company],
+      OpenAmount: isOpen ? amount : 0, WonAmount: isWon ? amount : 0,
+      IsOpen: isOpen ? 1 : 0, IsWon: isWon ? 1 : 0,
+    });
+  }
+
+  const companies = SB_COMPANIES.map(([name, industry, city, state, lat, lon], i) => {
+    const mine = deals.filter((d) => d.Company === name);
+    return {
+      id: i + 1, Name: name, Industry: industry, City: city, State: state,
+      AccountOwner: companyOwner[name],
+      Phone: '+1 (555) ' + String(700 + i).padStart(3, '0') + '-' + String(2000 + i * 17).slice(0, 4),
+      OpenDeals: mine.reduce((s, d) => s + d.IsOpen, 0),
+      TotalValue: mine.reduce((s, d) => s + d.OpenAmount, 0),
+      Latitude: lat, Longitude: lon,
+    };
+  });
+
+  // Payroll-lite: Payment = Hours × HourlyRate, four monthly periods (the source's model minus the
+  // effective-dated rate lookup, which needs a second table a small business rarely keeps).
+  const team = []; let tid = 1;
+  for (let m = 3; m >= 0; m--) {
+    const period = new Date(today.getFullYear(), today.getMonth() - m, 1);
+    for (const [name, role, dept, rate] of SB_TEAM) {
+      const hours = Math.round(120 + rnd() * 60);
+      team.push({ id: tid++, Name: name, Role: role, Department: dept, PayPeriod: sbIso(period), Hours: hours, HourlyRate: rate, Payment: r2(hours * rate) });
+    }
+  }
+
+  const expenses = [];
+  for (let i = 0; i < 40; i++) {
+    const [cat, account] = pick(SB_EXPENSE_CATS);
+    const date = new Date(today); date.setDate(date.getDate() - Math.round(rnd() * 140));
+    expenses.push({
+      id: i + 1, Date: sbIso(date), Account: account, Category: cat,
+      Description: pick(SB_EXPENSE_DESCS[cat]),
+      Amount: r2(15 + rnd() * (cat === 'Tools & equipment' || cat === 'Insurance' || cat === 'Trade show' ? 2600 : 520)),
+      Employee: pick(SB_TEAM)[0], Status: rnd() < 0.78 ? 'Approved' : 'Pending', Reimbursable: rnd() < 0.45,
+    });
+  }
+
+  return {
+    defaultTable: 'Deals',
+    tables: {
+      Deals: { id: 'Deals', label: 'Deals', columns: SB_DEALS_COLUMNS, records: deals },
+      Companies: { id: 'Companies', label: 'Companies', columns: SB_COMPANIES_COLUMNS, records: companies },
+      Contacts: { id: 'Contacts', label: 'Contacts', columns: SB_CONTACTS_COLUMNS, records: contacts },
+      Team: { id: 'Team', label: 'Team', columns: SB_TEAM_COLUMNS, records: team },
+      Expenses: { id: 'Expenses', label: 'Expenses', columns: SB_EXPENSES_COLUMNS, records: expenses },
+    },
+  };
+}
+
 function buildRows(seed, { categories, sites, valueRange, count = 24 }) {
   const rnd = mulberry32(seed);
   const rows = [];
@@ -959,11 +1148,7 @@ export const TEMPLATE_SAMPLE_DATA = {
   }),
   'finance-accounting': buildFinanceData(),
   developers: buildDevelopersData(),
-  'small-business': dataset(4008, {
-    categories: ['Coffee & Drinks', 'Pastries', 'Merchandise', 'Catering', 'Gift Cards'],
-    sites: [site('Downtown Shop', 30.27, -97.74), site('Uptown Shop', 47.61, -122.33), site('Riverside Shop', 41.88, -87.63), site('Market Street Shop', 43.65, -79.38), site('High Street Shop', 53.35, -6.26)],
-    valueRange: [8, 65],
-  }),
+  'small-business': buildSmallBusinessData(),
   'sports-facility': dataset(4009, {
     categories: ['Tennis Courts', 'Swimming Pool', 'Gym Floor', 'Basketball Court', 'Group Studio'],
     sites: [site('Central Facility', 41.88, -87.63), site('Westside Facility', 30.27, -97.74), site('North Facility', 47.61, -122.33), site('Lakeside Facility', 43.65, -79.38), site('Harbor Facility', -33.87, 151.21)],
