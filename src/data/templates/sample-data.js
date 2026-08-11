@@ -1096,6 +1096,196 @@ function buildSmallBusinessData() {
   };
 }
 
+// ---- Higher Education: the department, not the bench ----
+// Grounded in Grist's higher-ed positioning (research & lab management, grant & budget tracking,
+// campus operations, student/staff administration) and two real docs: Class Enrollment
+// (Classes.Max_Students with Count = len(lookupRecords(Status="Confirmed")) and
+// Spots_Left = max(Max-Count,0) or "Full" — capacity as a live rollup) and the Grant Application
+// Tracker (a Status pipeline with Proposal_Deadline and requested-vs-granted amounts).
+//
+// Positioned apart from two neighbouring templates: Research Labs covers the bench (samples,
+// reagents, instruments) and Nonprofits covers charitable funding; this is the department —
+// course catalogue, enrolment capacity, research funding from sponsors, faculty and campus.
+//
+// FERPA: the source Students table carries insurance policy numbers, physician contacts, allergies
+// and medical-form attachments. This widget PUBLISHES, and US student records are legally
+// protected, so students here are anonymised cohort rows — an id, programme, year, status, credits
+// — with no names, contacts or health data. Faculty are public-facing and are named.
+const HE_DEPARTMENTS = [
+  ['Computer Science', 'Turing Building', 'Prof. Ada Okonjo', 42.3601, -71.0942],
+  ['Biology', 'Franklin Hall', 'Prof. Miguel Santos', 42.3585, -71.0925],
+  ['Business', 'Hartley Center', 'Prof. Ingrid Lund', 42.3572, -71.0968],
+  ['Psychology', 'Willow House', 'Prof. Daniel Reyes', 42.3618, -71.0903],
+  ['Engineering', 'Foundry Building', 'Prof. Sara Haddad', 42.3559, -71.0911],
+  ['History', 'Old Library', 'Prof. Tomas Novak', 42.3606, -71.0887],
+];
+const HE_PROGRAMMES = [
+  ['BSc Computer Science', 'Computer Science'], ['MSc Data Science', 'Computer Science'],
+  ['BSc Biology', 'Biology'], ['PhD Molecular Biology', 'Biology'],
+  ['BA Business Administration', 'Business'], ['MBA', 'Business'],
+  ['BSc Psychology', 'Psychology'], ['MEng Mechanical Engineering', 'Engineering'],
+  ['BA History', 'History'],
+];
+const HE_COURSES = [
+  ['CS101', 'Introduction to Programming', 'Computer Science', 3], ['CS210', 'Data Structures', 'Computer Science', 4],
+  ['CS330', 'Machine Learning', 'Computer Science', 4], ['CS450', 'Distributed Systems', 'Computer Science', 4],
+  ['BIO110', 'Cell Biology', 'Biology', 3], ['BIO240', 'Genetics', 'Biology', 4],
+  ['BIO360', 'Microbiology Lab', 'Biology', 4], ['BUS120', 'Principles of Management', 'Business', 3],
+  ['BUS250', 'Corporate Finance', 'Business', 3], ['BUS410', 'Strategy Capstone', 'Business', 4],
+  ['PSY100', 'Introduction to Psychology', 'Psychology', 3], ['PSY220', 'Research Methods', 'Psychology', 4],
+  ['ENG150', 'Statics & Dynamics', 'Engineering', 4], ['ENG320', 'Thermodynamics', 'Engineering', 4],
+  ['HIS130', 'Modern World History', 'History', 3], ['HIS280', 'Historiography', 'History', 3],
+];
+const HE_FACULTY = [
+  ['Prof. Ada Okonjo', 'Computer Science', 'Professor'], ['Dr. Ravi Chandra', 'Computer Science', 'Associate Professor'],
+  ['Dr. Elena Marsh', 'Computer Science', 'Lecturer'], ['Prof. Miguel Santos', 'Biology', 'Professor'],
+  ['Dr. Hana Suzuki', 'Biology', 'Assistant Professor'], ['Prof. Ingrid Lund', 'Business', 'Professor'],
+  ['Dr. Peter Abara', 'Business', 'Senior Lecturer'], ['Prof. Daniel Reyes', 'Psychology', 'Professor'],
+  ['Dr. Claire Beaumont', 'Psychology', 'Lecturer'], ['Prof. Sara Haddad', 'Engineering', 'Professor'],
+  ['Dr. Yusuf Demir', 'Engineering', 'Associate Professor'], ['Prof. Tomas Novak', 'History', 'Professor'],
+];
+const HE_SPONSORS = ['National Science Foundation', 'National Institutes of Health', 'Department of Energy',
+  'European Research Council', 'Wellcome Trust', 'Sloan Foundation', 'State Research Council'];
+const HE_GRANT_TITLES = [
+  'Federated Learning for Clinical Data', 'Gut Microbiome and Metabolic Health', 'Sustainable Concrete Composites',
+  'Adolescent Sleep and Attention', 'Regional Economic Mobility Study', 'Quantum Error Correction Methods',
+  'Coastal Wetland Carbon Capture', 'Archival Digitisation of Civic Records', 'Protein Folding Simulation at Scale',
+  'Autonomous Inspection Robotics', 'Bias Auditing in Admissions Models', 'Antibiotic Resistance Surveillance',
+  'Thermal Storage for Campus Heating', 'Language Acquisition in Bilingual Children',
+];
+const HE_TERMS = ['Fall 2025', 'Spring 2026', 'Fall 2026'];
+
+const heIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const HE_COURSES_COLUMNS = [
+  { id: 'Code', label: 'Code', type: 'Text' }, { id: 'Title', label: 'Course', type: 'Text' },
+  { id: 'Department', label: 'Department', type: 'Choice' }, { id: 'Term', label: 'Term', type: 'Choice' },
+  { id: 'Instructor', label: 'Instructor', type: 'Text' }, { id: 'Enrolled', label: 'Enrolled', type: 'Numeric' },
+  { id: 'Capacity', label: 'Capacity', type: 'Numeric' }, { id: 'SpotsLeft', label: 'Spots Left', type: 'Numeric' },
+  { id: 'PercentFull', label: '% Full', type: 'Numeric' }, { id: 'Credits', label: 'Credits', type: 'Numeric' },
+  { id: 'IsFull', label: 'Full', type: 'Numeric' },
+];
+const HE_STUDENTS_COLUMNS = [
+  { id: 'StudentID', label: 'Student ID', type: 'Text' }, { id: 'Programme', label: 'Programme', type: 'Choice' },
+  { id: 'Department', label: 'Department', type: 'Choice' }, { id: 'Year', label: 'Year', type: 'Choice' },
+  { id: 'Status', label: 'Status', type: 'Choice' }, { id: 'CreditsEarned', label: 'Credits Earned', type: 'Numeric' },
+  { id: 'Advisor', label: 'Advisor', type: 'Text' }, { id: 'IsEnrolled', label: 'Enrolled', type: 'Numeric' },
+];
+const HE_GRANTS_COLUMNS = [
+  { id: 'Title', label: 'Project', type: 'Text' }, { id: 'PrincipalInvestigator', label: 'Principal Investigator', type: 'Text' },
+  { id: 'Sponsor', label: 'Sponsor', type: 'Choice' }, { id: 'Department', label: 'Department', type: 'Choice' },
+  { id: 'Status', label: 'Status', type: 'Choice' }, { id: 'ProposalDeadline', label: 'Proposal Deadline', type: 'Date' },
+  { id: 'AmountRequested', label: 'Requested', type: 'Numeric' }, { id: 'AmountAwarded', label: 'Awarded', type: 'Numeric' },
+  { id: 'Funded', label: 'Funded', type: 'Numeric' },
+];
+const HE_FACULTY_COLUMNS = [
+  { id: 'Name', label: 'Faculty', type: 'Text' }, { id: 'Department', label: 'Department', type: 'Choice' },
+  { id: 'Title', label: 'Title', type: 'Choice' }, { id: 'Email', label: 'Email', type: 'Text' },
+  { id: 'CoursesTaught', label: 'Courses Taught', type: 'Numeric' }, { id: 'GrantsHeld', label: 'Grants Held', type: 'Numeric' },
+  { id: 'ResearchFunding', label: 'Research Funding', type: 'Numeric' },
+];
+const HE_DEPARTMENTS_COLUMNS = [
+  { id: 'Name', label: 'Department', type: 'Text' }, { id: 'Building', label: 'Building', type: 'Text' },
+  { id: 'Head', label: 'Head of Department', type: 'Text' }, { id: 'StudentCount', label: 'Students', type: 'Numeric' },
+  { id: 'FacultyCount', label: 'Faculty', type: 'Numeric' }, { id: 'CourseCount', label: 'Courses', type: 'Numeric' },
+  { id: 'ResearchFunding', label: 'Research Funding', type: 'Numeric' },
+  { id: 'Latitude', label: 'Latitude', type: 'Numeric' }, { id: 'Longitude', label: 'Longitude', type: 'Numeric' },
+];
+
+function buildHigherEdData() {
+  const rnd = mulberry32(12001);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const pick = (a) => a[Math.floor(rnd() * a.length)];
+
+  const facultyByDept = {};
+  for (const [name, dept] of HE_FACULTY) { (facultyByDept[dept] ||= []).push(name); }
+
+  // Courses — capacity as a rollup, mirroring the source's Count / Spots_Left formulas.
+  const courses = HE_COURSES.map(([code, title, dept, credits], i) => {
+    const capacity = [24, 30, 40, 60, 90, 120][Math.floor(rnd() * 6)];
+    // Intro courses fill up (some genuinely hit capacity, so "sections full" and the waitlist
+    // story mean something); senior seminars often don't. That spread is what makes the page useful.
+    const isIntro = /1\d\d$/.test(code);
+    const fill = isIntro ? 0.9 + rnd() * 0.28 : 0.45 + rnd() * 0.5;
+    const enrolled = Math.min(capacity, Math.round(capacity * fill));
+    return {
+      id: i + 1, Code: code, Title: title, Department: dept, Term: pick(HE_TERMS),
+      Instructor: pick(facultyByDept[dept]), Enrolled: enrolled, Capacity: capacity,
+      SpotsLeft: Math.max(capacity - enrolled, 0), PercentFull: Math.round((enrolled / capacity) * 100),
+      Credits: credits, IsFull: enrolled >= capacity ? 1 : 0,
+    };
+  });
+
+  // Students — anonymised on purpose (see the file header). No names, no contacts, no health data.
+  const years = ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Postgraduate'];
+  const students = [];
+  for (let i = 0; i < 60; i++) {
+    const [programme, dept] = pick(HE_PROGRAMMES);
+    const st = rnd();
+    const status = st < 0.84 ? 'Enrolled' : st < 0.9 ? 'On leave' : st < 0.96 ? 'Graduated' : 'Withdrawn';
+    const year = /PhD|MSc|MBA|MEng/.test(programme) ? 'Postgraduate' : years[Math.floor(rnd() * 4)];
+    students.push({
+      id: i + 1, StudentID: `S-24-${String(1000 + i).slice(1)}`, Programme: programme, Department: dept,
+      Year: year, Status: status, CreditsEarned: Math.round(12 + rnd() * 108),
+      Advisor: pick(facultyByDept[dept]), IsEnrolled: status === 'Enrolled' ? 1 : 0,
+    });
+  }
+
+  // Grants — two regimes so the pipeline has settled history (a real success rate) plus live
+  // proposals due in the next few weeks, which is what fills the deadline calendar.
+  const grants = HE_GRANT_TITLES.map((title, i) => {
+    const historical = rnd() < 0.45;
+    const offset = historical ? Math.round(-200 + rnd() * 170) : Math.round(-8 + rnd() * 55);
+    const deadline = new Date(today); deadline.setDate(deadline.getDate() + offset);
+    const dept = HE_DEPARTMENTS[i % HE_DEPARTMENTS.length][0];
+    const requested = Math.round((45000 + rnd() * 780000) / 1000) * 1000;
+    let status;
+    // Research funding is genuinely competitive — NSF and NIH award roughly a fifth to a quarter of
+    // proposals. A demo showing half the applications funded would misrepresent the job.
+    if (offset < 0) status = rnd() < 0.28 ? 'Funded' : 'Declined';
+    else status = rnd() < 0.4 ? 'Awaiting decision' : (rnd() < 0.62 ? 'Submitted' : 'In preparation');
+    const funded = status === 'Funded';
+    return {
+      id: i + 1, Title: title, PrincipalInvestigator: pick(facultyByDept[dept]), Sponsor: pick(HE_SPONSORS),
+      Department: dept, Status: status, ProposalDeadline: heIso(deadline),
+      AmountRequested: requested,
+      AmountAwarded: funded ? Math.round(requested * (0.55 + rnd() * 0.45) / 1000) * 1000 : 0,
+      Funded: funded ? 1 : 0,
+    };
+  });
+
+  const faculty = HE_FACULTY.map(([name, dept, title], i) => {
+    const mine = grants.filter((g) => g.PrincipalInvestigator === name);
+    return {
+      id: i + 1, Name: name, Department: dept, Title: title,
+      Email: name.toLowerCase().replace(/^(prof|dr)\.\s*/, '').replace(/[^a-z]+/g, '.') + '@anupress.edu',
+      CoursesTaught: courses.filter((c) => c.Instructor === name).length,
+      GrantsHeld: mine.reduce((s, g) => s + g.Funded, 0),
+      ResearchFunding: mine.reduce((s, g) => s + g.AmountAwarded, 0),
+    };
+  });
+
+  const departments = HE_DEPARTMENTS.map(([name, building, head, lat, lon], i) => ({
+    id: i + 1, Name: name, Building: building, Head: head,
+    StudentCount: students.filter((s) => s.Department === name).reduce((s2, s) => s2 + s.IsEnrolled, 0),
+    FacultyCount: faculty.filter((f) => f.Department === name).length,
+    CourseCount: courses.filter((c) => c.Department === name).length,
+    ResearchFunding: grants.filter((g) => g.Department === name).reduce((s, g) => s + g.AmountAwarded, 0),
+    Latitude: lat, Longitude: lon,
+  }));
+
+  return {
+    defaultTable: 'Courses',
+    tables: {
+      Courses: { id: 'Courses', label: 'Courses', columns: HE_COURSES_COLUMNS, records: courses },
+      Students: { id: 'Students', label: 'Students', columns: HE_STUDENTS_COLUMNS, records: students },
+      Grants: { id: 'Grants', label: 'Research grants', columns: HE_GRANTS_COLUMNS, records: grants },
+      Faculty: { id: 'Faculty', label: 'Faculty', columns: HE_FACULTY_COLUMNS, records: faculty },
+      Departments: { id: 'Departments', label: 'Departments', columns: HE_DEPARTMENTS_COLUMNS, records: departments },
+    },
+  };
+}
+
 function buildRows(seed, { categories, sites, valueRange, count = 24 }) {
   const rnd = mulberry32(seed);
   const rows = [];
@@ -1136,11 +1326,7 @@ export const TEMPLATE_SAMPLE_DATA = {
   'research-labs': buildResearchLabsData(),
   nonprofits: buildNonprofitData(),
   legal: buildLegalData(),
-  'higher-education': dataset(4004, {
-    categories: ['Computer Science', 'Business', 'Biology', 'Psychology', 'Engineering'],
-    sites: [site('North Campus', 42.36, -71.06), site('Riverside Campus', 30.27, -97.74), site('Lakeside Campus', 43.65, -79.38), site('Old Town Campus', 52.52, 13.40), site('Harbor Campus', -33.87, 151.21)],
-    valueRange: [20, 450],
-  }),
+  'higher-education': buildHigherEdData(),
   marketing: dataset(4005, {
     categories: ['Retail', 'Healthcare', 'Technology', 'Finance', 'Hospitality'],
     sites: [site('New York Studio', 40.71, -74.01), site('London Studio', 51.51, -0.13), site('Singapore Studio', 1.35, 103.82), site('São Paulo Studio', -23.55, -46.63), site('Sydney Studio', -33.87, 151.21)],
