@@ -1286,6 +1286,187 @@ function buildHigherEdData() {
   };
 }
 
+// ---- Sports Facility: bookings, members, classes and leagues in one place ----
+// Grist's own facility page is thin (generic budget/payroll/CRM templates), so this is grounded in
+// adjacent real docs instead: Sports League Standings (Wins = len(Game_Schedule.lookupRecords(
+// Winner=$id)), Win_Rate = Wins/(Wins+Losses) — a standings table entirely DERIVED from results,
+// never typed), Rental Management (Income_and_Expenses tracked per space with Month =
+// Date.strftime("%Y-%m"), rolled up per unit — the same shape as revenue per court) and Class
+// Enrollment (whose sample classes are literally "Gym Stars" and "Yoga Kids", with Max_Students /
+// Count / Spots_Left). No single source joins bookings, members, classes and leagues, which is
+// exactly the gap: a facility manager runs all four and otherwise keeps four spreadsheets.
+const SF_FACILITIES = [
+  ['Court 1 — Indoor', 'Indoor court', 40, 45, 42.3712, -71.0589],
+  ['Court 2 — Indoor', 'Indoor court', 40, 45, 42.3714, -71.0592],
+  ['Court 3 — Indoor', 'Indoor court', 40, 45, 42.3716, -71.0595],
+  ['North Field', 'Outdoor field', 200, 60, 42.3735, -71.0611],
+  ['South Field', 'Outdoor field', 200, 60, 42.3698, -71.0574],
+  ['Main Pool', 'Pool', 80, 70, 42.3721, -71.0601],
+  ['Studio A', 'Studio', 25, 35, 42.3708, -71.0583],
+  ['Studio B', 'Studio', 25, 35, 42.3706, -71.0581],
+];
+const SF_MEMBER_TYPES = ['Individual', 'Family', 'Team', 'Student'];
+const SF_BOOKING_TYPES = ['Member', 'Team practice', 'Event', 'Class'];
+const SF_FIRST = ['Amy', 'Derek', 'Nina', 'Carlos', 'Ruth', 'Mo', 'Jenna', 'Tobias', 'Leah', 'Priya',
+  'Owen', 'Sasha', 'Marcus', 'Ella', 'Diego', 'Hana', 'Colin', 'Bea'];
+const SF_LAST = ['Torres', 'Snyder', 'Kowalski', 'Reyes', 'Adeyemi', 'Farouk', 'Boyd', 'Lindqvist',
+  'Murray', 'Shah', 'Fletcher', 'Volkov', 'Bennett', 'Nguyen', 'Alvarez', 'Ito', 'Doyle', 'Marsh'];
+const SF_CLASSES = [
+  ['Junior Basketball', 'Mon', '16:00', 24], ['Adult Volleyball', 'Tue', '19:00', 30],
+  ['Yoga Kids', 'Wed', '15:30', 20], ['Aqua Fitness', 'Wed', '18:00', 25],
+  ['Gym Stars Advanced', 'Thu', '17:00', 18], ['Circuit Training', 'Thu', '06:30', 22],
+  ['Swim School', 'Fri', '16:30', 20], ['Weekend Football Camp', 'Sat', '09:00', 40],
+  ['Senior Pickleball', 'Sat', '11:00', 24], ['Family Open Gym', 'Sun', '10:00', 50],
+];
+const SF_TEAMS = [
+  ['Riverside Rockets', 'Adult Basketball'], ['Northgate Ravens', 'Adult Basketball'],
+  ['Harbour Hawks', 'Adult Basketball'], ['Eastside Eagles', 'Adult Basketball'],
+  ['Sunset Strikers', 'Indoor Football'], ['Ironworks FC', 'Indoor Football'],
+  ['Bayview Blaze', 'Indoor Football'], ['Old Town Owls', 'Indoor Football'],
+  ['Lakeside Lions', 'Volleyball'], ['Summit Spikers', 'Volleyball'],
+];
+
+const sfIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const SF_FACILITIES_COLUMNS = [
+  { id: 'Name', label: 'Facility', type: 'Text' }, { id: 'Type', label: 'Type', type: 'Choice' },
+  { id: 'Capacity', label: 'Capacity', type: 'Numeric' }, { id: 'HourlyRate', label: 'Hourly Rate', type: 'Numeric' },
+  { id: 'BookedHours', label: 'Booked Hours', type: 'Numeric' }, { id: 'AvailableHours', label: 'Available Hours', type: 'Numeric' },
+  { id: 'UtilisationPct', label: 'Utilisation %', type: 'Numeric' }, { id: 'Revenue', label: 'Revenue', type: 'Numeric' },
+  { id: 'Status', label: 'Status', type: 'Choice' },
+  { id: 'Latitude', label: 'Latitude', type: 'Numeric' }, { id: 'Longitude', label: 'Longitude', type: 'Numeric' },
+];
+const SF_BOOKINGS_COLUMNS = [
+  { id: 'Date', label: 'Date', type: 'Date' }, { id: 'Facility', label: 'Facility', type: 'Text' },
+  { id: 'StartTime', label: 'Start', type: 'Text' }, { id: 'Hours', label: 'Hours', type: 'Numeric' },
+  { id: 'BookedBy', label: 'Booked By', type: 'Text' }, { id: 'Type', label: 'Type', type: 'Choice' },
+  { id: 'Revenue', label: 'Revenue', type: 'Numeric' }, { id: 'Status', label: 'Status', type: 'Choice' },
+];
+const SF_MEMBERS_COLUMNS = [
+  { id: 'MemberID', label: 'Member ID', type: 'Text' }, { id: 'Name', label: 'Member', type: 'Text' },
+  { id: 'Type', label: 'Membership', type: 'Choice' }, { id: 'Status', label: 'Status', type: 'Choice' },
+  { id: 'JoinDate', label: 'Joined', type: 'Date' }, { id: 'RenewalDate', label: 'Renews', type: 'Date' },
+  { id: 'VisitsThisMonth', label: 'Visits This Month', type: 'Numeric' },
+  { id: 'MonthlyFee', label: 'Monthly Fee', type: 'Numeric' }, { id: 'IsActive', label: 'Active', type: 'Numeric' },
+];
+const SF_CLASSES_COLUMNS = [
+  { id: 'Name', label: 'Class', type: 'Text' }, { id: 'Instructor', label: 'Instructor', type: 'Text' },
+  { id: 'Day', label: 'Day', type: 'Choice' }, { id: 'Time', label: 'Time', type: 'Text' },
+  { id: 'Facility', label: 'Facility', type: 'Text' }, { id: 'Enrolled', label: 'Enrolled', type: 'Numeric' },
+  { id: 'Capacity', label: 'Capacity', type: 'Numeric' }, { id: 'SpotsLeft', label: 'Spots Left', type: 'Numeric' },
+  { id: 'IsFull', label: 'Full', type: 'Numeric' },
+];
+const SF_STANDINGS_COLUMNS = [
+  { id: 'Team', label: 'Team', type: 'Text' }, { id: 'League', label: 'League', type: 'Choice' },
+  { id: 'Played', label: 'Played', type: 'Numeric' }, { id: 'Won', label: 'Won', type: 'Numeric' },
+  { id: 'Drawn', label: 'Drawn', type: 'Numeric' }, { id: 'Lost', label: 'Lost', type: 'Numeric' },
+  { id: 'Points', label: 'Points', type: 'Numeric' }, { id: 'WinRate', label: 'Win Rate %', type: 'Numeric' },
+];
+
+function buildSportsFacilityData() {
+  const rnd = mulberry32(13001);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const pick = (a) => a[Math.floor(rnd() * a.length)];
+  const r2 = (n) => Math.round(n * 100) / 100;
+
+  const staff = ['Coach Derek Snyder', 'Amy Torres', 'Mo Farouk', 'Jenna Boyd', 'Priya Shah'];
+
+  const members = [];
+  for (let i = 0; i < 48; i++) {
+    const type = pick(SF_MEMBER_TYPES);
+    const join = new Date(today); join.setDate(join.getDate() - Math.round(20 + rnd() * 1200));
+    // Renewal is a year on from joining, rolled forward to the next one still ahead of us.
+    const renew = new Date(join);
+    while (renew < today) renew.setFullYear(renew.getFullYear() + 1);
+    const status = rnd() < 0.88 ? 'Active' : (rnd() < 0.6 ? 'Lapsed' : 'Frozen');
+    const fee = { Individual: 45, Family: 85, Team: 160, Student: 28 }[type];
+    members.push({
+      id: i + 1, MemberID: 'M-' + String(2200 + i), Name: `${SF_FIRST[i % SF_FIRST.length]} ${SF_LAST[(i * 3) % SF_LAST.length]}`,
+      Type: type, Status: status, JoinDate: sfIso(join), RenewalDate: sfIso(renew),
+      VisitsThisMonth: status === 'Active' ? Math.round(rnd() * 18) : 0,
+      MonthlyFee: fee, IsActive: status === 'Active' ? 1 : 0,
+    });
+  }
+
+  // Bookings across the last ~5 weeks and the next ~4, so the court calendar always has a busy
+  // current month. Revenue is hours × the facility's own rate — the per-space money model.
+  // Volume is a deliberate balance. Too few (an earlier pass used 70) and the utilisation headline
+  // read 2%, making a working complex look derelict; too many and every single day on the month
+  // calendar truncates to "+N more" and you can't read it. ~500 across nine weeks is about one
+  // booking per facility per day — busy, believable, and still legible in a month grid.
+  const bookings = [];
+  const times = ['07:00', '09:00', '11:00', '13:00', '15:00', '17:00', '19:00', '21:00'];
+  for (let i = 0; i < 500; i++) {
+    const fac = pick(SF_FACILITIES);
+    const date = new Date(today); date.setDate(date.getDate() + Math.round(-35 + rnd() * 63));
+    const hours = [1, 1, 1.5, 2, 2, 3][Math.floor(rnd() * 6)];
+    const type = pick(SF_BOOKING_TYPES);
+    const past = date < today;
+    const status = past ? (rnd() < 0.94 ? 'Completed' : 'No-show') : (rnd() < 0.9 ? 'Confirmed' : 'Pending');
+    const bookedBy = type === 'Team practice' ? pick(SF_TEAMS)[0]
+      : type === 'Class' ? pick(SF_CLASSES)[0]
+      : type === 'Event' ? pick(['Corporate away day', 'Birthday party', 'School tournament', 'Charity match'])
+      : pick(members).Name;
+    bookings.push({
+      id: i + 1, Date: sfIso(date), Facility: fac[0], StartTime: pick(times), Hours: hours,
+      BookedBy: bookedBy, Type: type,
+      Revenue: status === 'No-show' ? 0 : Math.round(hours * fac[3]), Status: status,
+    });
+  }
+
+  // Utilisation per facility — booked hours against what is realistically SELLABLE, which is prime
+  // time (roughly four hours an evening, plus weekend daytime averaging out the same), not every
+  // hour the doors are open. Measuring against a 14-hour trading day would divide by a number
+  // nobody can actually fill and make a healthy facility look empty.
+  const OPEN_HOURS = 4 * 7 * 9;
+  const facilities = SF_FACILITIES.map(([name, type, capacity, rate, lat, lon], i) => {
+    const mine = bookings.filter((b) => b.Facility === name);
+    const booked = r2(mine.reduce((s, b) => s + b.Hours, 0));
+    return {
+      id: i + 1, Name: name, Type: type, Capacity: capacity, HourlyRate: rate,
+      BookedHours: booked, AvailableHours: r2(Math.max(OPEN_HOURS - booked, 0)),
+      UtilisationPct: Math.round((booked / OPEN_HOURS) * 100),
+      Revenue: mine.reduce((s, b) => s + b.Revenue, 0),
+      Status: rnd() < 0.9 ? 'Open' : 'Maintenance', Latitude: lat, Longitude: lon,
+    };
+  });
+
+  const classes = SF_CLASSES.map(([name, day, time, capacity], i) => {
+    // Kids' and weekend sessions run full; early-morning adult sessions rarely do.
+    const popular = /Kids|Junior|Family|Weekend|Swim/.test(name);
+    const fill = popular ? 0.9 + rnd() * 0.22 : 0.5 + rnd() * 0.45;
+    const enrolled = Math.min(capacity, Math.round(capacity * fill));
+    return {
+      id: i + 1, Name: name, Instructor: pick(staff), Day: day, Time: time,
+      Facility: pick(SF_FACILITIES)[0], Enrolled: enrolled, Capacity: capacity,
+      SpotsLeft: Math.max(capacity - enrolled, 0), IsFull: enrolled >= capacity ? 1 : 0,
+    };
+  });
+
+  // Standings derived from a season's results, never typed — the source's contract.
+  const standings = SF_TEAMS.map(([team, league], i) => {
+    const played = 12 + Math.floor(rnd() * 3);
+    const won = Math.round(rnd() * played);
+    const drawn = Math.min(played - won, Math.round(rnd() * 3));
+    const lost = played - won - drawn;
+    return {
+      id: i + 1, Team: team, League: league, Played: played, Won: won, Drawn: drawn, Lost: lost,
+      Points: won * 3 + drawn, WinRate: Math.round((won / played) * 100),
+    };
+  });
+
+  return {
+    defaultTable: 'Bookings',
+    tables: {
+      Bookings: { id: 'Bookings', label: 'Bookings', columns: SF_BOOKINGS_COLUMNS, records: bookings },
+      Facilities: { id: 'Facilities', label: 'Facilities', columns: SF_FACILITIES_COLUMNS, records: facilities },
+      Members: { id: 'Members', label: 'Members', columns: SF_MEMBERS_COLUMNS, records: members },
+      Classes: { id: 'Classes', label: 'Classes', columns: SF_CLASSES_COLUMNS, records: classes },
+      Standings: { id: 'Standings', label: 'League standings', columns: SF_STANDINGS_COLUMNS, records: standings },
+    },
+  };
+}
+
 function buildRows(seed, { categories, sites, valueRange, count = 24 }) {
   const rnd = mulberry32(seed);
   const rows = [];
@@ -1335,9 +1516,5 @@ export const TEMPLATE_SAMPLE_DATA = {
   'finance-accounting': buildFinanceData(),
   developers: buildDevelopersData(),
   'small-business': buildSmallBusinessData(),
-  'sports-facility': dataset(4009, {
-    categories: ['Tennis Courts', 'Swimming Pool', 'Gym Floor', 'Basketball Court', 'Group Studio'],
-    sites: [site('Central Facility', 41.88, -87.63), site('Westside Facility', 30.27, -97.74), site('North Facility', 47.61, -122.33), site('Lakeside Facility', 43.65, -79.38), site('Harbor Facility', -33.87, 151.21)],
-    valueRange: [1, 40],
-  }),
+  'sports-facility': buildSportsFacilityData(),
 };

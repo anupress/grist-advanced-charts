@@ -299,12 +299,21 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; border-left: 3px solid var(--ap-cal-dot, var(--ap-primary)); }
 .ap-calendar__event[draggable="true"] { cursor: grab; }
 .ap-calendar__event.is-dragging { opacity: .4; }
-.ap-calendar__more { font-size: 10px; color: var(--ap-text-mute); padding: 0 4px; }
+.ap-calendar__more { font-size: 10px; color: var(--ap-text-mute); padding: 0 4px; cursor: pointer; }
+.ap-calendar__more:hover { color: var(--ap-text); text-decoration: underline; }
 .ap-calendar__popover { position: absolute; z-index: 5; min-width: 160px; max-width: 240px; background: var(--ap-surface);
   border: 1px solid var(--ap-border); border-radius: var(--ap-radius-sm); box-shadow: var(--ap-shadow-lg); padding: 10px 12px; }
 .ap-calendar__pop-title { font-weight: 700; font-size: var(--ap-fs-sm); color: var(--ap-text); }
 .ap-calendar__pop-detail { font-size: var(--ap-fs-xs); color: var(--ap-text-soft); margin-top: 4px; line-height: 1.5; }
 .ap-calendar__pop-label { font-weight: 700; color: var(--ap-text-mute); }
+/* Whole-day list opened from "+N more". A busy day can hold a dozen bookings, so it scrolls
+   rather than growing past the calendar. */
+.ap-calendar__popover.is-daylist { max-height: 260px; overflow-y: auto; min-width: 200px; }
+.ap-calendar__pop-item { padding: 8px 0; border-top: 1px solid var(--ap-border); }
+/* Adjacent-sibling, not :first-of-type — the title is a div too, so :first-of-type would never
+   match an item. */
+.ap-calendar__pop-title + .ap-calendar__pop-item { border-top: 0; padding-top: 6px; }
+.ap-calendar__pop-itemtitle { font-size: var(--ap-fs-sm); font-weight: 600; color: var(--ap-text); }
 @media (max-width: 560px) {
   .ap-calendar__grid { grid-auto-rows: minmax(44px, auto); }
   .ap-calendar__event { font-size: 0; padding: 3px; } /* collapse to a plain color bar on very small widths */

@@ -147,7 +147,7 @@ export const TEMPLATE = {
         id: 'tab-quality', title: 'Quality',
         hero: { title: 'Tests & quality', subtitle: 'What we run before anything reaches you.' },
         blocks: [
-          { id: 'dv34', type: 'stat', span: 3, config: { table: 'TestRuns', label: 'Avg. pass rate', column: 'PassRate', agg: 'avg', icon: 'check', format: { decimals: 1 } } },
+          { id: 'dv34', type: 'stat', span: 3, config: { table: 'TestRuns', label: 'Avg. pass rate', column: 'PassRate', agg: 'avg', icon: 'check', format: { percent: true, decimals: 1 } } },
           { id: 'dv35', type: 'stat', span: 3, config: { table: 'TestRuns', label: 'Avg. coverage', column: 'Coverage', agg: 'avg', icon: 'shield', format: { decimals: 1 } } },
           { id: 'dv36', type: 'stat', span: 3, config: { table: 'TestRuns', label: 'Tests run', column: 'Total', agg: 'sum', icon: 'database', format: { compact: true } } },
           { id: 'dv37', type: 'stat', span: 3, config: { table: 'TestRuns', label: 'Failures', column: 'Failed', agg: 'sum', icon: 'target', format: {} } },

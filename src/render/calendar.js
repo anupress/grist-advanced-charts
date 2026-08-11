@@ -66,22 +66,46 @@ export function renderCalendar(block, ctx) {
   popover.hidden = true;
 
   function closePopover() { popover.hidden = true; }
-  function showPopover(anchorEl, row) {
-    const body = grid.parentElement;
-    const detailEls = detailCols
+
+  function detailRows(row) {
+    return detailCols
       .filter((col) => row[col] != null && row[col] !== '')
       .map((col) => el('div', { class: 'ap-calendar__pop-detail' }, [
         el('span', { class: 'ap-calendar__pop-label', text: colLabel(col) + ': ' }),
         el('span', { text: String(row[col]) }),
       ]));
-    popover.replaceChildren(
-      el('div', { class: 'ap-calendar__pop-title', text: String(row[c.titleColumn] ?? 'Untitled') }),
-      ...detailEls,
-    );
+  }
+
+  function placePopover(anchorEl) {
+    const body = grid.parentElement;
     const hostRect = body.getBoundingClientRect(), r = anchorEl.getBoundingClientRect();
     popover.hidden = false;
     popover.style.left = Math.max(4, Math.min(r.left - hostRect.left, hostRect.width - 200)) + 'px';
     popover.style.top = (r.bottom - hostRect.top + 6) + 'px';
+  }
+
+  function showPopover(anchorEl, row) {
+    popover.classList.remove('is-daylist');
+    popover.replaceChildren(
+      el('div', { class: 'ap-calendar__pop-title', text: String(row[c.titleColumn] ?? 'Untitled') }),
+      ...detailRows(row),
+    );
+    placePopover(anchorEl);
+  }
+
+  // A cell only has room for three pills. Without this, every event past the third is unreachable —
+  // on a busy calendar (a sports complex books its courts ten times a day) that is most of them.
+  function showDayPopover(anchorEl, d, dayEvents) {
+    popover.classList.add('is-daylist');
+    popover.replaceChildren(
+      el('div', { class: 'ap-calendar__pop-title',
+        text: `${WEEKDAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} · ${dayEvents.length}` }),
+      ...dayEvents.map(({ r }) => el('div', { class: 'ap-calendar__pop-item' }, [
+        el('div', { class: 'ap-calendar__pop-itemtitle', text: String(r[c.titleColumn] ?? 'Untitled') }),
+        ...detailRows(r),
+      ])),
+    );
+    placePopover(anchorEl);
   }
 
   function eventsForDay(key) {
@@ -146,7 +170,11 @@ export function renderCalendar(block, ctx) {
       const key = dayKey(d);
       const dayEvents = eventsForDay(key);
       const shown = dayEvents.slice(0, 3).map(({ r }) => eventPill(r, cmap));
-      if (dayEvents.length > 3) shown.push(el('div', { class: 'ap-calendar__more', text: `+${dayEvents.length - 3} more` }));
+      if (dayEvents.length > 3) {
+        const moreEl = el('div', { class: 'ap-calendar__more', text: `+${dayEvents.length - 3} more` });
+        moreEl.addEventListener('click', (e) => { e.stopPropagation(); showDayPopover(moreEl, d, dayEvents); });
+        shown.push(moreEl);
+      }
       const cell = el('div', {
         class: 'ap-calendar__cell' + (d.getMonth() !== m ? ' is-outside' : '') + (key === todayKey ? ' is-today' : ''),
       }, [el('div', { class: 'ap-calendar__daynum', text: String(d.getDate()) }), el('div', { class: 'ap-calendar__events' }, shown)]);
@@ -168,7 +196,11 @@ export function renderCalendar(block, ctx) {
   ]);
 
   const body = el('div', { class: 'ap-calendar__body' }, [grid, popover]);
-  body.addEventListener('click', (e) => { if (!e.target.closest('.ap-calendar__event')) closePopover(); });
+  // Clicking inside the popover itself must not dismiss it — the day list is scrollable and
+  // clickable, so only a click on the grid background counts as "dismiss".
+  body.addEventListener('click', (e) => {
+    if (!e.target.closest('.ap-calendar__event, .ap-calendar__more, .ap-calendar__popover')) closePopover();
+  });
 
   const card = el('div', { class: 'ap-card ap-calendar', dataset: { blockId: block.id } }, [
     el('div', { class: 'ap-calendar__head' }, [el('div', { class: 'ap-calendar__title', text: c.title || 'Calendar' }), nav]),
