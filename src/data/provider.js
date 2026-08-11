@@ -112,26 +112,68 @@ export function tablesInConfig(config) {
 // can't know a real doc's schema in advance. A template that instead names *real* multi-table
 // structure (e.g. Research Labs' Samples/Reagents/Tasks/People) wants the opposite: leave a
 // block's table alone whenever it already names a table that genuinely exists on the target
-// provider, and only fall back to the single-table collapse for blocks that don't. This keeps
-// the common case unchanged (no existing template's tables coincidentally match a real table)
-// while letting a richer template survive being applied against its own matching sample data.
+// provider, and only fall back to the single-table collapse for blocks that don't.
+//
+// Column remapping is per-block, not per-call: every table-bound block type gets its own column
+// references validated against whichever table it actually ends up on (kept or collapsed), and
+// only touched if something's actually missing — a block that already points at valid columns
+// (including one that "kept its own table" by name but doesn't share every column, e.g. two
+// templates both naming a table 'People' with a different shape) is left alone. Earlier this only
+// covered stat/chart, which was fine while every template's other table-bound blocks (breakdown/
+// map/livetable/progress, all authored via templates/_helpers.js) pointed at the single shared
+// 'Data' placeholder table — but it left those block types (and any template naming its own real
+// tables, like Research Labs) showing blank/broken content whenever applied somewhere that didn't
+// happen to share the original column names. Map is the one type that can't always be rescued —
+// there's no way to invent latitude/longitude out of a table that has none — so it degrades to an
+// empty map (render/map.js already treats missing lat/lon as "no points") rather than erroring.
 export function adaptConfigToTable(config, provider) {
   const table = provider.defaultTable();
   if (!table) return config;
   const realTableIds = new Set(provider.tables().map((t) => t.id));
-  const cols = provider.columns(table);
   const c = clone(config);
   c.dataTable = table;
-  const dim = cols.find((x) => /text|choice|date/i.test(x.type)) || cols[0];
-  const measure = cols.find((x) => /int|numeric|number|currency/i.test(x.type)) || cols[1] || cols[0];
+
+  const dimCol = (cols, exclude) => cols.find((x) => x.id !== exclude && /text|choice|date/i.test(x.type)) || cols.find((x) => x.id !== exclude) || null;
+  const measureCol = (cols, exclude) => cols.find((x) => x.id !== exclude && /int|numeric|number|currency/i.test(x.type)) || cols.find((x) => x.id !== exclude) || null;
+  const dateCol = (cols) => cols.find((x) => /date/i.test(x.type)) || null;
+  const geoCol = (cols, pattern) => cols.find((x) => pattern.test(x.id) || pattern.test(x.label || '')) || null;
+
   for (const tab of c.tabs || []) for (const b of tab.blocks || []) {
     if (!b.config) continue;
     const keepsOwnTable = b.config.table && realTableIds.has(b.config.table);
-    if (!keepsOwnTable) b.config.table = table;
-    if (b.type === 'stat' && !keepsOwnTable) b.config.column = measure?.id;
-    if (b.type === 'chart' && !keepsOwnTable) {
-      b.config.dims = dim ? [dim.id] : [];
-      b.config.measures = measure ? [measure.id] : [];
+    const bTable = keepsOwnTable ? b.config.table : table;
+    b.config.table = bTable;
+    const cols = provider.columns(bTable);
+    const has = (id) => id != null && cols.some((x) => x.id === id);
+
+    if (b.type === 'stat') {
+      if (!has(b.config.column)) b.config.column = measureCol(cols)?.id ?? null;
+    } else if (b.type === 'chart') {
+      const dims = b.config.dims || [], measures = b.config.measures || [];
+      if (!dims.every(has)) { const d = dimCol(cols); b.config.dims = d ? [d.id] : []; }
+      if (!measures.every(has)) { const m = measureCol(cols, b.config.dims?.[0]); b.config.measures = m ? [m.id] : []; }
+    } else if (b.type === 'breakdown') {
+      if (!has(b.config.column)) b.config.column = dimCol(cols)?.id ?? null;
+    } else if (b.type === 'progress' && b.config.mode === 'data') {
+      if (!has(b.config.valueColumn)) b.config.valueColumn = measureCol(cols)?.id ?? null;
+      if (b.config.targetColumn && !has(b.config.targetColumn)) b.config.targetColumn = null;
+    } else if (b.type === 'livetable') {
+      const cfgCols = b.config.columns || [];
+      if (cfgCols.length && !cfgCols.every(has)) { b.config.columns = []; b.config.highlights = []; } // [] => show every real column; stale highlight ranges would now paint the wrong cells
+    } else if (b.type === 'calendar') {
+      if (!has(b.config.dateColumn)) b.config.dateColumn = dateCol(cols)?.id ?? null;
+      if (!has(b.config.titleColumn)) b.config.titleColumn = dimCol(cols, b.config.dateColumn)?.id ?? null;
+      if (!has(b.config.detailColumn)) b.config.detailColumn = null;
+      if (!has(b.config.colorBy)) b.config.colorBy = null;
+    } else if (b.type === 'map') {
+      if (!has(b.config.latColumn) || !has(b.config.lonColumn)) {
+        const lat = geoCol(cols, /lat/i), lon = lat && geoCol(cols, /lon|lng/i);
+        b.config.latColumn = lat && lon ? lat.id : null;
+        b.config.lonColumn = lat && lon && lon.id !== lat.id ? lon.id : null;
+      }
+      if (!has(b.config.labelColumn)) b.config.labelColumn = dimCol(cols)?.id ?? null;
+      if (!has(b.config.colorBy)) b.config.colorBy = null;
+      if ((b.config.popupColumns || []).length) b.config.popupColumns = b.config.popupColumns.filter(has);
     }
   }
   return c;
