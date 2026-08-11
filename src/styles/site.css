@@ -67,6 +67,18 @@
 @media (max-width: 900px) { .ap-block[data-span] { grid-column: span 6; } }
 @media (max-width: 620px) { .ap-block[data-span] { grid-column: span 12; } }
 
+/* Row equalization, the automatic way: a CSS grid already stretches every cell in a row to the
+   tallest block (align-items:stretch is the default), so blocks sharing a row line up on their own
+   — no manual "Equalize" button or section/flex container system needed, and it stays correct as
+   the data changes. The only missing piece was that some content cards didn't fill their stretched
+   cell; this makes them do so. Data/content cards not already at height:100% (stat, chart,
+   breakdown, map, progress, counter, calendar, qr, countdown already are). Layout-only blocks
+   (text, button, icon, spacer, divider) are deliberately left at natural height — stretching a
+   lone caption or button to match a tall chart would just add awkward empty space. An image keeps
+   its own aspect ratio inside the filled card, so a very tall neighbour leaves tidy matching-colour
+   space below it rather than a distorted photo. */
+.ap-image, .ap-accordion, .ap-testimonials, .ap-livetable, .ap-pricing, .ap-timeline { height: 100%; }
+
 /* ---- Stat card (KPI) ---- */
 .ap-stat { position: relative; overflow: hidden; padding: 18px 20px 48px; height: 100%; display: flex; flex-direction: column; gap: 8px; border-radius: var(--ap-radius); }
 .ap-stat__head, .ap-stat__delta { position: relative; z-index: 1; }

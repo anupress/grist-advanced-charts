@@ -29,10 +29,14 @@ function tooltipCfg(trigger = 'axis') {
            backgroundColor: readVar('--ap-surface') || '#fff', borderColor: gridLine(),
            textStyle: { color: readVar('--ap-text') || '#1f2233' }, extraCssText: 'border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);' };
 }
-const catAxis = (data, rotate) => ({
+const catAxis = (data, { rotate = 0, showAll = false } = {}) => ({
   type: 'category', data, boundaryGap: true,
   axisLine: { lineStyle: { color: gridLine() } }, axisTick: { show: false },
-  axisLabel: { color: axisText(), fontSize: 11, hideOverlap: true, rotate: rotate || 0 },
+  // showAll forces every category label to render (interval:0) — used once we've rotated them
+  // enough to fit. Otherwise let echarts drop overlapping labels rather than overprint them into
+  // an unreadable smear. (echarts' default hides labels that collide, which on 6 longish names
+  // like "Emily Johnson" left only 2 of them visible — the bug this addresses.)
+  axisLabel: { color: axisText(), fontSize: 11, rotate, hideOverlap: !showAll, interval: showAll ? 0 : 'auto' },
 });
 const valAxis = () => ({
   type: 'value', splitLine: { lineStyle: { color: gridLine(), type: 'dashed' } },
@@ -67,7 +71,16 @@ export function buildOption(block, ctx) {
   const isBar = type === 'bar';
   const isLineish = type === 'line' || type === 'area';
   const showLegend = g.series.length > 1;
-  const longLabels = g.categories.some((c) => String(c).length > 8) && g.categories.length > 6;
+  // Category-axis label strategy: rotate when labels are long or numerous so they stop overlapping,
+  // and force every one to show while rotation keeps them legible. Only past ~18 categories do we
+  // fall back to letting echarts hide overlaps — beyond that even angled labels become a wall.
+  const nCats = g.categories.length;
+  const maxLabelLen = g.categories.reduce((m, c) => Math.max(m, String(c).length), 0);
+  // Rotate only when horizontal labels would actually collide: several moderately-long labels, or
+  // a genuinely long one, or simply a lot of them. A few short-ish labels stay flat and readable.
+  const catRotate = ((nCats > 4 && maxLabelLen > 6) || maxLabelLen > 12 || nCats > 8)
+    ? (maxLabelLen > 14 || nCats > 12 ? 45 : 30) : 0;
+  const showAllCats = catRotate > 0 && nCats <= 18;
 
   const series = g.series.map((s) => {
     if (isLineish) {
@@ -83,8 +96,8 @@ export function buildOption(block, ctx) {
   return {
     color: colors, animationDuration: 600, animationEasing: 'cubicOut',
     grid: baseGrid(showLegend), legend: legendCfg(showLegend), tooltip: tooltipCfg('axis'),
-    xAxis: isBar ? valAxis() : catAxis(g.categories, longLabels ? 32 : 0),
-    yAxis: isBar ? catAxis(g.categories) : valAxis(),
+    xAxis: isBar ? valAxis() : catAxis(g.categories, { rotate: catRotate, showAll: showAllCats }),
+    yAxis: isBar ? catAxis(g.categories, { showAll: nCats <= 18 }) : valAxis(),
     series,
   };
 }

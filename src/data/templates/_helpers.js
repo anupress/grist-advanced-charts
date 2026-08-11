@@ -43,9 +43,14 @@ export const urlTarget = (url) => ({ kind: 'url', tab: null, url, newTab: true }
 export const tabTarget = (tab) => ({ kind: 'tab', tab, url: null, newTab: true });
 
 // A soft gradient "photo" (SVG data URI) — same technique as default-site.js's demoSlide(), so
-// the Image block shows something real without needing an actual upload.
+// the Image block shows something real without needing an actual upload. Carries a centered
+// "Replace with your image" label + picture glyph so it reads unmistakably as a placeholder to
+// swap out, not as final artwork — the same cue across every template's image blocks.
 export const placeholderImage = (c1, c2) => 'data:image/svg+xml,' + encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs><rect width="800" height="500" fill="url(#g)"/><circle cx="680" cy="80" r="160" fill="#fff" opacity="0.08"/><circle cx="100" cy="440" r="130" fill="#fff" opacity="0.06"/></svg>`);
+  `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs>`
+  + `<rect width="800" height="500" fill="url(#g)"/><circle cx="680" cy="80" r="160" fill="#fff" opacity="0.08"/><circle cx="100" cy="440" r="130" fill="#fff" opacity="0.06"/>`
+  + `<g transform="translate(400 210)" fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round" opacity="0.85"><rect x="-34" y="-26" width="68" height="52" rx="6"/><circle cx="-14" cy="-6" r="7"/><path d="M-34 18l22-20 16 14 12-10 18 16"/></g>`
+  + `<text x="400" y="300" font-family="Segoe UI, system-ui, sans-serif" font-size="30" font-weight="700" letter-spacing="1" fill="#fff" fill-opacity="0.92" text-anchor="middle">Replace with your image</text></svg>`);
 
 export const image = (id, imageData, alt, caption, span = 6) =>
   ({ id, type: 'image', span, config: { mode: 'upload', imageData, ref: { table: null, column: null, row: null }, alt, fit: 'cover', caption, link: noTarget } });
