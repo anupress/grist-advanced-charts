@@ -386,6 +386,181 @@ function buildFinanceData() {
   };
 }
 
+// ---- Nonprofit: one published mission dashboard ----
+// Modeled on Grist's four separate nonprofit docs (Grant Application Tracker, Church Management
+// CRM, Donation Tracking, Event Sponsors + Registrations), unified into the view a nonprofit
+// actually needs to SHOW donors, boards and funders. Extends the sources: grant deadlines get a
+// draggable calendar and a win-rate (the tracker has deadlines but no calendar and no ratio),
+// programs get budget-vs-actual (no source does this), events get capacity bars.
+//
+// Privacy, deliberately: the source docs are internal and lean on Grist access rules (People even
+// has a List_Visibility flag). This widget PUBLISHES, so donors here are shown as "Maria G." /
+// "Anonymous" — the template copy tells users to keep donor-level rows private and publish the
+// aggregates. Never model a template on publishing donor PII.
+const NP_DONORS = ['Maria G.', 'James W.', 'Anonymous', 'The Okonkwo Family', 'Priya S.', 'Daniel R.',
+  'Anonymous', 'Chen W.', 'Aisha M.', 'Robert & Ellen T.', 'Sofia L.', 'Anonymous', 'Marcus D.', 'Yuki T.'];
+const NP_CAMPAIGNS = ['Annual Fund', 'Winter Appeal', 'Spring Gala', 'Emergency Relief', 'Monthly Giving'];
+const NP_METHODS = ['Card', 'Bank transfer', 'Check', 'Cash', 'Payroll giving'];
+const NP_PROGRAMS = [
+  ['Youth Literacy', 'Education', 'East Side', 42.36, -71.06, 'Dr. Alice Mensah'],
+  ['Community Food Bank', 'Food Security', 'Riverside', 41.88, -87.63, 'Tom Becker'],
+  ['Warm Homes', 'Housing', 'North Quarter', 39.74, -104.99, 'Grace Kim'],
+  ['Mobile Health Clinic', 'Health', 'Rural District', 30.27, -97.74, 'Dr. Samuel Ortiz'],
+  ['Green Spaces', 'Environment', 'Harbor View', 45.52, -122.68, 'Elena Novak'],
+  ['Job Readiness', 'Education', 'Southbank', 33.75, -84.39, 'Jamal Wright'],
+];
+const NP_FOUNDATIONS = ['Whitfield Foundation', 'Cedar Trust', 'Openfield Fund', 'Harbor Community Trust',
+  'The Lindqvist Foundation', 'Meridian Giving', 'Ashcroft Family Fund'];
+const NP_GRANTS = [
+  ['Youth Literacy Expansion', 'Youth Literacy'], ['Weekend Meals Program', 'Community Food Bank'],
+  ['Winter Shelter Beds', 'Warm Homes'], ['Mobile Clinic Vehicle', 'Mobile Health Clinic'],
+  ['Neighbourhood Tree Planting', 'Green Spaces'], ['Apprenticeship Pilot', 'Job Readiness'],
+  ['Family Literacy Nights', 'Youth Literacy'], ['Cold Storage Upgrade', 'Community Food Bank'],
+  ['Emergency Housing Fund', 'Warm Homes'], ['Rural Outreach Nurses', 'Mobile Health Clinic'],
+  ['Community Garden Build', 'Green Spaces'], ['Digital Skills Lab', 'Job Readiness'],
+  ['Summer Reading Corps', 'Youth Literacy'], ['Delivery Van Replacement', 'Community Food Bank'],
+  ['Tenancy Support Workers', 'Warm Homes'], ['Screening Clinic Equipment', 'Mobile Health Clinic'],
+  ['Pollinator Corridor', 'Green Spaces'], ['Employer Partnerships Fund', 'Job Readiness'],
+];
+const NP_GRANT_STATUS = ['Not started', 'Submitted', 'Awaiting decision', 'Funded', 'Declined'];
+const NP_VOLUNTEER_NAMES = ['Ava Bennett', 'Diego Alvarez', 'Nadia Petrov', 'Owen Clarke', 'Mei Tanaka',
+  'Jamal Wright', 'Elena Novak', 'Ruth Adeyemi', 'Peter Lindqvist', 'Hana Suzuki', 'Carlos Mendez',
+  'Fatima Zahra', 'George Whitman', 'Linda Park', 'Samuel Osei', 'Nina Kowalski'];
+const NP_ROLES = ['Tutor', 'Driver', 'Event steward', 'Fundraiser', 'Mentor', 'Kitchen help', 'Admin support'];
+const NP_EVENTS = [
+  ['Spring Gala Dinner', 'Riverside Hall'], ['Community Fun Run', 'Harbor Park'],
+  ['Winter Coat Drive', 'East Side Centre'], ['Volunteer Open Day', 'North Quarter Hub'],
+  ['Donor Thank-You Evening', 'Riverside Hall'], ['Summer Reading Festival', 'Southbank Library'],
+];
+
+const npIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const NP_DONATIONS_COLUMNS = [
+  { id: 'Donor', label: 'Donor', type: 'Text' }, { id: 'Date', label: 'Date', type: 'Date' },
+  { id: 'Amount', label: 'Amount', type: 'Numeric' }, { id: 'Campaign', label: 'Campaign', type: 'Choice' },
+  { id: 'Method', label: 'Method', type: 'Choice' }, { id: 'Type', label: 'Type', type: 'Choice' },
+  { id: 'Status', label: 'Status', type: 'Choice' }, { id: 'Received', label: 'Received', type: 'Numeric' },
+  { id: 'Pledged', label: 'Pledged', type: 'Numeric' }, { id: 'Acknowledged', label: 'Receipt Sent', type: 'Bool' },
+];
+const NP_GRANTS_COLUMNS = [
+  { id: 'GrantName', label: 'Grant', type: 'Text' }, { id: 'Foundation', label: 'Foundation', type: 'Text' },
+  { id: 'Program', label: 'Program', type: 'Text' }, { id: 'Status', label: 'Status', type: 'Choice' },
+  { id: 'ProposalDeadline', label: 'Proposal Deadline', type: 'Date' },
+  { id: 'AmountRequested', label: 'Requested', type: 'Numeric' }, { id: 'AmountAwarded', label: 'Awarded', type: 'Numeric' },
+  { id: 'Assignee', label: 'Owner', type: 'Text' }, { id: 'Funded', label: 'Funded', type: 'Numeric' },
+  { id: 'Decided', label: 'Decided', type: 'Numeric' },
+];
+const NP_VOLUNTEERS_COLUMNS = [
+  { id: 'Name', label: 'Volunteer', type: 'Text' }, { id: 'Role', label: 'Role', type: 'Choice' },
+  { id: 'Program', label: 'Program', type: 'Text' }, { id: 'HoursLogged', label: 'Hours Logged', type: 'Numeric' },
+  { id: 'Status', label: 'Status', type: 'Choice' }, { id: 'JoinDate', label: 'Joined', type: 'Date' },
+  { id: 'Email', label: 'Email', type: 'Text' }, { id: 'BackgroundCheck', label: 'Checks Cleared', type: 'Bool' },
+];
+const NP_PROGRAMS_COLUMNS = [
+  { id: 'Program', label: 'Program', type: 'Text' }, { id: 'Focus', label: 'Focus', type: 'Choice' },
+  { id: 'Location', label: 'Location', type: 'Text' }, { id: 'PeopleServed', label: 'People Served', type: 'Numeric' },
+  { id: 'Budget', label: 'Budget', type: 'Numeric' }, { id: 'Spent', label: 'Spent', type: 'Numeric' },
+  { id: 'Lead', label: 'Program Lead', type: 'Text' },
+  { id: 'Latitude', label: 'Latitude', type: 'Numeric' }, { id: 'Longitude', label: 'Longitude', type: 'Numeric' },
+];
+const NP_EVENTS_COLUMNS = [
+  { id: 'Event', label: 'Event', type: 'Text' }, { id: 'Date', label: 'Date', type: 'Date' },
+  { id: 'Location', label: 'Location', type: 'Text' }, { id: 'Capacity', label: 'Capacity', type: 'Numeric' },
+  { id: 'Registered', label: 'Registered', type: 'Numeric' }, { id: 'PercentFull', label: '% Full', type: 'Numeric' },
+  { id: 'TicketRevenue', label: 'Ticket Revenue', type: 'Numeric' }, { id: 'Coordinator', label: 'Coordinator', type: 'Text' },
+];
+
+function buildNonprofitData() {
+  const rnd = mulberry32(8001);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const pick = (a) => a[Math.floor(rnd() * a.length)];
+
+  // Donations across the last ~11 months; most received, a few still pledged.
+  const donations = [];
+  for (let i = 0; i < 46; i++) {
+    const date = new Date(today.getTime() - Math.round(rnd() * 330) * 86400000);
+    const type = rnd() < 0.32 ? 'Recurring' : 'One-time';
+    const base = type === 'Recurring' ? 25 + rnd() * 175 : 40 + rnd() * 2600;
+    const amount = Math.round(base / 5) * 5;
+    const status = rnd() < 0.87 ? 'Received' : 'Pledged';
+    donations.push({
+      id: i + 1, Donor: pick(NP_DONORS), Date: npIso(date), Amount: amount,
+      Campaign: pick(NP_CAMPAIGNS), Method: pick(NP_METHODS), Type: type, Status: status,
+      Received: status === 'Received' ? amount : 0, Pledged: status === 'Pledged' ? amount : 0,
+      Acknowledged: status === 'Received' ? rnd() < 0.85 : false,
+    });
+  }
+
+  // Grants use two regimes so the page tells a complete story: a settled history (decided, giving a
+  // believable ~60% win rate for the KPIs) plus live applications clustered around now, which is
+  // what fills the proposal-deadline calendar's current month.
+  const grants = NP_GRANTS.map(([name, program], i) => {
+    const historical = rnd() < 0.45;
+    const offset = historical ? Math.round(-190 + rnd() * 160) : Math.round(-8 + rnd() * 52);
+    const deadline = new Date(today); deadline.setDate(deadline.getDate() + offset);
+    const requested = Math.round((8000 + rnd() * 92000) / 500) * 500;
+    // Past-deadline applications have been decided; future ones are still in flight.
+    let status;
+    if (offset < 0) status = rnd() < 0.62 ? 'Funded' : 'Declined';
+    else status = rnd() < 0.45 ? 'Awaiting decision' : (rnd() < 0.6 ? 'Submitted' : 'Not started');
+    const funded = status === 'Funded';
+    return {
+      id: i + 1, GrantName: name, Foundation: pick(NP_FOUNDATIONS), Program: program, Status: status,
+      ProposalDeadline: npIso(deadline), AmountRequested: requested,
+      AmountAwarded: funded ? Math.round(requested * (0.6 + rnd() * 0.4) / 500) * 500 : 0,
+      Assignee: pick(['Dr. Alice Mensah', 'Grace Kim', 'Jamal Wright', 'Elena Novak']),
+      Funded: funded ? 1 : 0, Decided: (status === 'Funded' || status === 'Declined') ? 1 : 0,
+    };
+  });
+
+  const volunteers = NP_VOLUNTEER_NAMES.map((name, i) => {
+    const join = new Date(today.getTime() - Math.round(30 + rnd() * 1400) * 86400000);
+    const status = rnd() < 0.78 ? 'Active' : (rnd() < 0.5 ? 'Onboarding' : 'Inactive');
+    return {
+      id: i + 1, Name: name, Role: pick(NP_ROLES), Program: pick(NP_PROGRAMS)[0],
+      HoursLogged: Math.round(8 + rnd() * 240), Status: status, JoinDate: npIso(join),
+      Email: name.toLowerCase().replace(/[^a-z]+/g, '.') + '@example.org',
+      BackgroundCheck: status === 'Onboarding' ? rnd() < 0.4 : true,
+    };
+  });
+
+  const programs = NP_PROGRAMS.map(([program, focus, location, lat, lon, lead], i) => {
+    // Kept in the same order of magnitude as the income above (donations + grants awarded), so the
+    // dashboard's money story is internally coherent rather than budgeting far beyond what it raises.
+    const budget = Math.round((15000 + rnd() * 55000) / 1000) * 1000;
+    return {
+      id: i + 1, Program: program, Focus: focus, Location: location,
+      PeopleServed: Math.round(180 + rnd() * 3200), Budget: budget,
+      Spent: Math.round(budget * (0.35 + rnd() * 0.55) / 1000) * 1000, Lead: lead,
+      Latitude: lat, Longitude: lon,
+    };
+  });
+
+  // Events span past and upcoming so the capacity bars show both sold-out and filling events.
+  const events = NP_EVENTS.map(([event, location], i) => {
+    const date = new Date(today.getTime() + Math.round(-90 + rnd() * 210) * 86400000);
+    const capacity = [60, 120, 200, 250, 400][Math.floor(rnd() * 5)];
+    const registered = Math.min(capacity, Math.round(capacity * (0.42 + rnd() * 0.62)));
+    return {
+      id: i + 1, Event: event, Date: npIso(date), Location: location, Capacity: capacity,
+      Registered: registered, PercentFull: Math.round((registered / capacity) * 100),
+      TicketRevenue: Math.round(registered * (15 + rnd() * 60) / 5) * 5,
+      Coordinator: pick(['Grace Kim', 'Tom Becker', 'Elena Novak', 'Jamal Wright']),
+    };
+  });
+
+  return {
+    defaultTable: 'Donations',
+    tables: {
+      Donations: { id: 'Donations', label: 'Donations', columns: NP_DONATIONS_COLUMNS, records: donations },
+      Grants: { id: 'Grants', label: 'Grants', columns: NP_GRANTS_COLUMNS, records: grants },
+      Volunteers: { id: 'Volunteers', label: 'Volunteers', columns: NP_VOLUNTEERS_COLUMNS, records: volunteers },
+      Programs: { id: 'Programs', label: 'Programs', columns: NP_PROGRAMS_COLUMNS, records: programs },
+      Events: { id: 'Events', label: 'Events', columns: NP_EVENTS_COLUMNS, records: events },
+    },
+  };
+}
+
 function buildRows(seed, { categories, sites, valueRange, count = 24 }) {
   const rnd = mulberry32(seed);
   const rows = [];
@@ -424,11 +599,7 @@ function dataset(seed, spec) {
 
 export const TEMPLATE_SAMPLE_DATA = {
   'research-labs': buildResearchLabsData(),
-  nonprofits: dataset(4002, {
-    categories: ['Education', 'Healthcare', 'Housing', 'Environment', 'Food Security'],
-    sites: [site('Nairobi Office', -1.29, 36.82), site('São Paulo Hub', -23.55, -46.63), site('Mumbai Chapter', 19.08, 72.88), site('London HQ', 51.51, -0.13), site('Toronto Office', 43.65, -79.38)],
-    valueRange: [500, 45000],
-  }),
+  nonprofits: buildNonprofitData(),
   legal: dataset(4003, {
     categories: ['Litigation', 'Corporate', 'Intellectual Property', 'Family Law', 'Real Estate'],
     sites: [site('New York Office', 40.71, -74.01), site('London Office', 51.51, -0.13), site('Chicago Office', 41.88, -87.63), site('Toronto Office', 43.65, -79.38), site('Singapore Office', 1.35, 103.82)],
