@@ -66,6 +66,19 @@ export class GristProvider extends BaseProvider {
       if (!this._rows.has(id)) this._rows.set(id, await grist.getRecords(id, cols));
     }));
   }
+  // Re-fetch the table list from Grist and load schemas for any that weren't there before.
+  // Used after the template picker creates new tables via bridge.createTableWithRecords — the
+  // provider's own _tables list is a one-time snapshot from init(), so without this the next
+  // rerender wouldn't know the new tables exist and blocks would still show "needs a table".
+  async refreshTables() {
+    grist.invalidateMetaCache();
+    const ids = await grist.listTables();
+    this._tables = ids.map((id) => ({ id, label: id }));
+    if (!this._default) this._default = ids[0] || null;
+    const fresh = ids.filter((id) => !this._cols.has(id));
+    await Promise.all(fresh.map((id) => this._loadColumns(id)));
+    return this._tables;
+  }
   invalidate(tableId) { if (tableId) this._rows.delete(tableId); else this._rows.clear(); }
   // Unconditional re-fetch (prime() above deliberately skips tables it already has cached).
   // Used for polling a table a Calendar block is currently displaying, so edits made directly in

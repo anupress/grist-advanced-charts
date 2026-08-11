@@ -11,9 +11,9 @@
 // block (including breakdown/map, which don't get column-level remapping when guessing) shows
 // real industry-appropriate data before you commit.
 
-import { el, clone } from '../util.js';
+import { el, clone, toast } from '../util.js';
 import { icon } from '../assets/icons.js';
-import { openDrawer, closeDrawer, primaryBtn, ghostBtn, subhead, divider } from './ui.js';
+import { openDrawer, closeDrawer, primaryBtn, ghostBtn, subhead, divider, checkboxRow } from './ui.js';
 import { TEMPLATES } from '../data/templates/index.js';
 import { adaptTemplateToTable, DummyProvider } from '../data/provider.js';
 import { TEMPLATE_SAMPLE_DATA } from '../data/templates/sample-data.js';
@@ -23,9 +23,21 @@ import { mountCounters } from '../render/counter.js';
 import { mountAttachmentImages } from '../render/media-mount.js';
 import { mountCountdowns } from '../render/countdown.js';
 import { mountCalendars } from '../render/calendar.js';
+import * as bridge from '../grist/bridge.js';
+
+// Walks a template's tabs/blocks and returns the sorted, deduped list of real table names it
+// references (skipping 'Data', the shared placeholder). Used both for the confirm-step summary
+// and to decide which tables to create in the user's document on apply.
+function templateTables(t) {
+  return [...new Set((t.config.tabs || []).flatMap((tab) => (tab.blocks || [])
+    .map((b) => b.config?.table).filter((x) => x && x !== 'Data')))];
+}
 
 export function openTemplatePicker({ provider, onApply }) {
-  const state = { picked: null };
+  // createMissing defaults on — the whole point of the checkbox is "install as a working
+  // document"; opting out is the rarer choice (someone who already has the target tables under
+  // different names and plans to repoint manually).
+  const state = { picked: null, createMissing: true, applying: false };
   let previewHost = null; // set by buildLivePreview(); mounted only once actually in the document
   render();
 
@@ -88,19 +100,29 @@ export function openTemplatePicker({ provider, onApply }) {
   // applied page reads as expected rather than broken. Skipped for the templates authored against
   // the shared 'Data' placeholder, where there's nothing meaningful to name.
   function tablesSection(t) {
-    const wanted = [...new Set((t.config.tabs || []).flatMap((tab) => (tab.blocks || [])
-      .map((b) => b.config?.table).filter((x) => x && x !== 'Data')))];
+    const wanted = templateTables(t);
     if (!wanted.length) return [];
     const have = new Set((provider.tables() || []).map((x) => x.id));
     const missing = wanted.filter((x) => !have.has(x));
+    // The checkbox only shows when we can genuinely act on it: we're inside a real Grist doc
+    // (isLive) AND the template's sample-data bundle has matching entries for the missing tables
+    // (so there's something to insert). Demo-mode users see the summary but no checkbox — the
+    // "needs a table" notice already covers their case and applying tables to nowhere isn't
+    // meaningful.
+    const sample = TEMPLATE_SAMPLE_DATA[t.id];
+    const creatable = missing.filter((name) => sample?.tables?.[name]);
+    const canCreate = provider.isLive && creatable.length > 0;
     return [
       subhead('Tables this template uses'),
       el('ul', { class: 'ap-consent-list' }, wanted.map((name) => el('li', {}, [
         icon(have.has(name) ? 'check' : 'database'),
         el('span', { text: have.has(name) ? `${name} — found in this document` : `${name} — not in this document yet` }),
       ]))),
-      missing.length ? el('div', { class: 'ap-muted', style: { fontSize: '12px', lineHeight: '1.5', marginTop: '6px' } , text:
-        `Blocks using ${missing.length === 1 ? 'that table' : 'those tables'} will install as-is and show a “needs a table” note until you point them at your own data — everything else connects automatically.` }) : null,
+      canCreate ? checkboxRow(
+        `Also add ${creatable.length === 1 ? 'this table' : `these ${creatable.length} tables`} to my document with sample data, so this template works right away`,
+        state.createMissing, (v) => { state.createMissing = v; }
+      ) : (missing.length ? el('div', { class: 'ap-muted', style: { fontSize: '12px', lineHeight: '1.5', marginTop: '6px' } , text:
+        `Blocks using ${missing.length === 1 ? 'that table' : 'those tables'} will install as-is and show a “needs a table” note until you point them at your own data — everything else connects automatically.` }) : null),
       divider(),
     ];
   }
@@ -131,14 +153,44 @@ export function openTemplatePicker({ provider, onApply }) {
       ]),
     ];
   }
+  // Two-step apply: (1) if the checkbox is on and there are creatable missing tables, write them
+  // into the Grist document and re-list — the provider needs to know the new tables exist before
+  // adaptTemplateToTable runs, otherwise it treats them as "not in this document" and leaves those
+  // blocks unbound; (2) adapt the config and hand it to the parent. Failures at step 1 fall
+  // through to step 2 anyway (a toast surfaces the count) — the block-level "needs a table" notice
+  // is the safety net for whatever didn't get created.
+  async function doApply() {
+    if (state.applying) return;
+    const t = state.picked;
+    const sample = TEMPLATE_SAMPLE_DATA[t.id];
+    const have = new Set((provider.tables() || []).map((x) => x.id));
+    const toCreate = provider.isLive && state.createMissing && sample
+      ? templateTables(t).filter((name) => !have.has(name) && sample.tables?.[name]) : [];
+
+    if (toCreate.length) {
+      state.applying = true;
+      render(); // re-renders the footer with the button in its "Creating…" state
+      let failed = 0;
+      for (const name of toCreate) {
+        const spec = sample.tables[name];
+        const ok = await bridge.createTableWithRecords(name, spec.columns, spec.records);
+        if (!ok) failed++;
+      }
+      await provider.refreshTables();
+      if (failed) toast(`Couldn't create ${failed} of ${toCreate.length} table${toCreate.length === 1 ? '' : 's'} — the affected blocks will show as unconfigured.`, 'err');
+      else toast(`Added ${toCreate.length} table${toCreate.length === 1 ? '' : 's'} to your document.`, '');
+    }
+
+    const applied = adaptTemplateToTable(state.picked.config, provider);
+    state.applying = false;
+    closeDrawer();
+    onApply(applied);
+  }
+
   function confirmFooter() {
-    return [
-      ghostBtn('Back', () => { state.picked = null; render(); }),
-      primaryBtn('Apply this template', 'check', () => {
-        const applied = adaptTemplateToTable(state.picked.config, provider);
-        closeDrawer();
-        onApply(applied);
-      }),
-    ];
+    const label = state.applying ? 'Creating tables…' : 'Apply this template';
+    const btn = primaryBtn(label, 'check', doApply);
+    if (state.applying) btn.disabled = true;
+    return [ghostBtn('Back', () => { if (!state.applying) { state.picked = null; render(); } }), btn];
   }
 }

@@ -246,6 +246,44 @@ export async function updateRecord(table, rowId, fields) {
   catch (e) { console.warn('[ANUPRESS] updateRecord failed', e); return false; }
 }
 
+// Convert a JS sample-data value into whatever Grist expects for that column type. Only Date/
+// DateTime and Bool need translation; Text/Choice/Numeric/Int already round-trip natively.
+// Date/DateTime cells go in as numeric epoch-seconds (same shape bridge.js's toDateStr already
+// assumes on the read side); strings and JS Date objects both work as inputs.
+function toGristCell(value, type) {
+  if (value == null || value === '') return null;
+  if (/^(Date|DateTime)/i.test(type)) {
+    if (typeof value === 'number') return value;
+    const ms = value instanceof Date ? value.getTime() : Date.parse(String(value));
+    return isFinite(ms) ? Math.floor(ms / 1000) : null;
+  }
+  if (/^Bool/i.test(type)) return !!value;
+  return value;
+}
+
+// Create a table with columns and (optionally) a first pass of records in one flow. Used by the
+// template picker's "also add these tables to my document" checkbox — the four Research Labs
+// tables (Samples, Reagents, Tasks, People) get created here with the same sample rows the
+// preview uses, so the template installs as a working document, not a set of "needs a table"
+// notices. Fails closed (returns false); the block-level notice already handles that gracefully.
+export async function createTableWithRecords(tableId, columnsDef, records) {
+  if (!hasGrist()) return false;
+  try {
+    const cols = columnsDef.map((c) => ({ id: c.id, type: c.type || 'Text', ...(c.label && c.label !== c.id ? { label: c.label } : {}) }));
+    await g().docApi.applyUserActions([['AddTable', tableId, cols]]);
+    invalidateMetaCache();
+    if (records && records.length) {
+      // BulkAddRecord takes columnar arrays keyed by column id, and a matching list of row ids
+      // (null => let Grist assign). id is never included in the payload — it's the second arg.
+      const columnar = {};
+      for (const c of columnsDef) columnar[c.id] = records.map((r) => toGristCell(r[c.id], c.type));
+      const rowIds = records.map(() => null);
+      await g().docApi.applyUserActions([['BulkAddRecord', tableId, rowIds, columnar]]);
+    }
+    return true;
+  } catch (e) { console.warn('[ANUPRESS] createTableWithRecords failed for ' + tableId, e); return false; }
+}
+
 export async function getDocName() {
   if (!hasGrist()) return null;
   try { return await g().docApi.getDocName(); } catch { return null; }
