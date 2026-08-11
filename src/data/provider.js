@@ -39,6 +39,13 @@ export class DummyProvider extends BaseProvider {
     Object.assign(row, fields);
     return true;
   }
+  // Swap the whole bundled dataset (tables + defaultTable). Used when a template is applied in
+  // Demo mode: there's no live Grist doc to write into, but the template ships its own sample
+  // tables, so we point the demo provider straight at them. Every block on the applied page then
+  // renders with real, template-appropriate rows — the applied page matches its preview exactly,
+  // instead of showing empty cards for tables the general demo never had. Because main.js's
+  // app.provider is this same instance, the swap persists after the builder exits into View mode.
+  setData(data) { if (data && data.tables) this.data = data; }
 }
 
 export class GristProvider extends BaseProvider {
@@ -66,17 +73,22 @@ export class GristProvider extends BaseProvider {
       if (!this._rows.has(id)) this._rows.set(id, await grist.getRecords(id, cols));
     }));
   }
-  // Re-fetch the table list from Grist and load schemas for any that weren't there before.
-  // Used after the template picker creates new tables via bridge.createTableWithRecords — the
-  // provider's own _tables list is a one-time snapshot from init(), so without this the next
-  // rerender wouldn't know the new tables exist and blocks would still show "needs a table".
+  // Re-fetch the table list from Grist and load BOTH schema and rows for any table that wasn't
+  // there before. Used after the template picker creates new tables via createTableWithRecords —
+  // the provider's own snapshot from init() predates them, so without this the next rerender
+  // wouldn't know the new tables exist. Rows matter as much as columns here: loading only the
+  // schema would leave a freshly-created (and freshly-populated) table rendering every block
+  // empty, since records() reads from _rows — the exact "0 / No data to display yet" symptom.
   async refreshTables() {
     grist.invalidateMetaCache();
     const ids = await grist.listTables();
     this._tables = ids.map((id) => ({ id, label: id }));
     if (!this._default) this._default = ids[0] || null;
     const fresh = ids.filter((id) => !this._cols.has(id));
-    await Promise.all(fresh.map((id) => this._loadColumns(id)));
+    await Promise.all(fresh.map(async (id) => {
+      const cols = await this._loadColumns(id);
+      this._rows.set(id, await grist.getRecords(id, cols));
+    }));
     return this._tables;
   }
   invalidate(tableId) { if (tableId) this._rows.delete(tableId); else this._rows.clear(); }

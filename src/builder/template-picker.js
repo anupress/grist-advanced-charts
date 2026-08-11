@@ -163,6 +163,20 @@ export function openTemplatePicker({ provider, onApply }) {
     if (state.applying) return;
     const t = state.picked;
     const sample = TEMPLATE_SAMPLE_DATA[t.id];
+
+    // Demo mode: no live Grist doc to write into, but the template ships its own sample tables.
+    // Point the demo provider straight at them so every block on the applied page renders with
+    // real, template-appropriate data (the applied page then matches its preview exactly) rather
+    // than empty cards for tables the general demo never had. Clone so a later edit in Demo mode
+    // (e.g. dragging a calendar event) mutates this copy, not the shared bundled dataset.
+    if (!provider.isLive && sample && typeof provider.setData === 'function') {
+      provider.setData(clone(sample));
+      const applied = adaptTemplateToTable(t.config, provider);
+      closeDrawer();
+      onApply(applied);
+      return;
+    }
+
     const have = new Set((provider.tables() || []).map((x) => x.id));
     const toCreate = provider.isLive && state.createMissing && sample
       ? templateTables(t).filter((name) => !have.has(name) && sample.tables?.[name]) : [];
