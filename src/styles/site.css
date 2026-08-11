@@ -37,6 +37,7 @@
 .ap-hero.ap-va-top { justify-content: flex-start; }
 .ap-hero.ap-va-center { justify-content: center; }
 .ap-hero.ap-va-bottom { justify-content: flex-end; }
+.ap-hero--stretched { border-radius: 0; } /* edge-to-edge — rounded corners would float mid-page */
 .ap-hero::after { content: ""; position: absolute; inset: 0; background: radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,.25), transparent 55%); pointer-events: none; }
 .ap-hero h1 { font-size: var(--ap-fs-2xl); margin: 0 0 .25em; position: relative; z-index: 1; }
 .ap-hero p { font-size: var(--ap-fs-lg); opacity: .92; max-width: 60ch; margin: 0; position: relative; z-index: 1; }
@@ -106,12 +107,21 @@
 .ap-footer__credit b { color: var(--ap-text); }
 .ap-footer__credit:hover { color: var(--ap-primary); }
 
-/* ---- Hero image slider (full-width, capped at 340px) ---- */
+/* ---- Hero image slider (full-width by default, capped at 340px) ---- */
 .ap-hero-slider { position: relative; width: 100%; height: clamp(190px, 40vw, 340px); overflow: hidden; background: var(--ap-bg-soft); }
+.ap-hero-slider--boxed { border-radius: var(--ap-radius-lg); margin-bottom: var(--ap-gap); } /* contained — needs its own rounding + spacing that edge-to-edge doesn't */
 .ap-slider__track { display: flex; height: 100%; transition: transform .55s var(--ap-ease); will-change: transform; }
-.ap-slide { position: relative; min-width: 100%; height: 100%; background-size: cover; background-position: center; }
-.ap-slide__cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 22px clamp(18px, 5vw, 56px); color: #fff;
-  background: linear-gradient(to top, rgba(8,10,20,.72), rgba(8,10,20,.15) 70%, transparent); }
+/* Caption vertical position lives on .ap-slide itself (a flex column, like .ap-hero's own
+   ap-va-* handling) so top/center/bottom actually move the caption instead of it always sitting
+   pinned to the bottom regardless of the "Vertical position" setting. */
+.ap-slide { position: relative; min-width: 100%; height: 100%; background-size: cover; background-position: center; display: flex; flex-direction: column; }
+.ap-slide.ap-cap-top { justify-content: flex-start; }
+.ap-slide.ap-cap-center { justify-content: center; }
+.ap-slide.ap-cap-bottom { justify-content: flex-end; }
+.ap-slide__cap { padding: 22px clamp(18px, 5vw, 56px); color: #fff; }
+.ap-slide.ap-cap-bottom .ap-slide__cap { background: linear-gradient(to top, rgba(8,10,20,.72), rgba(8,10,20,.15) 70%, transparent); }
+.ap-slide.ap-cap-top .ap-slide__cap { background: linear-gradient(to bottom, rgba(8,10,20,.72), rgba(8,10,20,.15) 70%, transparent); }
+.ap-slide.ap-cap-center .ap-slide__cap { margin: 0 clamp(18px, 5vw, 56px); padding: 16px 22px; background: rgba(8,10,20,.55); border-radius: var(--ap-radius); }
 .ap-slide__cap h2 { margin: 0 0 .15em; font-size: clamp(20px, 3.2vw, 34px); }
 .ap-slide__cap p { margin: 0; font-size: clamp(13px, 1.6vw, 18px); opacity: .92; }
 .ap-slider__btn { position: absolute; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; display: grid; place-items: center;

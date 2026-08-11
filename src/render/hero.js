@@ -19,6 +19,16 @@ function headStyle(hero, defSize) {
 }
 const textStyle = (hero) => (hero.textColor ? { color: hero.textColor } : {});
 
+// Whether the hero renders edge-to-edge (outside the page's max-width container) or contained
+// within it. hero.layout, when set, always wins; unset (any config saved before this existed)
+// falls back to the original automatic rule — stretched once a photo is added, boxed otherwise —
+// so nothing already published changes appearance on its own.
+function resolveFullWidth(hero, hasPhoto) {
+  if (hero.layout === 'stretched') return true;
+  if (hero.layout === 'boxed') return false;
+  return hasPhoto;
+}
+
 export function buildHero(tab, opts = {}) {
   const hero = tab.hero || {};
   const editing = !!opts.editing;
@@ -33,9 +43,8 @@ export function buildHero(tab, opts = {}) {
   }
 
   const slides = (hero.slides || []).filter((s) => s && s.image);
-  let node, fullWidth;
-  if (slides.length) { node = buildSlider(slides, hero); fullWidth = true; }
-  else { node = buildBanner(hero, tab); fullWidth = false; }
+  const fullWidth = resolveFullWidth(hero, slides.length > 0);
+  const node = slides.length ? buildSlider(slides, hero, fullWidth) : buildBanner(hero, tab, fullWidth);
 
   if (editing) {
     node.classList.add('ap-editable');
@@ -45,20 +54,26 @@ export function buildHero(tab, opts = {}) {
   return { el: node, fullWidth };
 }
 
-function buildBanner(hero, tab) {
+function heightStyle(hero) {
+  const px = Number(hero.minHeight);
+  return px > 0 ? { minHeight: px + 'px' } : {};
+}
+
+function buildBanner(hero, tab, fullWidth) {
   const va = hero.vAlign || 'bottom';
-  return el('section', { class: `ap-hero ap-va-${va}`, style: { textAlign: hero.align || 'left' } }, [
+  return el('section', { class: `ap-hero ap-va-${va}` + (fullWidth ? ' ap-hero--stretched' : ''),
+    style: { textAlign: hero.align || 'left', ...heightStyle(hero) } }, [
     el('h1', { text: hero.title || tab.title, style: headStyle(hero, 'xl') }),
     hero.subtitle ? el('p', { text: hero.subtitle, style: textStyle(hero) }) : null,
   ]);
 }
 
-function buildSlider(slides, hero) {
+function buildSlider(slides, hero, fullWidth) {
   const align = hero.align || 'left';
   const va = hero.vAlign || 'bottom';
   let idx = 0;
-  const slideEls = slides.map((s) => el('div', { class: 'ap-slide', style: { backgroundImage: `url("${s.image}")` } }, [
-    (s.title || s.subtitle) ? el('div', { class: `ap-slide__cap ap-cap-${va}`, style: { textAlign: align } }, [
+  const slideEls = slides.map((s) => el('div', { class: `ap-slide ap-cap-${va}`, style: { backgroundImage: `url("${s.image}")` } }, [
+    (s.title || s.subtitle) ? el('div', { class: 'ap-slide__cap', style: { textAlign: align } }, [
       s.title ? el('h2', { text: s.title, style: headStyle(hero, 'm') }) : null,
       s.subtitle ? el('p', { text: s.subtitle, style: textStyle(hero) }) : null,
     ]) : null,
@@ -78,7 +93,7 @@ function buildSlider(slides, hero) {
   const next = el('button', { class: 'ap-slider__btn ap-slider__btn--next', 'aria-label': 'Next',
     onClick: (e) => { e.stopPropagation(); show(idx + 1); } }, [icon('chevron')]);
 
-  const root = el('section', { class: 'ap-hero-slider' }, [track,
+  const root = el('section', { class: 'ap-hero-slider' + (fullWidth ? '' : ' ap-hero-slider--boxed'), style: heightStyle(hero) }, [track,
     slides.length > 1 ? prev : null, slides.length > 1 ? next : null, slides.length > 1 ? dotsBar : null]);
 
   if (slides.length > 1 && hero.autoplay !== false) {

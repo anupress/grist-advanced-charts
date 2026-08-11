@@ -11,6 +11,17 @@ export function heroEditorBody(tab, { onChange }) {
   hero.slides ||= [];
 
   const slidesHost = el('div');
+  // Once a photo exists, the render side (render/hero.js) switches to the slider and stops
+  // reading hero.title/subtitle entirely in favor of each slide's own title/subtitle — so
+  // leaving these editable here would silently do nothing. Disabling them (rather than hiding)
+  // keeps the field visible with an explanation, instead of it just vanishing.
+  const titleInput = textInput(hero.title || '', (v) => { hero.title = v; onChange(); }, { placeholder: 'Big welcome headline' });
+  const subtitleInput = textInput(hero.subtitle || '', (v) => { hero.subtitle = v; onChange(); }, { textarea: true, placeholder: 'A friendly one-liner' });
+  function syncTopFieldsDisabled() {
+    const hasPhoto = hero.slides.length > 0;
+    titleInput.disabled = hasPhoto;
+    subtitleInput.disabled = hasPhoto;
+  }
 
   function renderSlides() {
     slidesHost.replaceChildren(
@@ -18,6 +29,7 @@ export function heroEditorBody(tab, { onChange }) {
       el('div', { class: 'ap-muted', style: { fontSize: '12px', marginBottom: '10px' },
         text: 'Add images to turn the hero into a full-width slider (max 340px tall). With no images, the gradient banner with your headline is shown.' }),
     );
+    syncTopFieldsDisabled();
     hero.slides.forEach((slide, i) => {
       const thumb = el('img', { src: slide.image, alt: '', style: { width: '54px', height: '40px', objectFit: 'cover', borderRadius: '8px', flex: 'none' } });
       const row = el('div', { class: 'ap-tabedit', style: { alignItems: 'flex-start', gap: '10px' } }, [
@@ -56,8 +68,15 @@ export function heroEditorBody(tab, { onChange }) {
 
   return [
     checkboxRow('Show hero on this page', hero.enabled !== false, (v) => { hero.enabled = v; onChange(); }),
-    field('Headline', textInput(hero.title || '', (v) => { hero.title = v; onChange(); }, { placeholder: 'Big welcome headline' })),
-    field('Subtitle', textInput(hero.subtitle || '', (v) => { hero.subtitle = v; onChange(); }, { textarea: true, placeholder: 'A friendly one-liner' })),
+    field('Headline', titleInput, 'Only used when there\'s no photo below — once you add one, each slide gets its own headline instead.'),
+    field('Subtitle', subtitleInput, 'Same here — a photo\'s own caption takes over from this.'),
+    divider(),
+    subhead('Layout'),
+    field('Width', segmented([{ value: 'boxed', label: 'Boxed' }, { value: 'stretched', label: 'Stretched' }],
+      hero.layout || (hero.slides.length ? 'stretched' : 'boxed'), (v) => { hero.layout = v; onChange(); }),
+      'Stretched runs the hero edge-to-edge; Boxed keeps it inside the page margins like the rest of your content.'),
+    field('Minimum height (pixels)', textInput(String(hero.minHeight || ''), (v) => { hero.minHeight = v ? Math.max(80, Math.min(800, Number(v) || 0)) : null; onChange(); }, { type: 'number', placeholder: 'Auto' }),
+      'Leave blank to size automatically based on your content.'),
     divider(),
     subhead('Text design'),
     field('Alignment', segmented([{ value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }], hero.align || 'left', (v) => { hero.align = v; onChange(); })),

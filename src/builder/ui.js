@@ -53,7 +53,7 @@ export function infoButton(html) {
 export function textInput(value, onInput, opts = {}) {
   const node = el(opts.textarea ? 'textarea' : 'input', {
     class: opts.textarea ? 'ap-textarea' : 'ap-input', value: value ?? '',
-    placeholder: opts.placeholder || '', type: opts.type || 'text',
+    placeholder: opts.placeholder || '', type: opts.type || 'text', disabled: !!opts.disabled,
   });
   node.addEventListener('input', () => onInput(node.value));
   return node;
