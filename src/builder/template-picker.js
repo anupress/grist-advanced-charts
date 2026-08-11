@@ -177,22 +177,48 @@ export function openTemplatePicker({ provider, onApply }) {
       return;
     }
 
-    const have = new Set((provider.tables() || []).map((x) => x.id));
-    const toCreate = provider.isLive && state.createMissing && sample
-      ? templateTables(t).filter((name) => !have.has(name) && sample.tables?.[name]) : [];
+    // Live mode, checkbox on: set up the template's named tables in the real document. Two cases,
+    // both handled: a table that's ABSENT gets created (atomically, with its rows); a table that's
+    // PRESENT but EMPTY — typically a leftover from an earlier partial apply — gets backfilled. A
+    // present table that already has rows is genuinely the user's own and is left untouched. After
+    // writing, re-list + re-fetch so adaptTemplateToTable (and the blocks it produces) see the data.
+    if (provider.isLive && state.createMissing && sample) {
+      const have = new Set((provider.tables() || []).map((x) => x.id));
+      const wanted = templateTables(t).filter((name) => sample.tables?.[name]);
+      const absent = wanted.filter((name) => !have.has(name));
+      const present = wanted.filter((name) => have.has(name));
 
-    if (toCreate.length) {
-      state.applying = true;
-      render(); // re-renders the footer with the button in its "Creating…" state
-      let failed = 0;
-      for (const name of toCreate) {
-        const spec = sample.tables[name];
-        const ok = await bridge.createTableWithRecords(name, spec.columns, spec.records);
-        if (!ok) failed++;
+      if (absent.length || present.length) {
+        state.applying = true;
+        render(); // footer button -> "Setting up tables…"
+
+        // An existing template-named table with zero rows is a leftover to backfill; one with rows
+        // is real data we must not touch. refresh() force-fetches (bypasses the prime cache).
+        const emptyPresent = [];
+        for (const name of present) {
+          let rows = [];
+          try { rows = await provider.refresh(name); } catch {}
+          if (!(rows && rows.length)) emptyPresent.push(name);
+        }
+
+        let created = 0, populated = 0, failed = 0;
+        for (const name of absent) {
+          const spec = sample.tables[name];
+          if (await bridge.createTableWithRecords(name, spec.columns, spec.records)) created++; else failed++;
+        }
+        await provider.refreshTables(); // learn the newly created tables (and load their rows)
+        for (const name of emptyPresent) {
+          const spec = sample.tables[name];
+          const existingColIds = (provider.columns(name) || []).map((c) => c.id);
+          const n = await bridge.addRecordsToTable(name, spec.columns, spec.records, existingColIds);
+          if (n > 0) { populated++; try { await provider.refresh(name); } catch {} } else failed++;
+        }
+
+        const done = created + populated;
+        if (failed && !done) toast('Couldn\'t add the template\'s tables — the affected blocks will show as unconfigured. See the console for the Grist error.', 'err');
+        else if (failed) toast(`Set up ${done} table${done === 1 ? '' : 's'}; ${failed} couldn\'t be written — see the console.`, 'err');
+        else if (done) toast(`Set up ${done} table${done === 1 ? '' : 's'} in your document with sample data.`, '');
       }
-      await provider.refreshTables();
-      if (failed) toast(`Couldn't create ${failed} of ${toCreate.length} table${toCreate.length === 1 ? '' : 's'} — the affected blocks will show as unconfigured.`, 'err');
-      else toast(`Added ${toCreate.length} table${toCreate.length === 1 ? '' : 's'} to your document.`, '');
     }
 
     const applied = adaptTemplateToTable(state.picked.config, provider);
@@ -202,7 +228,7 @@ export function openTemplatePicker({ provider, onApply }) {
   }
 
   function confirmFooter() {
-    const label = state.applying ? 'Creating tables…' : 'Apply this template';
+    const label = state.applying ? 'Setting up tables…' : 'Apply this template';
     const btn = primaryBtn(label, 'check', doApply);
     if (state.applying) btn.disabled = true;
     return [ghostBtn('Back', () => { if (!state.applying) { state.picked = null; render(); } }), btn];

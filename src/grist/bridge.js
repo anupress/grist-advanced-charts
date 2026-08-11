@@ -261,27 +261,66 @@ function toGristCell(value, type) {
   return value;
 }
 
-// Create a table with columns and (optionally) a first pass of records in one flow. Used by the
-// template picker's "also add these tables to my document" checkbox — the four Research Labs
-// tables (Samples, Reagents, Tasks, People) get created here with the same sample rows the
-// preview uses, so the template installs as a working document, not a set of "needs a table"
-// notices. Fails closed (returns false); the block-level notice already handles that gracefully.
+// Build the [AddTable, BulkAddRecord] action pair for a table as ONE bundle, so Grist applies it
+// atomically — the table lands *with* its rows, or nothing is created. (The earlier two-call
+// version could leave a created-but-empty table when the row insert failed on its own: that empty
+// table then looked like "the table exists", so every block rendered blank — 0 / No matching rows
+// / 0 mapped — with no "needs a table" hint. Atomicity removes that failure mode.)
+// cellFn converts each value for the column type actually being used (typed vs the Text fallback).
+function buildCreateActions(tableId, columnsDef, records, cellFn) {
+  const actions = [['AddTable', tableId, columnsDef.map((c) => ({ id: c.id, type: c.type || 'Text', ...(c.label && c.label !== c.id ? { label: c.label } : {}) }))]];
+  if (records && records.length) {
+    // BulkAddRecord: columnar arrays keyed by column id + a matching list of null row ids (Grist
+    // assigns them). `id` is never in the payload — the row-id list is the separate third arg.
+    const columnar = {};
+    for (const c of columnsDef) columnar[c.id] = records.map((r) => cellFn(r[c.id], c.type));
+    actions.push(['BulkAddRecord', tableId, records.map(() => null), columnar]);
+  }
+  return actions;
+}
+
+// Create a table with columns AND its rows. Used by the template picker's "also add these tables"
+// checkbox — the Research Labs tables (Samples/Reagents/Tasks/People) get created with the same
+// sample rows the preview uses, so the template installs as a working document. Two attempts:
+// first with real column types, then (if Grist rejects any type) with every column as plain Text.
+// The Text fallback is why a picky/older Grist still ends up with a populated, usable table —
+// numbers still chart (parseFloat) and "YYYY-MM-DD" dates still parse. Fails closed => false.
 export async function createTableWithRecords(tableId, columnsDef, records) {
   if (!hasGrist()) return false;
   try {
-    const cols = columnsDef.map((c) => ({ id: c.id, type: c.type || 'Text', ...(c.label && c.label !== c.id ? { label: c.label } : {}) }));
-    await g().docApi.applyUserActions([['AddTable', tableId, cols]]);
+    await g().docApi.applyUserActions(buildCreateActions(tableId, columnsDef, records, toGristCell));
     invalidateMetaCache();
-    if (records && records.length) {
-      // BulkAddRecord takes columnar arrays keyed by column id, and a matching list of row ids
-      // (null => let Grist assign). id is never included in the payload — it's the second arg.
-      const columnar = {};
-      for (const c of columnsDef) columnar[c.id] = records.map((r) => toGristCell(r[c.id], c.type));
-      const rowIds = records.map(() => null);
-      await g().docApi.applyUserActions([['BulkAddRecord', tableId, rowIds, columnar]]);
-    }
     return true;
-  } catch (e) { console.warn('[ANUPRESS] createTableWithRecords failed for ' + tableId, e); return false; }
+  } catch (e1) {
+    console.warn('[ANUPRESS] createTableWithRecords: typed create failed for ' + tableId + ', retrying as plain Text', e1);
+  }
+  try {
+    // Attempt 1 rolled back atomically, so the table doesn't exist yet — this AddTable is clean.
+    const textCols = columnsDef.map((c) => ({ id: c.id, label: c.label, type: 'Text' }));
+    await g().docApi.applyUserActions(buildCreateActions(tableId, textCols, records, (v) => (v == null || v === '' ? null : String(v))));
+    invalidateMetaCache();
+    return true;
+  } catch (e2) {
+    console.warn('[ANUPRESS] createTableWithRecords: Text fallback also failed for ' + tableId, e2);
+    return false;
+  }
+}
+
+// Add rows to an EXISTING table (no AddTable). Backfills a template table that already exists but
+// is empty — typically one a previous, partially-failed apply left behind. Inserts only columns
+// that actually exist on the target (existingColIds) so a differently-shaped table can't throw.
+// Returns rows added, or 0 on failure.
+export async function addRecordsToTable(tableId, columnsDef, records, existingColIds) {
+  if (!hasGrist() || !records || !records.length) return 0;
+  const use = columnsDef.filter((c) => !existingColIds || existingColIds.includes(c.id));
+  if (!use.length) return 0;
+  try {
+    const columnar = {};
+    for (const c of use) columnar[c.id] = records.map((r) => toGristCell(r[c.id], c.type));
+    await g().docApi.applyUserActions([['BulkAddRecord', tableId, records.map(() => null), columnar]]);
+    invalidateMetaCache();
+    return records.length;
+  } catch (e) { console.warn('[ANUPRESS] addRecordsToTable failed for ' + tableId, e); return 0; }
 }
 
 export async function getDocName() {
