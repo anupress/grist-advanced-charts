@@ -72,6 +72,10 @@ for (const file of result.outputFiles) {
 }
 
 // 3. Static assets + vendored libs + styles (data & SVGs are JS modules => bundled).
+// .nojekyll: GitHub Pages runs Jekyll by default, which silently drops any file/folder
+// starting with "_" (e.g. src/data/templates/_helpers.js) — harmless once bundled in here,
+// but this marker is cheap insurance against ever serving dist/ unprocessed.
+copyIfExists('.nojekyll', path.join(OUT, '.nojekyll'));
 copyIfExists('vendor', path.join(OUT, 'vendor'));
 copyIfExists('src/styles', path.join(OUT, 'assets/styles'));
 copyIfExists('src/assets/brand', path.join(OUT, 'assets/media/brand'));

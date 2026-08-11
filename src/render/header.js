@@ -36,10 +36,31 @@ export function buildHeader(config, opts = {}) {
       : null,
     el('button', { class: 'ap-btn ap-btn--icon ap-burger', 'aria-label': 'Menu',
       onClick: () => nav.classList.toggle('is-open') }, [icon('menu')]),
-    !opts.editing
-      ? el('button', { class: 'ap-btn ap-btn--primary', onClick: () => opts.onEdit?.() }, [icon('edit'), 'Edit'])
-      : null,
+    !opts.editing ? editButton(opts) : null,
   ]);
 
   return el('header', { class: 'ap-header' }, [brand, nav, actions]);
+}
+
+// onEdit (startEdit in main.js) can take a while — it waits on Grist's own permission prompt,
+// which renders outside this widget's iframe and is easy to miss. Without feedback here, a
+// click that's actually in flight looks identical to a click that silently failed. Disabling
+// the button and swapping its label makes "your click registered, we're waiting on something"
+// visible even when that something is happening off-screen.
+function editButton(opts) {
+  const btn = el('button', { class: 'ap-btn ap-btn--primary' }, [icon('edit'), 'Edit']);
+  btn.addEventListener('click', async () => {
+    if (btn.disabled || !opts.onEdit) return;
+    btn.disabled = true;
+    btn.textContent = 'Opening…';
+    try {
+      await opts.onEdit();
+    } finally {
+      // If onEdit succeeded, this header is torn down by the switch into the builder UI and
+      // the button is no longer in the document — only reset it when we're still showing it
+      // (consent declined, access denied, etc.).
+      if (btn.isConnected) { btn.disabled = false; btn.replaceChildren(icon('edit'), 'Edit'); }
+    }
+  });
+  return btn;
 }

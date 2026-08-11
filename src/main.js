@@ -81,33 +81,46 @@ async function startEdit() {
   let provider = app.provider;
   let live = false;
 
-  if (bridge.isLive()) {
-    const ok = await bridge.escalateToFull();
-    if (ok) {
-      await bridge.ensureTables();
-      const gp = new GristProvider();
-      await gp.init();
-      if (gp.tables().length) {
-        // Map the default site onto the user's first real table if we were on demo data.
-        if (!app.live) app.config = adaptConfigToTable(app.config, gp);
-        await gp.prime(tablesInConfig(app.config));
-        provider = gp; live = true;
+  // Nothing below here was previously guarded — any throw (a Grist API rejection, a table with
+  // an unexpected shape, etc.) became a silent unhandled promise rejection: no toast, no console
+  // hint, the click just looked like it did nothing. Surfacing it, even generically, beats that.
+  try {
+    if (bridge.isLive()) {
+      const ok = await bridge.escalateToFull();
+      if (ok) {
+        await bridge.ensureTables();
+        const gp = new GristProvider();
+        await gp.init();
+        if (gp.tables().length) {
+          // Map the default site onto the user's first real table if we were on demo data.
+          if (!app.live) app.config = adaptConfigToTable(app.config, gp);
+          await gp.prime(tablesInConfig(app.config));
+          provider = gp; live = true;
+        } else {
+          toast('No data tables found — add a table in Grist, then reopen Edit.', 'err');
+        }
       } else {
-        toast('No data tables found — add a table in Grist, then reopen Edit.', 'err');
+        toast('Access not granted. You can still preview the editor.', 'err');
       }
     } else {
-      toast('Access not granted. You can still preview the editor.', 'err');
+      toast('Demo editor — changes are not saved outside Grist.', '');
     }
-  } else {
-    toast('Demo editor — changes are not saved outside Grist.', '');
+  } catch (e) {
+    console.error('[ANUPRESS] startEdit: failed to load your Grist data', e);
+    toast('Could not load your Grist data (' + (e?.message || 'unknown error') + '). Opening the editor anyway.', 'err');
   }
 
   app.provider = provider; app.live = live;
-  const { openBuilder } = await import('./builder/index.js');
-  openBuilder({
-    root, config: app.config, provider, live,
-    onExit: (finalConfig) => { if (finalConfig) app.config = finalConfig; renderView(); },
-  });
+  try {
+    const { openBuilder } = await import('./builder/index.js');
+    openBuilder({
+      root, config: app.config, provider, live,
+      onExit: (finalConfig) => { if (finalConfig) app.config = finalConfig; renderView(); },
+    });
+  } catch (e) {
+    console.error('[ANUPRESS] startEdit: failed to open the editor', e);
+    toast('Could not open the editor (' + (e?.message || 'unknown error') + ').', 'err');
+  }
 }
 
 boot();
