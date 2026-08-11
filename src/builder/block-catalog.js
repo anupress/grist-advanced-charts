@@ -41,6 +41,11 @@ export const BLOCK_CATALOG = [
     info: 'Shows the raw rows of a table, with search, click-to-sort columns and paging — handy for browsing a full list rather than a summary.',
   },
   {
+    type: 'calendar', category: 'data', icon: 'calendar', title: 'Calendar',
+    desc: 'A month view of rows by date, drag to reschedule',
+    info: 'Plots a table\'s rows on a month calendar by a date column. On a live page, dragging an event to a new day writes the new date back to your Grist table — and picks up edits made directly in Grist on its own, without needing a page refresh.',
+  },
+  {
     type: 'text', category: 'content', icon: 'type', title: 'Text',
     desc: 'A heading and rich text',
     info: 'A heading plus a block of formatted text — for introductions, explanations or any freeform writing.',

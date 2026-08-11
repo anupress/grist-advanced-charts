@@ -20,6 +20,7 @@ import { mountMaps } from '../render/map.js';
 import { mountCounters } from '../render/counter.js';
 import { mountAttachmentImages } from '../render/media-mount.js';
 import { mountCountdowns } from '../render/countdown.js';
+import { mountCalendars } from '../render/calendar.js';
 
 export function openTemplatePicker({ provider, onApply }) {
   const state = { picked: null };
@@ -37,7 +38,7 @@ export function openTemplatePicker({ provider, onApply }) {
     // meaningful once this content is actually attached — openDrawer() just appended it above,
     // so only now, not from inside confirmBody() itself (a detached tree measures as 0x0 and
     // the map's mount code gives up silently after a few zero-size retries).
-    if (previewHost) { mountCharts(previewHost); mountMaps(previewHost); mountCounters(previewHost); mountAttachmentImages(previewHost); mountCountdowns(previewHost); }
+    if (previewHost) { mountCharts(previewHost); mountMaps(previewHost); mountCounters(previewHost); mountAttachmentImages(previewHost); mountCountdowns(previewHost); mountCalendars(previewHost); }
   }
 
   function pickBody() {

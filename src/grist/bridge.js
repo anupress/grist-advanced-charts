@@ -234,6 +234,18 @@ export async function loadConfig() {
   return null;
 }
 
+// ---- Writing to the user's own tables (needs full access) ----
+// Used by blocks that let a viewer edit data in place (currently just the Calendar block's
+// drag-to-reschedule). Every other block in this app is read-only; this is the one write path
+// into a table the user didn't create for us. Fails closed (returns false) rather than throwing,
+// since the caller only has 'read table' access until someone has gone through our own Edit flow
+// at least once this session — a plain viewer attempting this will hit that, not a crash.
+export async function updateRecord(table, rowId, fields) {
+  if (!hasGrist() || rowId == null) return false;
+  try { await g().docApi.applyUserActions([['UpdateRecord', table, rowId, fields]]); return true; }
+  catch (e) { console.warn('[ANUPRESS] updateRecord failed', e); return false; }
+}
+
 export async function getDocName() {
   if (!hasGrist()) return null;
   try { return await g().docApi.getDocName(); } catch { return null; }

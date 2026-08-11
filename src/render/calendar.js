@@ -1,0 +1,182 @@
+// Calendar block: a month grid of a table's rows plotted by a date column, with optional
+// drag-to-reschedule (writes the new date back to the source table) and a polling pass so edits
+// made directly in Grist while this widget is open eventually appear here too. This app has no
+// live push/subscribe channel to Grist (every other block is a one-shot read) — "syncs to the
+// widget" here means "picked up on the next poll" (mountCalendars, ~15s), not instant.
+//
+// Real interactivity (drag writes, popovers, polling) is gated behind ctx.edit === null — a
+// genuinely live page, matching Button/Icon/Pricing's clickTarget pattern — so a stray drag in
+// the editor's own preview or while our widget is in design-edit mode can't silently rewrite data.
+
+import { el } from '../util.js';
+import { icon } from '../assets/icons.js';
+import { currentSeriesColors } from '../theme/apply.js';
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+// Grist Date/DateTime cells arrive here already turned into "YYYY-MM-DD[ HH:MM...]" strings by
+// bridge.js's getRecords() (demo data uses the same string shape natively) — parsed via explicit
+// local Y/M/D components, not new Date(string), which JS treats a bare date string as UTC
+// midnight and can shift the event onto the wrong day in timezones behind UTC.
+function parseDateLocal(v) {
+  if (v == null || v === '') return null;
+  if (typeof v === 'number') return new Date(v * 1000); // raw Grist epoch-seconds, unconverted
+  const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0));
+  const d = new Date(v);
+  return isNaN(d) ? null : d;
+}
+const dayKey = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const dateStr = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+function buildColorMap(rows, column) {
+  if (!column) return null;
+  const palette = currentSeriesColors();
+  const map = new Map();
+  for (const r of rows) {
+    const v = r[column];
+    const key = v == null || v === '' ? '' : String(v);
+    if (!map.has(key)) map.set(key, palette[map.size % palette.length]);
+  }
+  return map;
+}
+
+export function renderCalendar(block, ctx) {
+  const c = block.config || {};
+  const table = c.table || ctx.config?.dataTable;
+  const isLivePage = ctx.edit === null;
+  const canDrag = isLivePage && c.draggable !== false;
+
+  const state = { view: new Date(), rows: ctx.provider.records(table) || [] };
+  state.view.setDate(1);
+
+  const monthLabel = el('span', { class: 'ap-calendar__monthlabel' });
+  const grid = el('div', { class: 'ap-calendar__grid' });
+  const popover = el('div', { class: 'ap-calendar__popover' });
+  popover.hidden = true;
+
+  function closePopover() { popover.hidden = true; }
+  function showPopover(anchorEl, row) {
+    const body = grid.parentElement;
+    popover.replaceChildren(
+      el('div', { class: 'ap-calendar__pop-title', text: String(row[c.titleColumn] ?? 'Untitled') }),
+      c.detailColumn && row[c.detailColumn] != null && row[c.detailColumn] !== ''
+        ? el('div', { class: 'ap-calendar__pop-detail', text: String(row[c.detailColumn]) }) : null,
+    );
+    const hostRect = body.getBoundingClientRect(), r = anchorEl.getBoundingClientRect();
+    popover.hidden = false;
+    popover.style.left = Math.max(4, Math.min(r.left - hostRect.left, hostRect.width - 200)) + 'px';
+    popover.style.top = (r.bottom - hostRect.top + 6) + 'px';
+  }
+
+  function eventsForDay(key) {
+    return state.rows
+      .map((r) => ({ r, d: parseDateLocal(r[c.dateColumn]) }))
+      .filter((x) => x.d && dayKey(x.d) === key);
+  }
+
+  function eventPill(row, cmap) {
+    const color = cmap ? cmap.get(row[c.colorBy] == null ? '' : String(row[c.colorBy])) : null;
+    const pill = el('div', {
+      class: 'ap-calendar__event', style: { '--ap-cal-dot': color || 'var(--ap-primary)' },
+      draggable: canDrag, text: String(row[c.titleColumn] ?? 'Untitled'),
+    });
+    pill.addEventListener('click', (e) => { e.stopPropagation(); showPopover(pill, row); });
+    if (canDrag) {
+      pill.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', String(row.id)); pill.classList.add('is-dragging'); });
+      pill.addEventListener('dragend', () => pill.classList.remove('is-dragging'));
+    }
+    return pill;
+  }
+
+  async function dropOn(key, rowId) {
+    const row = state.rows.find((r) => r.id === rowId);
+    if (!row) return;
+    const [yy, mm, dd] = key.split('-').map(Number);
+    const original = parseDateLocal(row[c.dateColumn]);
+    const next = new Date(yy, mm - 1, dd, original?.getHours() || 0, original?.getMinutes() || 0);
+    const prevValue = row[c.dateColumn];
+    row[c.dateColumn] = dateStr(yy, mm - 1, dd); // optimistic move, redrawn immediately below
+    redraw();
+    // Demo rows are plain strings end to end; real Grist stores Date/DateTime as epoch seconds
+    // (see bridge.js's toDateStr, which reads numbers that way) — write the shape each side
+    // actually expects. Unverified against a live document: no real Grist doc was available to
+    // confirm applyUserActions accepts this for a Date column — worth double-checking there.
+    const writeValue = ctx.provider.isLive ? Math.floor(next.getTime() / 1000) : dateStr(yy, mm - 1, dd);
+    const ok = await ctx.provider.updateRecord(table, rowId, { [c.dateColumn]: writeValue });
+    if (!ok) { row[c.dateColumn] = prevValue; redraw(); }
+  }
+
+  function wireDropTarget(cell, key) {
+    cell.addEventListener('dragover', (e) => { e.preventDefault(); cell.classList.add('is-droptarget'); });
+    cell.addEventListener('dragleave', () => cell.classList.remove('is-droptarget'));
+    cell.addEventListener('drop', (e) => {
+      e.preventDefault();
+      cell.classList.remove('is-droptarget');
+      dropOn(key, Number(e.dataTransfer.getData('text/plain')));
+    });
+  }
+
+  function redraw() {
+    const cmap = buildColorMap(state.rows, c.colorBy);
+    const y = state.view.getFullYear(), m = state.view.getMonth();
+    monthLabel.textContent = `${MONTHS[m]} ${y}`;
+    const startWeekday = new Date(y, m, 1).getDay();
+    const gridStart = new Date(y, m, 1 - startWeekday);
+    const todayKey = dayKey(new Date());
+
+    const cells = [];
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
+      const key = dayKey(d);
+      const dayEvents = eventsForDay(key);
+      const shown = dayEvents.slice(0, 3).map(({ r }) => eventPill(r, cmap));
+      if (dayEvents.length > 3) shown.push(el('div', { class: 'ap-calendar__more', text: `+${dayEvents.length - 3} more` }));
+      const cell = el('div', {
+        class: 'ap-calendar__cell' + (d.getMonth() !== m ? ' is-outside' : '') + (key === todayKey ? ' is-today' : ''),
+      }, [el('div', { class: 'ap-calendar__daynum', text: String(d.getDate()) }), el('div', { class: 'ap-calendar__events' }, shown)]);
+      if (canDrag) wireDropTarget(cell, key);
+      cells.push(cell);
+    }
+    grid.replaceChildren(...cells);
+  }
+  redraw();
+
+  const nav = el('div', { class: 'ap-calendar__nav' }, [
+    el('button', { class: 'ap-btn ap-btn--icon ap-btn--sm ap-calendar__prev', 'aria-label': 'Previous month',
+      onClick: () => { state.view.setMonth(state.view.getMonth() - 1); closePopover(); redraw(); } }, [icon('chevron')]),
+    monthLabel,
+    el('button', { class: 'ap-btn ap-btn--icon ap-btn--sm ap-calendar__next', 'aria-label': 'Next month',
+      onClick: () => { state.view.setMonth(state.view.getMonth() + 1); closePopover(); redraw(); } }, [icon('chevron')]),
+    el('button', { class: 'ap-btn ap-btn--ghost ap-btn--sm', text: 'Today',
+      onClick: () => { state.view = new Date(); state.view.setDate(1); closePopover(); redraw(); } }),
+  ]);
+
+  const body = el('div', { class: 'ap-calendar__body' }, [grid, popover]);
+  body.addEventListener('click', (e) => { if (!e.target.closest('.ap-calendar__event')) closePopover(); });
+
+  const card = el('div', { class: 'ap-card ap-calendar', dataset: { blockId: block.id } }, [
+    el('div', { class: 'ap-calendar__head' }, [el('div', { class: 'ap-calendar__title', text: c.title || 'Calendar' }), nav]),
+    el('div', { class: 'ap-calendar__weekdays' }, WEEKDAYS.map((w) => el('span', { text: w }))),
+    body,
+  ]);
+
+  // Polling state, read by mountCalendars() — only on a genuinely live page (see file header).
+  if (isLivePage) card._apCalendar = { table, ctx, setRows: (rows) => { state.rows = rows; redraw(); } };
+  return card;
+}
+
+const _seen = new WeakSet();
+export function mountCalendars(scope) {
+  (scope || document).querySelectorAll('.ap-calendar').forEach((card) => {
+    if (_seen.has(card)) return;
+    _seen.add(card);
+    const s = card._apCalendar;
+    if (!s) return;
+    const intervalId = setInterval(async () => {
+      if (!document.contains(card)) { clearInterval(intervalId); return; }
+      s.setRows(await s.ctx.provider.refresh(s.table));
+    }, 15000);
+  });
+}

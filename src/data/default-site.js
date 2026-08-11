@@ -121,11 +121,14 @@ export const DEFAULT_SITE = {
         { id: 'sh8', type: 'livetable', span: 12, config: { title: 'Recent transactions', table: 'Sales', columns: ['Month', 'Region', 'Category', 'Revenue', 'Profit'], pageSize: 6, searchable: true, sortable: true, defaultSort: null,
           highlights: [{ ranges: 'D1:E3', color: '#d3f9d8' }] } },
         { id: 'sh8d', type: 'divider', span: 12, config: { style: 'dashed', thickness: 1, color: null } },
+        { id: 'sh8e', type: 'calendar', span: 12, config: { title: 'Task calendar', table: 'Tasks', dateColumn: 'DueDate', titleColumn: 'Task', detailColumn: 'Notes', colorBy: 'Priority', draggable: true } },
+        { id: 'sh8f', type: 'text', span: 12, config: { heading: '', html: 'On the published page, dragging an event to a new day writes the new date straight back to your table — and the calendar picks up anything changed directly in Grist within about 15 seconds, no refresh needed.' } },
+        { id: 'sh8g', type: 'divider', span: 12, config: { style: 'dashed', thickness: 1, color: null } },
         { id: 'sh9', type: 'timeline', span: 12, config: { title: 'Where we\'ve been', items: [
           { date: '2023', title: 'Anupress Analytics founded', description: 'Started as a side project to make Grist data look as good as it is useful.' },
           { date: '2024', title: 'First 1,000 dashboards published', description: 'Teams across 20+ countries started publishing live, editable sites straight from their tables.' },
           { date: '2025', title: 'Guided chart wizard & self-hosted support', description: 'Recommendations that pick the right chart for you, and full compatibility with self-hosted Grist.' },
-          { date: '2026', title: 'v3: 19 block types and counting', description: 'Testimonials, pricing tables, QR codes, live data tables with highlighting — this page.' },
+          { date: '2026', title: 'v3: 21 block types and counting', description: 'Testimonials, pricing tables, QR codes, a two-way synced calendar, live data tables with highlighting — this page.' },
         ] } },
         accordion('sh10', 'Frequently asked questions', [
           { q: 'Does my data ever leave my browser?', a: 'No. Every chart, table and calculation on this page runs client-side against your own Grist document — there is no ANUPRESS server in the loop.' },
@@ -134,7 +137,7 @@ export const DEFAULT_SITE = {
         ]),
         { id: 'sh10d', type: 'divider', span: 12, config: { style: 'solid', thickness: 1, color: null } },
         { id: 'sh11', type: 'pricing', span: 12, config: { title: 'Choose your plan', plans: [
-          { name: 'Starter', price: '$0', period: '/mo', features: ['Unlimited dashboards', 'All 19 block types', 'Community support'], highlighted: false, buttonLabel: 'Get started', buttonTarget: urlTarget('https://anupress.com') },
+          { name: 'Starter', price: '$0', period: '/mo', features: ['Unlimited dashboards', 'All 21 block types', 'Community support'], highlighted: false, buttonLabel: 'Get started', buttonTarget: urlTarget('https://anupress.com') },
           { name: 'Pro', price: '$0', period: '/mo', features: ['Everything in Starter', 'Priority feature requests', 'Early access to new blocks'], highlighted: true, buttonLabel: 'Get started', buttonTarget: urlTarget('https://anupress.com') },
         ] } },
         { id: 'sh12', type: 'qrcode', span: 4, config: { text: 'https://anupress.com', level: 'M', fg: '#000000', bg: '#ffffff', size: 180, caption: 'Scan to visit anupress.com' } },

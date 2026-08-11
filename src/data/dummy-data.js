@@ -126,10 +126,57 @@ const PEOPLE_COLUMNS = [
   { id: 'Longitude', label: 'Longitude', type: 'Numeric' },
 ];
 
+// A third dataset (project tasks) so the demo can show the Calendar block — due dates are
+// spread relative to *today* (not a fixed date, unlike Sales/People's historical data) so the
+// calendar always has visible events on its default, current-month view.
+const TASK_TEMPLATES = [
+  { task: 'Prepare quarterly board deck', project: 'Q3 Reporting', priority: 'High' },
+  { task: 'Migrate reporting pipeline to new schema', project: 'Platform Migration', priority: 'High' },
+  { task: 'Review Q3 marketing spend', project: 'Marketing Analytics', priority: 'Medium' },
+  { task: 'Client onboarding call', project: 'Client Onboarding', priority: 'Medium' },
+  { task: 'Publish monthly sales forecast', project: 'Q3 Reporting', priority: 'Medium' },
+  { task: 'Fix broken dashboard link', project: 'Platform Migration', priority: 'High' },
+  { task: 'Renew annual software licenses', project: 'Operations', priority: 'Low' },
+  { task: 'Run team performance reviews', project: 'Operations', priority: 'Medium' },
+  { task: 'Plan Q4 roadmap', project: 'Q3 Reporting', priority: 'High' },
+  { task: 'Audit data pipeline for errors', project: 'Data Pipeline', priority: 'High' },
+  { task: 'Update brand guidelines', project: 'Marketing Analytics', priority: 'Low' },
+  { task: 'Prepare investor update', project: 'Q3 Reporting', priority: 'High' },
+  { task: 'Set up new client workspace', project: 'Client Onboarding', priority: 'Medium' },
+  { task: 'Optimize slow chart queries', project: 'Data Pipeline', priority: 'Medium' },
+];
+const TASKS_COLUMNS = [
+  { id: 'Task', label: 'Task', type: 'Text' }, { id: 'Project', label: 'Project', type: 'Text' },
+  { id: 'Priority', label: 'Priority', type: 'Choice' }, { id: 'AssignedTo', label: 'Assigned To', type: 'Text' },
+  { id: 'DueDate', label: 'Due Date', type: 'Date' }, { id: 'Status', label: 'Status', type: 'Choice' },
+  { id: 'Notes', label: 'Notes', type: 'Text' },
+];
+function buildTasks(peopleRows) {
+  const rnd = mulberry32(90210);
+  const assignees = peopleRows.slice(0, 8).map((p) => p.Name);
+  const rows = [];
+  for (let i = 0; i < 18; i++) {
+    const t = TASK_TEMPLATES[i % TASK_TEMPLATES.length];
+    const dayOffset = Math.round(-10 + rnd() * 40);
+    const due = new Date(); due.setDate(due.getDate() + dayOffset); due.setHours(0, 0, 0, 0);
+    const status = dayOffset < -2 ? (rnd() < 0.7 ? 'Done' : 'In Progress') : ['Not Started', 'Pending', 'In Progress'][Math.floor(rnd() * 3)];
+    rows.push({
+      id: i + 1, Task: t.task, Project: t.project, Priority: t.priority,
+      AssignedTo: assignees[Math.floor(rnd() * assignees.length)],
+      DueDate: due.toISOString().slice(0, 10), Status: status,
+      Notes: status === 'Done' ? 'Completed on schedule.' : status === 'In Progress' ? `Progress: ${Math.floor(30 + rnd() * 60)}% complete` : '',
+    });
+  }
+  return rows;
+}
+
+const peopleRows = buildPeople();
+
 export const DUMMY_DATA = {
   defaultTable: 'Sales',
   tables: {
     Sales: { id: 'Sales', label: 'Sales (demo)', columns: SALES_COLUMNS, records: buildSales() },
-    People: { id: 'People', label: 'People (demo)', columns: PEOPLE_COLUMNS, records: buildPeople() },
+    People: { id: 'People', label: 'People (demo)', columns: PEOPLE_COLUMNS, records: peopleRows },
+    Tasks: { id: 'Tasks', label: 'Tasks (demo)', columns: TASKS_COLUMNS, records: buildTasks(peopleRows) },
   },
 };

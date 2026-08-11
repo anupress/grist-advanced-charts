@@ -20,6 +20,7 @@ import { renderQRCode } from './qrcode.js';
 import { renderCountdown } from './countdown.js';
 import { renderTimeline } from './timeline.js';
 import { renderPricing } from './pricing.js';
+import { renderCalendar } from './calendar.js';
 
 function blockData(block, ctx) {
   const table = block.config?.table || ctx.config?.dataTable;
@@ -58,6 +59,7 @@ export function renderBlock(block, ctx) {
   else if (block.type === 'timeline') inner = renderTimeline(block);
   else if (block.type === 'divider') inner = renderDivider(block);
   else if (block.type === 'pricing') inner = renderPricing(block, ctx);
+  else if (block.type === 'calendar') inner = renderCalendar(block, ctx);
   else inner = renderChartCard(block, ctx);
 
   const wrap = el('div', { class: 'ap-block', dataset: { span: String(block.span || 12), blockId: block.id } }, [inner]);

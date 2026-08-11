@@ -47,6 +47,7 @@ export function openBlockEditor(block, ctx) {
   if (block.type === 'timeline') return openTimelineEditor(block, ctx);
   if (block.type === 'divider') return openDividerEditor(block, ctx);
   if (block.type === 'pricing') return openPricingEditor(block, ctx);
+  if (block.type === 'calendar') return openCalendarEditor(block, ctx);
   return openChartEditor(block, ctx);
 }
 
@@ -964,4 +965,49 @@ function openPricingEditor(block, ctx) {
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
   openDrawer({ title: block.__isNew ? 'Add pricing table' : 'Edit pricing table', body, footer });
   refreshPreview();
+}
+
+// ---------------- Calendar editor ----------------
+function openCalendarEditor(block, ctx) {
+  const wb = clone(block); wb.config = wb.config || {};
+  const provider = ctx.provider;
+  wb.config.table = wb.config.table || provider.defaultTable();
+  const previewHost = el('div', { class: 'ap-preview' });
+  // No mountCalendars() call here on purpose: drag-to-reschedule and polling only ever activate
+  // on a genuinely live page (ctx.edit === null, see render/calendar.js) — this preview always
+  // passes edit:undefined, so there's nothing for it to mount.
+  const refreshPreview = debounce(async () => {
+    await ensureRows(provider, wb.config.table);
+    previewHost.replaceChildren(renderBlock(clone(wb), { provider, config: {} }));
+  }, 150);
+
+  const dynHost = el('div');
+  function buildDyn() {
+    const cols = provider.columns(wb.config.table);
+    if (cols.length && !cols.find((c) => c.id === wb.config.dateColumn)) wb.config.dateColumn = (cols.find((c) => /date/i.test(c.type)) || cols[0])?.id;
+    if (cols.length && !cols.find((c) => c.id === wb.config.titleColumn)) wb.config.titleColumn = cols[0]?.id;
+    const optional = (label) => [{ value: '', label }].concat(cols.map((c) => ({ value: c.id, label: c.label })));
+    dynHost.replaceChildren(
+      field('Date column', selectInput(cols.map((c) => ({ value: c.id, label: c.label })), wb.config.dateColumn, (v) => { wb.config.dateColumn = v; refreshPreview(); }),
+        'Dragging an event to a new day on the live page writes the new date back to this column.'),
+      field('Event title column', selectInput(cols.map((c) => ({ value: c.id, label: c.label })), wb.config.titleColumn, (v) => { wb.config.titleColumn = v; refreshPreview(); })),
+      field('Extra detail shown on click (optional)', selectInput(optional('— none —'), wb.config.detailColumn || '', (v) => { wb.config.detailColumn = v || null; refreshPreview(); })),
+      field('Color events by (optional)', selectInput(optional('— single color —'), wb.config.colorBy || '', (v) => { wb.config.colorBy = v || null; refreshPreview(); })),
+    );
+  }
+
+  const body = [
+    field('Title', textInput(wb.config.title || '', (v) => { wb.config.title = v; refreshPreview(); }, { placeholder: 'e.g. Task calendar' })),
+    field('Data table', selectInput(provider.tables().map((t) => ({ value: t.id, label: t.label })), wb.config.table,
+      async (v) => { wb.config.table = v; wb.config.dateColumn = null; wb.config.titleColumn = null; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
+    dynHost,
+    checkboxRow('Let viewers drag events to reschedule', wb.config.draggable !== false, (v) => { wb.config.draggable = v; refreshPreview(); }),
+    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    subhead('Live preview'),
+    el('div', { class: 'ap-muted', style: { fontSize: '12px', marginBottom: '6px' }, text: 'Dragging only works on the real published page, not in this preview — and picks up direct Grist edits on its own every ~15s while open.' }),
+    previewHost,
+  ];
+  const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
+  openDrawer({ title: block.__isNew ? 'Add calendar' : 'Edit calendar', body, footer });
+  (async () => { await ensureRows(provider, wb.config.table); buildDyn(); refreshPreview(); })();
 }
