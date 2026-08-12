@@ -9,8 +9,8 @@
 // adaptTemplateToTable + the template picker's create-or-map flow handle a real Grist document.
 
 import {
-  text, accordion, counter, iconBlock, button, urlTarget, tabTarget,
-  spacer, image, testimonials, clockEmbed, placeholderImage,
+  text, accordion, counter, iconBlock, button, urlTarget, tabTarget, printTarget,
+  spacer, image, testimonials, calcEmbed, placeholderImage,
 } from './_helpers.js';
 
 const BLUE = '#0b6bcb';
@@ -67,7 +67,9 @@ export const TEMPLATE = {
               highlights: [{ ranges: 'F1:F30', color: '#ffe3e3' }],
             },
           },
-          text('fa11n', '', 'The <b>Status</b> column is highlighted so unpaid and overdue invoices catch the eye — the same cell-highlighting available on any Data Table block.'),
+          text('fa11n', 'Sending this to a client',
+            'The official Grist invoicing template renders a printable PDF, and the same need applies here. Use <b>Print / Save as PDF</b> below and the page prints as a document: navigation, editor chrome and card shadows stripped out, the table running to full length with its header repeated on every page. Any desktop browser can save that straight to PDF from its print dialog. The <b>Status</b> column stays highlighted, so unpaid and overdue rows still stand out on paper.'),
+          button('fa11p', 'Print / Save as PDF', 'primary', 'left', printTarget(), 4),
           { id: 'fa12', type: 'calendar', span: 12, config: { title: 'Invoice due dates', table: 'Invoices', dateColumn: 'DueDate', titleColumn: 'Client', detailColumns: ['InvoiceNumber', 'Amount', 'Status'], colorBy: 'Status', draggable: true } },
           text('fa12n', '', 'Drag an invoice to a new day to reschedule its due date — on the published page that writes straight back to your Invoices table, so your AR follow-up stays in sync both ways.'),
           spacer('fa12s', 10),
@@ -148,7 +150,16 @@ export const TEMPLATE = {
           },
           button('fa43', 'Talk to our finance team', 'primary', 'left', urlTarget('https://anupress.com/advanced-charts-grist-widget-guide/'), 4),
           spacer('fa43s', 20),
-          clockEmbed('fa44', 'Business hours'),
+          calcEmbed('fa44', {
+            title: 'Invoice total', resultLabel: 'Total due',
+            fields: [
+              { key: 'hours', label: 'Hours', value: 20 },
+              { key: 'rate', label: 'Rate', value: 120 },
+              { key: 'tax', label: 'Tax (%)', value: 20 },
+            ],
+            expr: 'v.hours * v.rate * (1 + v.tax / 100)', prefix: '$', decimals: 2,
+            note: 'A quick check before you raise the invoice — the figures on this page come from the Invoices table itself.',
+          }),
         ],
       },
     ],

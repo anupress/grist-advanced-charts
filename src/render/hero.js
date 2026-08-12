@@ -11,6 +11,16 @@ const FONT = {
   display: '"Century Gothic", "Trebuchet MS", sans-serif', mono: '"Cascadia Code", Consolas, ui-monospace, monospace',
 };
 
+// A headline ending in an emoji wraps it onto a line of its own as soon as the text is one word
+// too long — "Advancing science, one study at a time" then a lonely microscope underneath, which
+// reads as a layout fault rather than a flourish. Gluing the emoji to the word before it with a
+// non-breaking space makes the pair wrap together. Applied to every hero title and slide caption,
+// so it holds for any wording a user types, not just the templates we ship.
+const TRAILING_EMOJI = /[ \t]+(\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic})*)\s*$/u;
+export function tieTrailingEmoji(s) {
+  return String(s ?? '').replace(TRAILING_EMOJI, ' $1');
+}
+
 function headStyle(hero, defSize) {
   const st = { fontSize: SIZE[hero.size || defSize] || SIZE[defSize] };
   if (FONT[hero.font]) st.fontFamily = FONT[hero.font];
@@ -63,7 +73,7 @@ function buildBanner(hero, tab, fullWidth) {
   const va = hero.vAlign || 'bottom';
   return el('section', { class: `ap-hero ap-va-${va}` + (fullWidth ? ' ap-hero--stretched' : ''),
     style: { textAlign: hero.align || 'left', ...heightStyle(hero) } }, [
-    el('h1', { text: hero.title || tab.title, style: headStyle(hero, 'xl') }),
+    el('h1', { text: tieTrailingEmoji(hero.title || tab.title), style: headStyle(hero, 'xl') }),
     hero.subtitle ? el('p', { text: hero.subtitle, style: textStyle(hero) }) : null,
   ]);
 }
@@ -74,7 +84,7 @@ function buildSlider(slides, hero, fullWidth) {
   let idx = 0;
   const slideEls = slides.map((s) => el('div', { class: `ap-slide ap-cap-${va}`, style: { backgroundImage: `url("${s.image}")` } }, [
     (s.title || s.subtitle) ? el('div', { class: 'ap-slide__cap', style: { textAlign: align } }, [
-      s.title ? el('h2', { text: s.title, style: headStyle(hero, 'm') }) : null,
+      s.title ? el('h2', { text: tieTrailingEmoji(s.title), style: headStyle(hero, 'm') }) : null,
       s.subtitle ? el('p', { text: s.subtitle, style: textStyle(hero) }) : null,
     ]) : null,
   ]));

@@ -82,7 +82,9 @@ export function toast(msg, kind = '') {
   if (!t) { t = el('div', { class: 'ap-toast' }); document.body.appendChild(t); }
   t.className = 'ap-toast' + (kind ? ' ap-toast--' + kind : '');
   t.textContent = msg;
-  requestAnimationFrame(() => t.classList.add('is-show'));
+  // setTimeout, not rAF — rAF is starved while the page is not compositing (inactive Grist tab),
+  // and a "Saved" confirmation that never appears is worse than one that appears un-animated.
+  setTimeout(() => t.classList.add('is-show'), 0);
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('is-show'), 2600);
 }

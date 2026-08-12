@@ -18,7 +18,7 @@
 
 import {
   text, accordion, counter, iconBlock, button, urlTarget, tabTarget,
-  spacer, image, testimonials, clockEmbed, placeholderImage,
+  spacer, image, testimonials, calcEmbed, placeholderImage,
 } from './_helpers.js';
 
 const NAVY = '#1e3a8a';
@@ -198,7 +198,15 @@ export const TEMPLATE = {
           },
           button('he57', 'Plan a visit', 'primary', 'left', urlTarget('https://anupress.com/advanced-charts-grist-widget-guide/'), 4),
           spacer('he57s', 20),
-          clockEmbed('he58', 'Campus time'),
+          calcEmbed('he58', {
+            title: 'Grant request builder', resultLabel: 'Total request',
+            fields: [
+              { key: 'direct', label: 'Direct costs', value: 250000 },
+              { key: 'idc', label: 'Indirect rate (%)', value: 55 },
+            ],
+            expr: 'v.direct * (1 + v.idc / 100)', prefix: '$', decimals: 0,
+            note: 'Indirect cost recovery is negotiated per institution and is easy to forget when budgeting a proposal.',
+          }),
         ],
       },
     ],

@@ -16,7 +16,7 @@
 
 import {
   text, accordion, counter, iconBlock, button, urlTarget, tabTarget, spacer, image, testimonials,
-  clockEmbed, placeholderImage,
+  calcEmbed, placeholderImage,
 } from './templates/_helpers.js';
 
 export const SITE_VERSION = 1;
@@ -181,7 +181,15 @@ export const DEFAULT_SITE = {
         { id: 'e15', type: 'divider', span: 12, config: { style: 'dashed', thickness: 1, color: null } },
         text('e16', 'And a sandbox for anything else',
           'The embed block takes your own HTML, CSS and JavaScript and runs it in a sandboxed frame — useful for an iframe, a third-party snippet, or something small like the clock below. It is deliberately given no access to your Grist document.'),
-        clockEmbed('e17', 'Local time'),
+        calcEmbed('e17', {
+            title: 'Percentage change', resultLabel: 'Change',
+            fields: [
+              { key: 'before', label: 'Was', value: 88936 },
+              { key: 'after', label: 'Now', value: 148500 },
+            ],
+            expr: 'v.before ? ((v.after - v.before) / v.before) * 100 : 0', suffix: '%', decimals: 1,
+            note: 'Real HTML, CSS and JavaScript running in a sandboxed frame — try changing the numbers. The defaults are the first and last month of revenue in this demo.',
+          }),
         spacer('e18', 20),
         button('e19', 'See every block in the Add Element panel', 'ghost', 'center', urlTarget(GUIDE), 12),
       ],

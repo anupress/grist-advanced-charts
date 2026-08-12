@@ -159,7 +159,7 @@
 
 .ap-el-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .ap-eltile-wrap { position: relative; }
-.ap-eltile { appearance: none; -webkit-appearance: none; font: inherit; width: 100%; height: 100%; text-align: center;
+.ap-eltile { appearance: none; -webkit-appearance: none; font: inherit; width: 100%; height: 100%; text-align: center; position: relative;
   display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 10px 14px; border-radius: 14px;
   border: 1px solid var(--ap-border); background: var(--ap-surface); color: var(--ap-text); cursor: pointer;
   transition: border-color .15s var(--ap-ease), background .15s var(--ap-ease), transform .12s var(--ap-ease), box-shadow .15s var(--ap-ease); }
@@ -169,8 +169,18 @@
 .ap-eltile__icon svg { width: 20px; height: 20px; }
 .ap-eltile__title { font-weight: 700; font-size: var(--ap-fs-sm); color: var(--ap-text); line-height: 1.25; }
 .ap-eltile__desc { font-size: 11px; color: var(--ap-text-mute); line-height: 1.3; }
+/* A star marks the handful of blocks most pages are built from — see block-catalog.js. */
+.ap-eltile__star { position: absolute; top: 8px; left: 8px; font-size: 12px; line-height: 1;
+  color: #f59f0a; text-shadow: 0 1px 2px rgba(0,0,0,.15); pointer-events: none; }
+.ap-eltile.is-starred { border-color: color-mix(in srgb, #f59f0a 35%, var(--ap-border)); }
+.ap-eltile.is-starred:hover { border-color: var(--ap-primary); }
+.ap-el-legend { font-size: 11px; color: var(--ap-text-mute); margin: -4px 0 2px; display: flex; align-items: center; gap: 5px; }
+.ap-el-legend .ap-el-legend__star { color: #f59f0a; font-size: 12px; }
+
 /* The (i) help button is a sibling of .ap-eltile (see chooser.js), pinned to the tile's
-   top-right corner; its popover opens leftward here so it can't overflow the drawer's edge. */
+   top-right corner. Its popover hangs leftward from that corner, which overflows the panel for
+   left-column tiles — keepOnScreen() in builder/ui.js nudges it back after opening, since no
+   fixed left/right rule is correct for every placement this component is used in. */
 .ap-eltile-wrap > .ap-info-wrap { position: absolute; top: 8px; right: 8px; margin-left: 0; }
 .ap-eltile-wrap > .ap-info-wrap > .ap-info-pop { left: auto; right: 0; }
 

@@ -64,8 +64,21 @@
 .ap-block[data-span="6"] { grid-column: span 6; }
 .ap-block[data-span="8"] { grid-column: span 8; }
 .ap-block[data-span="12"] { grid-column: span 12; }
-@media (max-width: 900px) { .ap-block[data-span] { grid-column: span 6; } }
-@media (max-width: 620px) { .ap-block[data-span] { grid-column: span 12; } }
+/* Narrower viewports reflow the 12-column grid. Crucially this is per-span, not a blanket rule:
+   collapsing EVERY block to span 6 (as it did) put full-width elements — a data table, a month
+   calendar, a map — into half a tablet's width, which is where they are least usable. Wide blocks
+   stay wide; only the narrow ones pair up. */
+@media (max-width: 1100px) {
+  .ap-block[data-span="3"] { grid-column: span 6; }   /* four KPI cards -> two by two */
+  .ap-block[data-span="4"] { grid-column: span 6; }
+  .ap-block[data-span="8"] { grid-column: span 12; }  /* a chart beside a sidebar -> stacked */
+}
+@media (max-width: 820px) {
+  .ap-block[data-span="6"] { grid-column: span 12; }
+}
+@media (max-width: 620px) {
+  .ap-block[data-span] { grid-column: span 12; }
+}
 
 /* Row equalization, the automatic way: a CSS grid already stretches every cell in a row to the
    tallest block (align-items:stretch is the default), so blocks sharing a row line up on their own
@@ -377,4 +390,114 @@
   .ap-nav__link { text-align: left; padding: 12px 16px; }
   .ap-nav__link.is-active::after { display: none; }
   .ap-burger { display: inline-flex; }
+}
+
+/* ================= Responsive scale =================
+   The 12-column grid reflow lives next to .ap-grid above. This section handles everything that
+   is sized rather than laid out: how tall a chart should be, how much room a calendar cell gets,
+   and the small-screen adjustments that keep a dashboard usable on a phone even though phones
+   are not the primary target. */
+
+/* ---- Large and very large displays ----
+   A chart that looks right in a 1180px column is squat once the column is 1720px, because its
+   height never grew with its width. These step the vertical scale up alongside --ap-maxw. */
+@media (min-width: 1500px) {
+  .ap-chart { min-height: 320px; }
+  .ap-block[data-span="3"] .ap-chart, .ap-block[data-span="4"] .ap-chart { min-height: 250px; }
+  .ap-calendar__grid { grid-auto-rows: minmax(84px, auto); }
+}
+@media (min-width: 1800px) {
+  .ap-chart { min-height: 360px; }
+  .ap-block[data-span="3"] .ap-chart, .ap-block[data-span="4"] .ap-chart { min-height: 280px; }
+  .ap-calendar__grid { grid-auto-rows: minmax(96px, auto); }
+  .ap-hero { min-height: 210px; }
+}
+@media (min-width: 2200px) {
+  .ap-chart { min-height: 400px; }
+  .ap-calendar__grid { grid-auto-rows: minmax(110px, auto); }
+  .ap-hero { min-height: 240px; }
+  /* A month calendar with a dozen bookings a day can afford to show more per cell here. */
+  .ap-calendar__events { gap: 4px; }
+}
+
+/* ---- Tablet ---- */
+@media (max-width: 1100px) {
+  .ap-livetable__search { max-width: none; flex: 1 1 160px; }
+}
+
+/* ---- Phone ----
+   Not the primary target, but a published dashboard does get opened on a phone, and "not the
+   priority" should not mean "broken". */
+@media (max-width: 620px) {
+  .ap-container { padding: 16px 14px; }
+  .ap-hero { min-height: 140px; padding: 20px 18px; }
+  .ap-stat__value { font-size: clamp(24px, 8vw, 32px); }
+  .ap-chart { min-height: 240px; }
+  .ap-livetable { padding: 14px; }
+  .ap-livetable__head { gap: 8px; }
+  .ap-timeline, .ap-pricing { padding: 16px; }
+  /* Full-bleed edges look deliberate on a phone; a 14px sliver of page behind a card does not. */
+  .ap-testimonials__grid { grid-template-columns: 1fr; }
+  .ap-footer__inner { flex-direction: column; align-items: flex-start; gap: 10px; }
+}
+
+/* ---- Typography polish ----
+   text-wrap: balance evens out the line lengths of a wrapped heading instead of leaving one
+   orphaned word on the last line. Unsupported browsers simply ignore it. */
+.ap-hero h1, .ap-slide__cap h2, .ap-chartcard__title, .ap-livetable__title { text-wrap: balance; }
+.ap-hero p, .ap-slide__cap p { text-wrap: pretty; }
+
+/* ================= Print / Save as PDF =================
+   Grist's own invoicing template ships a widget that renders a printable PDF invoice, and the
+   same need shows up across these templates — an invoice, a statement of account, a booking
+   confirmation, a grant budget. Rather than build a PDF engine, this makes the PAGE print
+   properly: every browser's print dialog can already "Save as PDF", so a clean print stylesheet
+   is the export feature. A Button block with target {kind:'print'} opens that dialog.
+
+   The rules below remove the things nobody wants on paper and stop cards being sliced in half
+   across a page boundary. */
+@media print {
+  @page { margin: 14mm; }
+
+  /* Screen furniture: navigation, the editor, and anything interactive. */
+  .ap-header, .ap-footer, .ap-nav, .ap-burger, .ap-header__actions,
+  .ap-drawer, .ap-modal, .ap-toast, .ap-editbar, .ap-edit-tag, .ap-addblock,
+  .ap-block__tools, .ap-slider__btn, .ap-slider__dots,
+  .ap-livetable__search, .ap-livetable__pager, .ap-calendar__nav { display: none !important; }
+
+  /* Hidden tabs stay hidden — printing the visible page, not all six of them. */
+  .ap-tabpanel[hidden] { display: none !important; }
+
+  html, body, .ap-root { background: #fff !important; }
+  .ap-container { max-width: none; padding: 0; }
+  .ap-tabpanel { animation: none; }
+
+  /* Cards: flat on paper. Shadows and tinted panels waste toner and print muddy. */
+  .ap-card, .ap-hero, .ap-livetable, .ap-timeline, .ap-pricing, .ap-testimonials {
+    box-shadow: none !important; border: 1px solid #ccc !important;
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  .ap-hero { color: #000 !important; background: none !important; border: none !important; }
+  .ap-hero::after { display: none; }
+  .ap-hero h1, .ap-hero p { color: #000 !important; }
+
+  /* A table is the thing most likely to be printed here, so let it run to its full length
+     instead of being clipped to its on-screen scroll box. */
+  .ap-livetable__scroll { overflow: visible !important; border: none !important; }
+  .ap-livetable__table { font-size: 11px; }
+  .ap-livetable__table tr { break-inside: avoid; page-break-inside: avoid; }
+  .ap-livetable__table thead { display: table-header-group; } /* repeat headers on every page */
+
+  /* Charts and maps are canvas/tiles; keep them from spilling across a page break. */
+  .ap-chart, .ap-map__canvas { break-inside: avoid; page-break-inside: avoid; }
+
+  /* Blocks go full width on paper — a 3-column KPI row is unreadable at print scale. */
+  .ap-block[data-span] { grid-column: span 12; }
+  .ap-block[data-span="3"] { grid-column: span 6; } /* KPI cards still pair up nicely */
+
+  /* An embedded iframe cannot be relied on to print its contents; leave a labelled gap rather
+     than a blank rectangle of unknown height. */
+  .ap-embed { display: none !important; }
+
+  a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 10px; color: #555; }
 }

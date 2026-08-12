@@ -13,7 +13,7 @@
 
 import {
   text, accordion, counter, iconBlock, button, urlTarget, tabTarget,
-  spacer, image, testimonials, clockEmbed, placeholderImage,
+  spacer, image, testimonials, calcEmbed, placeholderImage,
 } from './_helpers.js';
 
 const INDIGO = '#7c83ff';
@@ -200,7 +200,15 @@ export const TEMPLATE = {
           },
           button('dv57', 'Read the docs', 'primary', 'left', urlTarget('https://anupress.com/advanced-charts-grist-widget-guide/'), 4),
           spacer('dv57s', 20),
-          clockEmbed('dv58', 'Server time'),
+          calcEmbed('dv58', {
+            title: 'Error budget calculator', resultLabel: 'Downtime allowed',
+            fields: [
+              { key: 'slo', label: 'Uptime target (%)', value: 99.9 },
+              { key: 'days', label: 'Window (days)', value: 30 },
+            ],
+            expr: '(100 - v.slo) / 100 * v.days * 24 * 60', suffix: ' min', decimals: 1,
+            note: 'How many minutes you may be down before the SLO is breached. Three nines over 30 days is only about 43 minutes.',
+          }),
         ],
       },
     ],

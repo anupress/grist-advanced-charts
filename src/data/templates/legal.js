@@ -20,7 +20,7 @@
 
 import {
   text, accordion, counter, iconBlock, button, urlTarget, tabTarget,
-  spacer, image, testimonials, clockEmbed, placeholderImage,
+  spacer, image, testimonials, calcEmbed, placeholderImage,
 } from './_helpers.js';
 
 const SLATE = '#495057';
@@ -197,7 +197,16 @@ export const TEMPLATE = {
           },
           button('lg54', 'Schedule a consultation', 'primary', 'left', urlTarget('https://anupress.com/advanced-charts-grist-widget-guide/'), 4),
           spacer('lg54s', 20),
-          clockEmbed('lg55', 'Office hours'),
+          calcEmbed('lg55', {
+            title: 'Fee estimate', resultLabel: 'Estimated fee',
+            fields: [
+              { key: 'hours', label: 'Estimated hours', value: 12 },
+              { key: 'rate', label: 'Hourly rate', value: 420 },
+              { key: 'disb', label: 'Disbursements', value: 500 },
+            ],
+            expr: 'v.hours * v.rate + v.disb', prefix: '$', decimals: 2,
+            note: 'An estimate only, and not a quote. Recorded time on this page comes from the time-entry table.',
+          }),
         ],
       },
     ],

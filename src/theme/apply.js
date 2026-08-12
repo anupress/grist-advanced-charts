@@ -24,6 +24,10 @@ export function applyTheme(theme = {}, rootEl) {
   document.documentElement.setAttribute('data-mode', mode);
   // expose the active series list for the chart engine
   root._apSeries = pal.series || [];
+  // Embed blocks render into opaque-origin iframes, which cannot read these variables or inherit
+  // any colour from the page — so they have to be told. Announced as an event rather than called
+  // directly to keep the theme layer free of any dependency on the render layer.
+  document.dispatchEvent(new CustomEvent('ap:theme'));
 }
 
 function set(style, k, v) { if (v) style.setProperty(k, v); }

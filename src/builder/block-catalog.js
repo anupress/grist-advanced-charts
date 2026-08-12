@@ -11,22 +11,22 @@ export const CATEGORIES = [
 
 export const BLOCK_CATALOG = [
   {
-    type: 'stat', category: 'data', icon: 'trending', title: 'Stat card',
+    type: 'stat', star: true, category: 'data', icon: 'trending', title: 'Stat card',
     desc: 'A single KPI number with trend',
     info: 'Shows one big number calculated from your data — like total revenue or signups — with an optional comparison to a previous period (e.g. "↑ 12% vs last month").',
   },
   {
-    type: 'chart', category: 'data', icon: 'barchart', title: 'Chart',
+    type: 'chart', star: true, category: 'data', icon: 'barchart', title: 'Chart',
     desc: 'Bar, line, pie, scatter and more',
     info: 'Visualizes your data as a bar, line, pie, doughnut, scatter, radar, funnel, treemap or gauge. Pick your columns and ANUPRESS recommends the best chart type.',
   },
   {
-    type: 'breakdown', category: 'data', icon: 'database', title: 'Breakdown',
+    type: 'breakdown', star: true, category: 'data', icon: 'database', title: 'Breakdown',
     desc: 'Group-wise counts with % and colored dots',
     info: 'Lists each group in a column (e.g. every Region or Category) with its count, share of the total, and a colored dot — like a simple leaderboard.',
   },
   {
-    type: 'map', category: 'data', icon: 'globe', title: 'Map',
+    type: 'map', star: true, category: 'data', icon: 'globe', title: 'Map',
     desc: 'Plot lat/long points on a map',
     info: 'Plots each row as a point on a map using latitude/longitude columns from your table — handy for store locations, event sites or any geographic data.',
   },
@@ -36,22 +36,22 @@ export const BLOCK_CATALOG = [
     info: 'Shows a value moving toward a target as a filled bar — e.g. "$45,000 of $50,000 raised". The value can be typed in or calculated from your data.',
   },
   {
-    type: 'livetable', category: 'data', icon: 'layout', title: 'Data table',
+    type: 'livetable', star: true, category: 'data', icon: 'layout', title: 'Data table',
     desc: 'A searchable, sortable table of rows',
     info: 'Shows the raw rows of a table, with search, click-to-sort columns and paging — handy for browsing a full list rather than a summary.',
   },
   {
-    type: 'calendar', category: 'data', icon: 'calendar', title: 'Calendar',
+    type: 'calendar', star: true, category: 'data', icon: 'calendar', title: 'Calendar',
     desc: 'A month view of rows by date, drag to reschedule',
     info: 'Plots a table\'s rows on a month calendar by a date column. On a live page, dragging an event to a new day writes the new date back to your Grist table — and picks up edits made directly in Grist on its own, without needing a page refresh.',
   },
   {
-    type: 'text', category: 'content', icon: 'type', title: 'Text',
+    type: 'text', star: true, category: 'content', icon: 'type', title: 'Text',
     desc: 'A heading and rich text',
     info: 'A heading plus a block of formatted text — for introductions, explanations or any freeform writing.',
   },
   {
-    type: 'image', category: 'content', icon: 'image', title: 'Image',
+    type: 'image', star: true, category: 'content', icon: 'image', title: 'Image',
     desc: 'A photo, from an upload or your data',
     info: 'Add an image by uploading it yourself, or — if a table has a Grist Attachments column — pull a specific photo straight from your data (e.g. each row\'s headshot or product photo).',
   },

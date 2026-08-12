@@ -61,11 +61,24 @@ export function mountCounters(scope) {
 function animate(valueEl, start, end, c) {
   const duration = Math.max(200, Number(c.duration) || 1400);
   const t0 = performance.now();
+  let done = false;
+  function finish() {
+    if (done) return;
+    done = true;
+    valueEl.textContent = fmtCounterValue(end, c);
+  }
   function tick(now) {
+    if (done) return;
     const p = Math.min(1, (now - t0) / duration);
+    if (p >= 1) { finish(); return; }
     const eased = 1 - Math.pow(1 - p, 3); // ease-out cubic
     valueEl.textContent = fmtCounterValue(start + (end - start) * eased, c);
-    if (p < 1) requestAnimationFrame(tick);
+    requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
+  // Safety net: rAF never fires while the page is not compositing (an inactive Grist tab, a
+  // background preview). Without this the counter would sit on its START value — a card reading
+  // a permanent "0 Block types" — because the animation that was going to fill it never ran.
+  // setTimeout does fire when backgrounded, so it snaps to the real number.
+  setTimeout(finish, duration + 120);
 }

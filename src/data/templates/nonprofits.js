@@ -17,7 +17,7 @@
 
 import {
   text, accordion, counter, iconBlock, button, urlTarget, tabTarget,
-  spacer, image, testimonials, clockEmbed, placeholderImage,
+  spacer, image, testimonials, calcEmbed, placeholderImage,
 } from './_helpers.js';
 
 const GREEN = '#2f9e44';
@@ -197,7 +197,16 @@ export const TEMPLATE = {
           },
           button('np57', 'Donate now', 'primary', 'left', urlTarget('https://anupress.com/advanced-charts-grist-widget-guide/'), 4),
           spacer('np57s', 20),
-          clockEmbed('np58', 'Local time'),
+          calcEmbed('np58', {
+            title: 'What your gift becomes', resultLabel: 'Total to programmes',
+            fields: [
+              { key: 'gift', label: 'Your donation', value: 100 },
+              { key: 'match', label: 'Employer match (%)', value: 100 },
+              { key: 'overhead', label: 'Overhead (%)', value: 12 },
+            ],
+            expr: 'v.gift * (1 + v.match / 100) * (1 - v.overhead / 100)', prefix: '$', decimals: 2,
+            note: 'Many employers match charitable giving pound for pound, which is the single easiest way to double a gift.',
+          }),
         ],
       },
     ],

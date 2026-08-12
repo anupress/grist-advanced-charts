@@ -15,7 +15,7 @@
 
 import {
   text, accordion, counter, iconBlock, button, urlTarget, tabTarget,
-  spacer, image, testimonials, clockEmbed, placeholderImage,
+  spacer, image, testimonials, calcEmbed, placeholderImage,
 } from './_helpers.js';
 
 const CLAY = '#c2410c';
@@ -185,7 +185,15 @@ export const TEMPLATE = {
           },
           button('sb56', 'Get in touch', 'primary', 'left', urlTarget('https://anupress.com/advanced-charts-grist-widget-guide/'), 4),
           spacer('sb56s', 20),
-          clockEmbed('sb57', 'Workshop hours'),
+          calcEmbed('sb57', {
+            title: 'Price from markup', resultLabel: 'Gross margin',
+            fields: [
+              { key: 'cost', label: 'Unit cost', value: 40 },
+              { key: 'markup', label: 'Markup (%)', value: 60 },
+            ],
+            expr: 'v.markup + 100 ? (v.markup / (100 + v.markup)) * 100 : 0', suffix: '%', decimals: 1,
+            note: 'Markup and margin are not the same number. A 60% markup is only a 37.5% margin — the gap is where a lot of small businesses lose money.',
+          }),
         ],
       },
     ],

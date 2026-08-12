@@ -16,7 +16,7 @@
 
 import {
   text, accordion, counter, iconBlock, button, urlTarget, tabTarget,
-  spacer, image, testimonials, clockEmbed, placeholderImage,
+  spacer, image, testimonials, calcEmbed, placeholderImage,
 } from './_helpers.js';
 
 const PINK = '#f06595';
@@ -190,7 +190,16 @@ export const TEMPLATE = {
           },
           button('sf55', 'Book a facility', 'primary', 'left', urlTarget('https://anupress.com/advanced-charts-grist-widget-guide/'), 4),
           spacer('sf55s', 20),
-          clockEmbed('sf56', 'Game time'),
+          calcEmbed('sf56', {
+            title: 'Split the court hire', resultLabel: 'Each player pays',
+            fields: [
+              { key: 'rate', label: 'Court rate / hr', value: 45 },
+              { key: 'hours', label: 'Hours', value: 2 },
+              { key: 'players', label: 'Players', value: 10 },
+            ],
+            expr: 'v.players ? (v.rate * v.hours) / v.players : 0', prefix: '$', decimals: 2,
+            note: 'Book online up to two weeks ahead. Rates on this page come straight from the Facilities table.',
+          }),
         ],
       },
     ],

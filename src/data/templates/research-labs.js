@@ -12,7 +12,7 @@
 
 import {
   text, accordion, counter, iconBlock, button, urlTarget, tabTarget,
-  spacer, image, testimonials, clockEmbed, placeholderImage,
+  spacer, image, testimonials, calcEmbed, placeholderImage,
 } from './_helpers.js';
 
 export const TEMPLATE = {
@@ -173,7 +173,16 @@ export const TEMPLATE = {
             },
           },
           spacer('rl30s', 20),
-          clockEmbed('rl31', 'Lab time'),
+          calcEmbed('rl31', {
+            title: 'Dilution calculator (C₁V₁ = C₂V₂)', resultLabel: 'Stock volume needed',
+            fields: [
+              { key: 'c1', label: 'Stock conc. (C₁)', value: 100 },
+              { key: 'c2', label: 'Final conc. (C₂)', value: 10 },
+              { key: 'v2', label: 'Final volume (V₂, mL)', value: 50 },
+            ],
+            expr: 'v.c1 ? (v.c2 * v.v2) / v.c1 : 0', suffix: ' mL', decimals: 2,
+            note: 'Make up to the final volume with diluent. The embed block runs your own HTML, CSS and JavaScript — this is a working example, not a picture of one.',
+          }),
         ],
       },
     ],

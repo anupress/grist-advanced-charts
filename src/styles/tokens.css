@@ -57,6 +57,15 @@
               color-mix(in srgb, var(--ap-accent) 78%, var(--ap-primary)) 100%);
 }
 
+/* Wide screens. A fixed 1180px content column leaves a 27" monitor mostly empty margin, with the
+   dashboard stranded as a ribbon down the middle. The column and the gutters grow in steps rather
+   than continuously, so line lengths stay readable instead of stretching to the full 2560px.
+   These are DEFAULTS only: theme/apply.js sets --ap-maxw inline when the author picks a width in
+   the Design panel, and an inline value always beats these rules. */
+@media (min-width: 1500px) { :root { --ap-maxw: 1320px; --ap-gap: 20px; } }
+@media (min-width: 1800px) { :root { --ap-maxw: 1500px; --ap-gap: 22px; --ap-pad: 26px; } }
+@media (min-width: 2200px) { :root { --ap-maxw: 1720px; --ap-gap: 24px; --ap-pad: 28px; } }
+
 /* Dark mode token overrides (theme.mode = 'dark').
    Match on either .ap-root (the widget shell) or :root (set on <html>) so the
    dark variables also reach overlays appended to <body> — the side drawer,

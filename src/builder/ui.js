@@ -26,10 +26,34 @@ function wireInfoOutsideClickOnce() {
   _infoOutsideClickWired = true;
   document.addEventListener('click', (e) => {
     document.querySelectorAll('.ap-info-pop.is-open').forEach((pop) => {
-      if (!pop.closest('.ap-info-wrap')?.contains(e.target)) pop.classList.remove('is-open');
+      if (!pop.closest('.ap-info-wrap')?.contains(e.target)) { pop.classList.remove('is-open'); pop.style.transform = ''; }
     });
   });
 }
+// Nudge an open popover back inside the window. CSS alone can't do this: the popover is anchored
+// to a 15px button that may sit anywhere, so a fixed left/right rule is right for one placement and
+// wrong for the next. In the Add Element grid the (i) sits at each tile's top-right and the popover
+// hangs leftward from it, which runs off the panel edge for every left-column tile — that was the
+// visible crop. Measuring after opening handles every placement, including ones added later.
+function keepOnScreen(pop) {
+  pop.style.transform = '';
+  const M = 8;
+  // Clamp to the PANEL it lives in, not the window. Inside the Add Element drawer the window is
+  // the wrong reference — a popover pushed merely inside the viewport would slide out of the
+  // drawer and float over the page behind it. Outside a panel there is no host, so the viewport
+  // is the right bound and documentElement supplies it.
+  const host = pop.closest('.ap-drawer, .ap-modal') || document.documentElement;
+  const hr = host.getBoundingClientRect();
+  const minLeft = hr.left + M;
+  const maxRight = hr.right - M;
+  if (maxRight - minLeft < pop.getBoundingClientRect().width) return; // too narrow to help
+  const r = pop.getBoundingClientRect();
+  let dx = 0;
+  if (r.left < minLeft) dx = minLeft - r.left;
+  else if (r.right > maxRight) dx = maxRight - r.right;
+  if (dx) pop.style.transform = `translateX(${Math.round(dx)}px)`;
+}
+
 export function infoButton(html) {
   wireInfoOutsideClickOnce();
   const pop = el('span', { class: 'ap-info-pop', html });
@@ -44,8 +68,9 @@ export function infoButton(html) {
   btn.addEventListener('click', (e) => {
     e.preventDefault(); e.stopPropagation();
     const opening = !pop.classList.contains('is-open');
-    document.querySelectorAll('.ap-info-pop.is-open').forEach((p) => p.classList.remove('is-open'));
+    document.querySelectorAll('.ap-info-pop.is-open').forEach((p) => { p.classList.remove('is-open'); p.style.transform = ''; });
     pop.classList.toggle('is-open', opening);
+    if (opening) keepOnScreen(pop);
   });
   return wrap;
 }
@@ -119,7 +144,12 @@ export function openDrawer({ title, body, footer }) {
     footer ? el('div', { class: 'ap-drawer__foot' }, [].concat(footer)) : null,
   ]);
   document.body.appendChild(drawer);
-  requestAnimationFrame(() => drawer.classList.add('is-open'));
+  // setTimeout, not requestAnimationFrame: rAF does not fire while the page is not compositing —
+  // an inactive Grist browser tab, or a background preview. The drawer would then never get
+  // is-open and would sit parked off-screen at translateX(100%), visible to script and clickable
+  // but invisible to the user. render/site.js already avoids rAF for chart mounting for exactly
+  // this reason; same rule here.
+  setTimeout(() => drawer.classList.add('is-open'), 0);
   current = drawer;
   return { el: drawer, body: bodyEl, close: closeDrawer };
 }
@@ -176,10 +206,13 @@ export function linkTargetField(target, tabs, onChange) {
   const kindSel = selectInput(
     [{ value: '', label: '— No link —' }]
       .concat((tabs || []).map((t) => ({ value: 'tab:' + t.id, label: 'Page: ' + t.title })))
-      .concat([{ value: 'url', label: 'Custom URL…' }]),
-    target.kind === 'tab' ? 'tab:' + target.tab : (target.kind === 'url' ? 'url' : ''),
+      .concat([{ value: 'url', label: 'Custom URL…' }, { value: 'print', label: 'Print / Save as PDF' }]),
+    target.kind === 'tab' ? 'tab:' + target.tab : (target.kind === 'url' ? 'url' : (target.kind === 'print' ? 'print' : '')),
     (v) => {
       if (v === '') { target.kind = null; target.tab = null; target.url = null; }
+      // Opens the browser's print dialog, which is also its "Save as PDF" — see the @media print
+      // rules in site.css for what actually comes out.
+      else if (v === 'print') { target.kind = 'print'; target.tab = null; target.url = null; }
       else if (v === 'url') { target.kind = 'url'; target.tab = null; target.url = target.url || 'https://'; }
       else { target.kind = 'tab'; target.tab = v.slice(4); target.url = null; }
       rebuild(); onChange();

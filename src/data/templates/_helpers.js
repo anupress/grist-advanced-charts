@@ -41,6 +41,10 @@ export const progress = (id, title, value, target, opts = {}, span = 4) =>
 export const noTarget = { kind: null, tab: null, url: null, newTab: true };
 export const urlTarget = (url) => ({ kind: 'url', tab: null, url, newTab: true });
 export const tabTarget = (tab) => ({ kind: 'tab', tab, url: null, newTab: true });
+// Opens the browser's print dialog — which is also its "Save as PDF" on every desktop platform.
+// The @media print rules in styles/site.css strip the navigation, editor chrome and card shadows
+// so the result is a document worth sending, not a screenshot of a web page.
+export const printTarget = () => ({ kind: 'print', tab: null, url: null, newTab: false });
 
 // A soft gradient "photo" (SVG data URI) — same technique as default-site.js's demoSlide(), so
 // the Image block shows something real without needing an actual upload. Carries a centered
@@ -77,16 +81,44 @@ export const livetable = (id, title, span = 12) =>
 export const embed = (id, html, css, js, height = 160) =>
   ({ id, type: 'embed', span: 12, config: { html, css, js, height } });
 
-// A small, universally-relevant embed demo (real HTML+CSS+JS, updating every second) — more
-// representative of the feature than a static/promotional snippet would be.
-export const clockEmbed = (id, label, height = 150) => embed(
-  id,
-  `<div id="clock">--:--:--</div><div class="tz">${label}</div>`,
-  `body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;margin:0;font-family:system-ui,sans-serif;color:#333}
-#clock{font-size:32px;font-weight:800;letter-spacing:1px}
-.tz{font-size:12px;opacity:.6;margin-top:4px;text-transform:uppercase;letter-spacing:.06em}`,
-  `function tick(){document.getElementById('clock').textContent=new Date().toLocaleTimeString();}
-tick();
-setInterval(tick,1000);`,
-  height,
-);
+// A small self-contained CALCULATOR for the Embed block.
+//
+// An embed runs in an opaque-origin sandbox, so it can never read the document's data — which
+// rules out anything live. What it CAN be is a tool the reader operates themselves, and that is
+// far more use on a published page than the clock that used to sit here telling people the time
+// they already knew. Each template gets one that matches its trade: a dilution calculator on the
+// lab bench page, an error budget for the engineering status page, a fee estimate for legal.
+//
+// `expr` is a JS expression over `v` (e.g. 'v.revenue / v.spend'). It is the template author's own
+// code and it evaluates inside the sandbox, exactly like the block's normal JS field.
+// It inherits the page's light/dark colours through the theme variables render/embed.js injects.
+export const calcEmbed = (id, spec, height = 230) => {
+  const { title, note, fields, expr, prefix = '', suffix = '', decimals = 2 } = spec;
+  const rows = fields.map((f) =>
+    `<label><span>${f.label}</span><input id="${f.key}" type="number" value="${f.value}" step="any"></label>`).join('');
+  return embed(
+    id,
+    `<div class="c"><div class="t">${title}</div><div class="g">${rows}</div>`
+    + `<div class="o"><span class="ol">${spec.resultLabel || 'Result'}</span><b id="r">—</b></div>`
+    + (note ? `<div class="n">${note}</div>` : '') + '</div>',
+    `.c{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.t{font-weight:700;font-size:14px}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--ap-text-mute,#777)}
+input{font:inherit;font-size:13px;padding:6px 8px;border-radius:8px;border:1px solid var(--ap-border,#ddd);
+background:var(--ap-surface,#fff);color:var(--ap-text,#222);width:100%;box-sizing:border-box}
+input:focus{outline:none;border-color:var(--ap-primary,#6d5efc)}
+.o{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:9px 12px;border-radius:10px;
+background:var(--ap-bg-soft,#f4f5fa)}
+.ol{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ap-text-mute,#777)}
+#r{font-size:22px;font-weight:800;color:var(--ap-primary,#6d5efc)}
+.n{font-size:11px;color:var(--ap-text-mute,#777);line-height:1.45}`,
+    `var K=${JSON.stringify(fields.map((f) => f.key))};
+var F=new Function('v','return (' + ${JSON.stringify(expr)} + ');');
+function calc(){var v={};K.forEach(function(k){v[k]=parseFloat(document.getElementById(k).value)||0;});
+var r;try{r=F(v);}catch(e){r=NaN;}
+document.getElementById('r').textContent=(isFinite(r)?${JSON.stringify(prefix)}+r.toFixed(${decimals}).replace(/\\B(?=(\\d{3})+(?!\\d))/g,',')+${JSON.stringify(suffix)}:'—');}
+K.forEach(function(k){document.getElementById(k).addEventListener('input',calc);});calc();`,
+    height,
+  );
+};

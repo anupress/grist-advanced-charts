@@ -50,6 +50,10 @@ export function openBlockChooser({ onPick, onGuided, onTemplates }) {
       templatesLink,
       el('div', { class: 'ap-addtile-sep' }, ['or pick a specific element']),
       search,
+      el('div', { class: 'ap-el-legend' }, [
+        el('span', { class: 'ap-el-legend__star', text: '★' }),
+        el('span', { text: 'Starred elements are the ones most pages start with' }),
+      ]),
       list,
     ]);
   }
@@ -67,7 +71,14 @@ export function openBlockChooser({ onPick, onGuided, onTemplates }) {
   }
 
   function tile(b) {
-    const btn = el('button', { class: 'ap-eltile', title: b.title, onClick: () => onPick(b.type) }, [
+    const btn = el('button', {
+      class: 'ap-eltile' + (b.star ? ' is-starred' : ''), title: b.star ? `${b.title} — a good place to start` : b.title,
+      onClick: () => onPick(b.type),
+    }, [
+      // A star on the handful of blocks most pages are actually built from, so a newcomer facing
+      // twenty-one tiles has an obvious entry point. `title` carries the same cue for screen
+      // readers, which cannot see the glyph.
+      b.star ? el('span', { class: 'ap-eltile__star', 'aria-hidden': 'true', text: '★' }) : null,
       el('span', { class: 'ap-eltile__icon' }, [icon(b.icon)]),
       el('span', { class: 'ap-eltile__title', text: b.title }),
       el('span', { class: 'ap-eltile__desc', text: b.desc }),

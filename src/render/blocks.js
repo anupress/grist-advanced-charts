@@ -235,6 +235,15 @@ function clickTarget(target, ctx, cls) {
     node.addEventListener('click', (e) => { if (!isLivePage) { e.preventDefault(); return; } ctx.onNav?.(target.tab); });
     return node;
   }
+  // Print the page. The browser's own print dialog offers "Save as PDF" everywhere, so this is
+  // also the export route for things people genuinely need on paper or as an attachment — an
+  // invoice, a statement of account, a booking confirmation. The print stylesheet in site.css
+  // strips the nav, editor chrome and page furniture so what comes out is the content alone.
+  if (target?.kind === 'print') {
+    const node = el('button', { class: cls, type: 'button' });
+    node.addEventListener('click', (e) => { if (!isLivePage) { e.preventDefault(); return; } window.print(); });
+    return node;
+  }
   return null;
 }
 const alignJustify = (a) => (a === 'center' ? 'center' : a === 'right' ? 'flex-end' : 'flex-start');
