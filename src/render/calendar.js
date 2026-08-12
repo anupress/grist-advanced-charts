@@ -11,6 +11,7 @@
 import { el } from '../util.js';
 import { icon } from '../assets/icons.js';
 import { currentSeriesColors } from '../theme/apply.js';
+import { zoneOfType, dayToEpochSeconds } from '../grist/dates.js';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -132,16 +133,20 @@ export function renderCalendar(block, ctx) {
     const row = state.rows.find((r) => r.id === rowId);
     if (!row) return;
     const [yy, mm, dd] = key.split('-').map(Number);
-    const original = parseDateLocal(row[c.dateColumn]);
-    const next = new Date(yy, mm - 1, dd, original?.getHours() || 0, original?.getMinutes() || 0);
     const prevValue = row[c.dateColumn];
     row[c.dateColumn] = dateStr(yy, mm - 1, dd); // optimistic move, redrawn immediately below
     redraw();
-    // Demo rows are plain strings end to end; real Grist stores Date/DateTime as epoch seconds
-    // (see bridge.js's toDateStr, which reads numbers that way) — write the shape each side
-    // actually expects. Unverified against a live document: no real Grist doc was available to
-    // confirm applyUserActions accepts this for a Date column — worth double-checking there.
-    const writeValue = ctx.provider.isLive ? Math.floor(next.getTime() / 1000) : dateStr(yy, mm - 1, dd);
+    // Demo rows are plain strings end to end; real Grist stores Date/DateTime as epoch seconds.
+    //
+    // This used to build `new Date(yy, mm-1, dd)` — LOCAL midnight — and store that. Read back in
+    // UTC, local midnight is still the previous day for anyone at a positive offset, so dropping
+    // an event on the 15th filed it under the 14th across Europe, Asia, Africa east of Greenwich,
+    // Australia and New Zealand. dayToEpochSeconds() takes the column's own zone into account:
+    // UTC midnight for a Date column, midnight in the column's zone for a DateTime one.
+    const zone = zoneOfType(columns.find((col) => col.id === c.dateColumn)?.type);
+    const writeValue = ctx.provider.isLive
+      ? dayToEpochSeconds(yy, mm - 1, dd, zone || null)
+      : dateStr(yy, mm - 1, dd);
     const ok = await ctx.provider.updateRecord(table, rowId, { [c.dateColumn]: writeValue });
     if (!ok) { row[c.dateColumn] = prevValue; redraw(); }
   }

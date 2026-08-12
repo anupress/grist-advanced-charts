@@ -3,6 +3,8 @@
 // safe empty value so the app falls back to Demo mode. ANUPRESS never sends data anywhere;
 // all calls below talk only to the embedding Grist document.
 
+import { zoneOfType, toDayString } from './dates.js';
+
 export const CONFIG_TABLE = 'ANUPRESS_Config';
 export const THEME_TABLE = 'ANUPRESS_Theme';
 const CONFIG_KEY = 'site';
@@ -165,22 +167,29 @@ function inferType(values) {
   return 'Text';
 }
 
-// Fetch rows, converting Grist Date/DateTime timestamps to ISO date strings for display.
+// Fetch rows, converting Grist Date/DateTime timestamps to 'YYYY-MM-DD' strings for display.
+//
+// The conversion is per COLUMN, not per value, because a DateTime column's type string carries the
+// zone its instants should be read in — see grist/dates.js. Reading every column in UTC (what this
+// used to do) is correct for Date and off by a day for DateTime in one direction or the other,
+// depending on which side of UTC the zone sits.
 export async function getRecords(tableId, columns) {
   if (!hasGrist()) return [];
   try {
     const tbl = await g().docApi.fetchTable(tableId);
     let rows = columnarToRows(tbl);
-    const dateCols = (columns || []).filter((c) => /^(Date|DateTime)/i.test(c.type)).map((c) => c.id);
-    if (dateCols.length) rows = rows.map((r) => { const o = { ...r }; for (const c of dateCols) o[c] = toDateStr(r[c]); return o; });
+    const dateCols = (columns || [])
+      .map((c) => ({ id: c.id, zone: zoneOfType(c.type) }))
+      .filter((c) => c.zone !== undefined);
+    if (dateCols.length) {
+      rows = rows.map((r) => {
+        const o = { ...r };
+        for (const { id, zone } of dateCols) o[id] = toDayString(r[id], zone);
+        return o;
+      });
+    }
     return rows;
   } catch { return []; }
-}
-function toDateStr(v) {
-  if (v == null || v === '') return null;
-  const ms = typeof v === 'number' ? v * 1000 : Date.parse(v);
-  if (!isFinite(ms)) return v;
-  return new Date(ms).toISOString().slice(0, 10);
 }
 
 // ---- Widget options (persist without needing full doc access) ----
