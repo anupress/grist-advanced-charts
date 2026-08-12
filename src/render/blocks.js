@@ -3,6 +3,7 @@
 // has a measurable size.
 
 import { el, fromHTML, fmtNumber, interpolate, clamp } from '../util.js';
+import { sanitizeToFragment } from '../security/sanitize.js';
 import { icon, chartIcon, EMPTY_ART } from '../assets/icons.js';
 import { computeKpi, sparkSeries, aggregate, AGGREGATIONS, resolveDeltaBy } from '../stats/aggregate.js';
 import { renderChart } from '../charts/echarts-adapter.js';
@@ -193,9 +194,16 @@ function renderChartCard(block, ctx) {
 
 function renderText(block, ctx) {
   const c = block.config || {};
+  // This used to be `html: c.html`, i.e. innerHTML of whatever sat in the config. That config lives
+  // in a table inside a SHARED document, so it is not only written through our editor — anyone with
+  // edit access to the document can put a payload in that row directly, and it would then run in
+  // this widget's origin, next to the full-access window.grist. Sanitizing here rather than on save
+  // also disarms any config that already contains one. See security/sanitize.js.
+  const body = el('div', { class: 'ap-richtext' });
+  body.appendChild(sanitizeToFragment(c.html));
   return el('div', { class: 'ap-card ap-textblock', dataset: { blockId: block.id } }, [
     c.heading ? el('h2', { text: c.heading }) : null,
-    el('div', { class: 'ap-richtext', html: c.html || '' }),
+    body,
   ]);
 }
 
