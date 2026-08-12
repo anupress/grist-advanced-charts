@@ -32,6 +32,24 @@ export function parseCellRanges(text) {
   return cells;
 }
 
+// A highlight only ever set a background, leaving the cell to inherit the theme's text colour.
+// That reads fine in light mode and is close to invisible in dark, where near-white text lands on
+// a pale pastel swatch. Deriving the foreground from the swatch's OWN luminance fixes it for both
+// modes and for any colour a user picks, rather than hard-coding a dark-mode palette that would
+// still break the moment someone chose a dark highlight.
+//
+// Relative luminance per WCAG 2.x; the 0.45 split is a little above the formal 0.179 crossover
+// because these swatches are pastels and dark ink on them reads better than white.
+export function readableOn(bg) {
+  const raw = String(bg || '').trim().replace(/^#/, '');
+  const hex = raw.length === 3 ? raw.split('').map((c) => c + c).join('') : raw;
+  if (!/^[0-9a-f]{6}$/i.test(hex)) return null; // named colour or rgb() — leave the text alone
+  const chan = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const lin = (c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const L = 0.2126 * lin(chan[0]) + 0.7152 * lin(chan[1]) + 0.0722 * lin(chan[2]);
+  return L > 0.45 ? '#161923' : '#f7f8fc';
+}
+
 // Later groups paint over earlier ones where ranges overlap — simple "layers" model, matches
 // how a user would expect a second highlight added afterward to take visual precedence.
 function buildHighlightMap(highlights) {
@@ -105,7 +123,13 @@ export function renderLiveTable(block, ctx) {
           const rowN = naturalRow.get(r);
           return el('tr', {}, cols.map((col, ci) => {
             const hl = highlightMap.size && rowN != null ? highlightMap.get(ci + ',' + rowN) : null;
-            return el('td', { text: String(r[col.id] ?? ''), title: String(r[col.id] ?? ''), style: hl ? { backgroundColor: hl } : null });
+            let style = null;
+            if (hl) {
+              style = { backgroundColor: hl };
+              const fg = readableOn(hl);
+              if (fg) style.color = fg; // keeps the text legible against the swatch in either mode
+            }
+            return el('td', { text: String(r[col.id] ?? ''), title: String(r[col.id] ?? ''), style });
           }));
         })
       : [el('tr', {}, [el('td', { class: 'ap-muted', colspan: String(cols.length || 1), text: 'No matching rows.' })])]));

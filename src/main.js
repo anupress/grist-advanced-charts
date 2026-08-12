@@ -89,8 +89,15 @@ async function startEdit() {
       const ok = await bridge.escalateToFull();
       if (ok) {
         await bridge.ensureTables();
-        const gp = new GristProvider();
-        await gp.init();
+        // Reuse the provider boot() already built and primed rather than constructing a second
+        // one. A fresh GristProvider starts with an empty cache, so prime() below re-downloaded
+        // every table the page had just loaded — visible in the Grist console as an identical
+        // second run of fetchTable calls for the same tables on every click of Edit.
+        // refreshTables() still re-lists (tables that only become visible once full access is
+        // granted do appear) but fetches only what is genuinely new.
+        const reuse = app.live && app.provider instanceof GristProvider;
+        const gp = reuse ? app.provider : new GristProvider();
+        if (reuse) await gp.refreshTables(); else await gp.init();
         if (gp.tables().length) {
           // Map the default site onto the user's first real table if we were on demo data.
           if (!app.live) app.config = adaptConfigToTable(app.config, gp);
