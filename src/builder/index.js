@@ -9,6 +9,7 @@ import { PALETTES, FONT_PAIRS } from '../theme/palettes.js';
 import { autoPick, isMeasure, isDimension } from '../charts/recommend.js';
 import { detectLatLon } from '../render/map.js';
 import * as bridge from '../grist/bridge.js';
+import { tablesInConfig } from '../data/provider.js';
 import { openBlockEditor } from './block-editor.js';
 import { openGuidedWizard } from './wizard.js';
 import { openBlockChooser } from './chooser.js';
@@ -336,7 +337,16 @@ async function save() {
     } else {
       toast(ok ? 'Published to your Grist document' : 'Saved locally (could not write to Grist)', ok ? 'ok' : 'err');
     }
-    if (ok && provider.invalidate) provider.invalidate();
+    // This used to call provider.invalidate() with no argument, which empties the ENTIRE row
+    // cache. Saving a design does not change a single row, but the next render then had nothing
+    // to draw — every KPI read 0 and every chart said "No data to display yet" until the widget
+    // was reloaded. Most visible right after applying a template, where the tables had just been
+    // created and populated moments earlier.
+    //
+    // Reload instead of discard: prime() re-fetches only tables that are not already cached, so
+    // for the common case (nothing moved) this costs no requests at all, and a block repointed at
+    // a different table during the edit gets its rows before the page is drawn again.
+    if (ok) { try { await provider.prime?.(tablesInConfig(cfg)); } catch (e) { console.warn('[ANUPRESS] post-save prime failed', e); } }
   } else {
     toast('Demo mode — connect inside Grist to save', '');
   }

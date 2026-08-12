@@ -30,6 +30,11 @@ export function buildHeader(config, opts = {}) {
   const nav = el('nav', { class: 'ap-nav', id: 'ap-nav' }, [...tabItems, ...urlItems]);
 
   const actions = el('div', { class: 'ap-header__actions' }, [
+    // Re-read the tables behind this page without reloading the widget. Grist pushes no change
+    // notification a custom widget can subscribe to, so the data a block shows is whatever was
+    // fetched when the page was drawn — this is how you get today's numbers after editing rows in
+    // the document next door, short of reloading the whole widget.
+    opts.onRefresh && !opts.editing ? refreshButton(opts) : null,
     opts.onToggleTheme
       ? el('button', { class: 'ap-btn ap-btn--icon', 'aria-label': 'Toggle dark / light', title: 'Toggle dark / light',
           onClick: () => opts.onToggleTheme() }, [icon(opts.mode === 'dark' ? 'sun' : 'moon')])
@@ -47,6 +52,23 @@ export function buildHeader(config, opts = {}) {
 // click that's actually in flight looks identical to a click that silently failed. Disabling
 // the button and swapping its label makes "your click registered, we're waiting on something"
 // visible even when that something is happening off-screen.
+// Spins while the fetch is in flight and reports the outcome, because a button that re-reads data
+// and then draws exactly the same numbers is indistinguishable from one that did nothing.
+function refreshButton(opts) {
+  const btn = el('button', { class: 'ap-btn ap-btn--icon ap-refresh', 'aria-label': 'Refresh data', title: 'Refresh data from your tables' }, [icon('refresh')]);
+  btn.addEventListener('click', async () => {
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.classList.add('is-spinning');
+    try { await opts.onRefresh(); } finally {
+      // A successful refresh re-renders the whole header, so this button is gone by now; only
+      // reset it when it is somehow still on the page (a failed fetch, no rows to reload).
+      if (btn.isConnected) { btn.disabled = false; btn.classList.remove('is-spinning'); }
+    }
+  });
+  return btn;
+}
+
 function editButton(opts) {
   const btn = el('button', { class: 'ap-btn ap-btn--primary' }, [icon('edit'), 'Edit']);
   btn.addEventListener('click', async () => {

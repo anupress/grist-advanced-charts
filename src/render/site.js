@@ -34,6 +34,7 @@ export function renderSite(opts) {
     editing, activeTabId, onNav: showTab, onEdit: opts.onEnterEdit,
     onEditHeader: edit?.onEditHeader, onEditFooter: edit?.onEditFooter,
     mode: root.getAttribute('data-mode') || 'light', onToggleTheme: opts.onToggleTheme,
+    onRefresh: opts.onRefresh,
   });
 
   const main = el('main', { class: 'ap-main' });

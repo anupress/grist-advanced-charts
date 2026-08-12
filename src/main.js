@@ -64,6 +64,22 @@ function renderView() {
   app.siteApi = renderSite({
     root, config: app.config, provider: app.provider,
     onEnterEdit: startEdit,
+    // Re-read every table this page uses, then draw again. Grist offers a custom widget no change
+    // notification to subscribe to, so without this the only way to see rows edited in the
+    // document next door was to reload the whole widget. Only offered on a live document — in
+    // demo mode there is nothing behind the bundled data to re-read.
+    onRefresh: app.live ? async () => {
+      const tables = tablesInConfig(app.config);
+      try {
+        app.provider.invalidate?.();                  // drop the cached rows...
+        await app.provider.prime?.(tables);           // ...and fetch them again
+        renderView();
+        toast(`Refreshed ${tables.length} table${tables.length === 1 ? '' : 's'}`, 'ok');
+      } catch (e) {
+        console.warn('[ANUPRESS] refresh failed', e);
+        toast('Could not refresh — ' + (e?.message || 'unknown error'), 'err');
+      }
+    } : null,
     onToggleTheme: () => {
       const next = (root.getAttribute('data-mode') === 'dark') ? 'light' : 'dark';
       app.config.theme = { ...(app.config.theme || {}), mode: next };
