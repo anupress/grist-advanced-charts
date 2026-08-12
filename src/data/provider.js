@@ -16,6 +16,8 @@ class BaseProvider {
   // base/demo case has nothing to re-fetch — demo data only ever changes via updateRecord()
   // below, which already mutates the live array — so this just returns the current rows.
   async refresh(tableId) { return this.records(tableId); }
+  // Full re-read (header Refresh button). Demo data has no source behind it to re-read.
+  async reload() { return { tables: this.tables().length, reloaded: 0 }; }
   // Write a single row's fields back to the source table. Read-only providers/blocks never call
   // this; it exists for the one block (Calendar, drag-to-reschedule) that edits data in place.
   // Returns false on failure (wrong permissions, detached demo row, etc.) rather than throwing,
@@ -92,6 +94,31 @@ export class GristProvider extends BaseProvider {
     return this._tables;
   }
   invalidate(tableId) { if (tableId) this._rows.delete(tableId); else this._rows.clear(); }
+
+  // A complete re-read of the document, for the header's Refresh button.
+  //
+  // invalidate() + prime() only replaces ROWS. That covers a cell someone edited, but not a column
+  // they added or renamed, and not a table they created — the column metadata and the table list
+  // are cached too, so those changes stayed invisible until the widget was reloaded. Refresh is
+  // the one action whose entire purpose is "show me what the document says now", so it drops all
+  // three caches and reads them again.
+  //
+  // Only the named tables get their rows re-fetched (the ones the page actually draws); schema and
+  // the table list are refreshed wholesale because they are one request each regardless.
+  async reload(tableIds = []) {
+    grist.invalidateMetaCache();
+    this._cols.clear();
+    this._rows.clear();
+    const ids = await grist.listTables();
+    this._tables = ids.map((id) => ({ id, label: id }));
+    if (!ids.includes(this._default)) this._default = ids[0] || null;
+    const wanted = [...new Set(tableIds.filter((t) => t && ids.includes(t)))];
+    await Promise.all(wanted.map(async (id) => {
+      const cols = await this._loadColumns(id);
+      this._rows.set(id, await grist.getRecords(id, cols));
+    }));
+    return { tables: this._tables.length, reloaded: wanted.length };
+  }
   // Unconditional re-fetch (prime() above deliberately skips tables it already has cached).
   // Used for polling a table a Calendar block is currently displaying, so edits made directly in
   // Grist while the widget is open still show up here — there's no push/subscribe channel this
@@ -212,7 +239,15 @@ export function adaptTemplateToTable(config, provider) {
   if (!table) return config;
   const realTableIds = new Set(provider.tables().map((t) => t.id));
   const c = clone(config);
-  c.dataTable = table;
+  // dataTable is the site-level fallback: what a block with no table of its own reads, and what a
+  // newly added block defaults to. This used to be overwritten with the provider's first table
+  // unconditionally, which contradicts the rule applied to blocks just below — installing Higher
+  // Education into a doc whose first table happened to be 'BoxOverview' left dataTable pointing
+  // there rather than at the 'Courses' table the template had just created. Same test as a block:
+  // keep what the template declares when that table really exists now, otherwise fall back.
+  // (By the time this runs, template-picker.js has already created the template's tables and
+  // called provider.refreshTables(), so they are present in realTableIds.)
+  c.dataTable = (c.dataTable && realTableIds.has(c.dataTable)) ? c.dataTable : table;
   for (const tab of c.tabs || []) for (const b of tab.blocks || []) {
     if (!b.config) continue;
     const ownTable = b.config.table;

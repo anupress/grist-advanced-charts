@@ -71,10 +71,12 @@ function renderView() {
     onRefresh: app.live ? async () => {
       const tables = tablesInConfig(app.config);
       try {
-        app.provider.invalidate?.();                  // drop the cached rows...
-        await app.provider.prime?.(tables);           // ...and fetch them again
+        // reload(), not invalidate()+prime(): the latter replaces rows only, so a column added or
+        // renamed in Grist — or a whole new table — stayed invisible. Refresh exists precisely to
+        // answer "what does the document say now", so it re-reads schema and the table list too.
+        const { reloaded } = await app.provider.reload(tables);
         renderView();
-        toast(`Refreshed ${tables.length} table${tables.length === 1 ? '' : 's'}`, 'ok');
+        toast(`Refreshed ${reloaded} table${reloaded === 1 ? '' : 's'} from your document`, 'ok');
       } catch (e) {
         console.warn('[ANUPRESS] refresh failed', e);
         toast('Could not refresh — ' + (e?.message || 'unknown error'), 'err');
