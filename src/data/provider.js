@@ -85,7 +85,17 @@ export class GristProvider extends BaseProvider {
     grist.invalidateMetaCache();
     const ids = await grist.listTables();
     this._tables = ids.map((id) => ({ id, label: id }));
-    if (!this._default) this._default = ids[0] || null;
+    // Evict tables that are no longer in the document.
+    //
+    // This only ever ADDED: it loaded columns and rows for names it had not seen, and left
+    // everything else in place. So a table deleted from Grist kept serving its old columns and
+    // rows out of the cache indefinitely. Most visibly, "Start from scratch" listed five Research
+    // Labs tables as candidates for removal in a document where they no longer existed, because
+    // the schema check that identifies them was reading the cached copy.
+    const live = new Set(ids);
+    for (const id of [...this._cols.keys()]) if (!live.has(id)) this._cols.delete(id);
+    for (const id of [...this._rows.keys()]) if (!live.has(id)) this._rows.delete(id);
+    if (!this._default || !live.has(this._default)) this._default = ids[0] || null;
     const fresh = ids.filter((id) => !this._cols.has(id));
     await Promise.all(fresh.map(async (id) => {
       const cols = await this._loadColumns(id);

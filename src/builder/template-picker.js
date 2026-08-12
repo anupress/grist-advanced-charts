@@ -45,9 +45,13 @@ export function detectTemplateTables(provider) {
   const found = [];
   const seen = new Set();
   if (!provider?.columns) return found;
+  // Only tables that are actually in the document. columns() reads a cache, and a cache can
+  // outlive the thing it describes — this list drives a delete button, so it is checked against
+  // the live table list rather than trusted to be fresh.
+  const present = new Set((provider.tables?.() || []).map((t) => t.id));
   for (const [tplId, data] of Object.entries(TEMPLATE_SAMPLE_DATA)) {
     for (const [name, spec] of Object.entries(data.tables || {})) {
-      if (name === 'Data' || seen.has(name)) continue;
+      if (name === 'Data' || seen.has(name) || !present.has(name)) continue;
       let cols;
       try { cols = provider.columns(name); } catch { cols = null; }
       if (!cols || !cols.length) continue;
