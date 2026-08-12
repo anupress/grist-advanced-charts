@@ -97,6 +97,10 @@ export function renderSite(opts) {
     const go = () => { mountCharts(panel); resizeChartsIn(panel); mountMaps(panel); resizeMapsIn(panel); mountCounters(panel); mountAttachmentImages(panel); mountCountdowns(panel); mountCalendars(panel); };
     go();
     setTimeout(go, 120);
+    // Tell blocks that pause work while off-screen that they are back. A calendar stops polling
+    // when its page is hidden (see mountCalendars) and uses this to catch up at once, instead of
+    // showing data that could be a poll cycle out of date.
+    setTimeout(() => panel.querySelectorAll('.ap-calendar').forEach((c) => c.dispatchEvent(new CustomEvent('ap:shown'))), 130);
     mounted.add(id);
   }
 

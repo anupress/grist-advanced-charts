@@ -214,15 +214,44 @@ export function renderCalendar(block, ctx) {
 }
 
 const _seen = new WeakSet();
+const POLL_MS = 15000;
+
+// The poll used to run unconditionally: every 15 seconds, forever, it re-fetched the calendar's
+// whole table whether or not anyone could see it. In a Grist document that shows up as an endless
+// run of identical fetchTable calls for one table — the calendar's tab might not even be the one
+// on screen, and the browser tab might be in the background.
+//
+// It now only fetches when the calendar is actually visible, and catches up immediately when it
+// becomes visible again rather than leaving stale data on screen for up to another 15 seconds.
 export function mountCalendars(scope) {
   (scope || document).querySelectorAll('.ap-calendar').forEach((card) => {
     if (_seen.has(card)) return;
     _seen.add(card);
     const s = card._apCalendar;
     if (!s) return;
-    const intervalId = setInterval(async () => {
-      if (!document.contains(card)) { clearInterval(intervalId); return; }
-      s.setRows(await s.ctx.provider.refresh(s.table));
-    }, 15000);
+
+    let inFlight = false;   // a slow fetch must not stack up behind the next tick
+    let missed = false;     // something changed while we weren't looking — refresh on return
+
+    // offsetParent is null when the element or an ancestor is display:none, which is exactly how
+    // a hidden tab panel renders. document.hidden covers the backgrounded browser tab.
+    const visible = () => !document.hidden && card.offsetParent !== null;
+
+    async function poll() {
+      if (inFlight) return;
+      inFlight = true;
+      try { s.setRows(await s.ctx.provider.refresh(s.table)); } finally { inFlight = false; }
+    }
+
+    const intervalId = setInterval(() => {
+      if (!document.contains(card)) { clearInterval(intervalId); document.removeEventListener('visibilitychange', onVis); return; }
+      if (!visible()) { missed = true; return; }
+      poll();
+    }, POLL_MS);
+
+    function onVis() { if (!document.hidden && missed && card.offsetParent !== null) { missed = false; poll(); } }
+    document.addEventListener('visibilitychange', onVis);
+    // Switching back to the calendar's own page fires no visibilitychange, so catch that too.
+    card.addEventListener('ap:shown', onVis);
   });
 }
