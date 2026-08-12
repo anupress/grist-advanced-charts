@@ -56,10 +56,17 @@ export async function ready(requiredAccess = 'read table', timeoutMs = 120000) {
 export const escalateToFull = () => ready('full');
 
 // ---- Schema ----
+// The table list is memoised for the same reason the meta tables are. Grist answers
+// docApi.listTables() by fetching _grist_Tables, so every call is a network round trip, and the
+// log of a single session showed five of them: provider init, loadConfig, then ensureTables, a
+// second init and clearStoredConfig once Edit was opened. The list only changes when a table is
+// created or removed, and every one of those paths already calls invalidateMetaCache().
+function fetchTableList() { return _tableListP ||= g().docApi.listTables(); }
+
 export async function listTables() {
   if (!hasGrist()) return [];
   try {
-    const ids = await g().docApi.listTables();
+    const ids = await fetchTableList();
     return ids.filter((t) => !/^_grist_/.test(t) && t !== CONFIG_TABLE && t !== THEME_TABLE);
   } catch { return []; }
 }
@@ -76,11 +83,11 @@ function columnarToRows(tbl) {
 // Meta tables cache — _grist_Tables and _grist_Tables_column change so rarely that a per-session
 // fetch is safe and cheap. Without this cache, GristProvider.init() re-fetched both tables for
 // every user table (9 tables → 18 network round-trips). One promise each, reused.
-let _metaTablesP = null, _metaColumnsP = null, _metaAttachmentsP = null;
+let _metaTablesP = null, _metaColumnsP = null, _metaAttachmentsP = null, _tableListP = null;
 function fetchMetaTables()  { return _metaTablesP  ||= g().docApi.fetchTable('_grist_Tables'); }
 function fetchMetaColumns() { return _metaColumnsP ||= g().docApi.fetchTable('_grist_Tables_column'); }
 function fetchMetaAttachments() { return _metaAttachmentsP ||= g().docApi.fetchTable('_grist_Attachments'); }
-export function invalidateMetaCache() { _metaTablesP = null; _metaColumnsP = null; _metaAttachmentsP = null; }
+export function invalidateMetaCache() { _metaTablesP = null; _metaColumnsP = null; _metaAttachmentsP = null; _tableListP = null; }
 
 // ---- Attachments ----
 // An Attachments-type cell value comes back from fetchTable as either null (empty) or a
@@ -201,7 +208,7 @@ export async function ensureTables() {
   try { await g().docApi.applyUserActions(actions); invalidateMetaCache(); return true; }
   catch (e) { console.warn('[ANUPRESS] ensureTables failed', e); return false; }
 }
-async function safeListAll() { try { return await g().docApi.listTables(); } catch { return []; }
+async function safeListAll() { try { return await fetchTableList(); } catch { return []; }
 
 }
 
@@ -345,7 +352,9 @@ export async function loadConfig() {
   if (opt) { try { return JSON.parse(opt); } catch {} }
   if (!hasGrist()) return null;
   try {
-    const ids = await g().docApi.listTables();
+    // safeListAll, not docApi.listTables directly: it goes through the memo, and it returns the
+    // config table (which the public listTables() filters out) which is exactly what we look for.
+    const ids = await safeListAll();
     if (!ids.includes(CONFIG_TABLE)) return null;
     const tbl = await g().docApi.fetchTable(CONFIG_TABLE);
     const values = new Map();

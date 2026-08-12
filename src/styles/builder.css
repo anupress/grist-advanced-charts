@@ -242,3 +242,9 @@
 .ap-drawer__foot .ap-btn--danger:hover { filter: brightness(1.06); }
 .ap-scratch-list { display: grid; gap: 2px; padding: 4px 0; }
 .ap-scratch-list .ap-row { margin-bottom: 4px !important; }
+
+/* "Start from scratch" sits at the top of the template list as a peer choice, styled as an
+   outline rather than a filled card so it reads as "none of these" instead of a tenth template. */
+.ap-addtile--blank { border-style: dashed; background: transparent; }
+.ap-addtile--blank .ap-addtile__icon { background: var(--ap-bg-soft); color: var(--ap-text-soft); box-shadow: none; }
+.ap-addtile--blank:hover .ap-addtile__icon { background: var(--ap-primary); color: #fff; }

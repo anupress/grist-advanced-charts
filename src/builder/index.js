@@ -15,7 +15,6 @@ import { openBlockChooser } from './chooser.js';
 import { openTemplatePicker } from './template-picker.js';
 import { makeBlocksSortable, makeTabsSortable, makePagesSortable } from './dnd.js';
 import { openDrawer, closeDrawer, field, textInput, selectInput, checkboxRow, segmented, colorInput, subhead, divider, primaryBtn, ghostBtn } from './ui.js';
-import { emptySite } from '../data/default-site.js';
 import { heroEditorBody } from './hero-editor.js';
 import { readFileAsDataURL } from './imageutil.js';
 
@@ -83,7 +82,6 @@ function buildEditBar() {
       barBtn('layout', 'Pages', openTabsPanel),
       barBtn('type', 'Header', openHeaderPanel),
       barBtn('copy', 'Templates', openTemplatesPanel),
-      barBtn('trash', 'Scratch', openScratchPanel),
       ghostBtnWhite('Done', finish),
       primaryWhite('Save & Publish', save),
     ]),
@@ -152,69 +150,10 @@ function chooseNewBlock(tabId) {
   });
 }
 
-// "Start from scratch" — wipe our design back to one blank page, and optionally remove the demo
-// tables a template put in the document.
-//
-// The safety rule is that the checklist is built ONLY from config.createdTables, the record the
-// template picker writes when it creates a table itself. A table the user made is never on that
-// list, so it can never appear here and can never be removed — including one that happens to share
-// a name with a template's, since the list is of tables we actually created in this document.
-function openScratchPanel() {
-  const recorded = Array.isArray(working.createdTables) ? working.createdTables : [];
-  const present = provider?.tables ? new Set(provider.tables().map((t) => t.id)) : new Set();
-  const ours = recorded.filter((id) => present.has(id));
-  const wanted = new Set(ours);
-
-  const list = ours.length
-    ? el('div', { class: 'ap-scratch-list' }, ours.map((id) => checkboxRow(id, true, (v) => {
-        if (v) wanted.add(id); else wanted.delete(id);
-      })))
-    : el('div', { class: 'ap-muted', style: { fontSize: '13px' }, text:
-        'No demo tables to clean up — nothing in this document was created by a template.' });
-
-  const body = [
-    el('div', { class: 'ap-trust' }, [
-      el('div', { style: { fontWeight: '700', marginBottom: '4px' }, text: 'This clears the design, not your data' }),
-      el('div', { text: 'Your own tables and everything in them are left exactly as they are. '
-        + 'Only tables a template created here can be removed, and only the ones you tick below.' }),
-    ]),
-    subhead('Start with'),
-    el('div', { class: 'ap-muted', style: { fontSize: '13px', marginBottom: '10px' }, text:
-      'One empty page. Every page, block, theme choice and uploaded image in the current design is discarded.' }),
-    divider(),
-    subhead(ours.length ? 'Also remove these demo tables?' : 'Demo tables'),
-    list,
-  ];
-
-  openDrawer({
-    title: 'Start from scratch',
-    body,
-    footer: [
-      ghostBtn('Cancel', () => closeDrawer()),
-      el('button', { class: 'ap-btn ap-btn--danger', text: 'Erase and start fresh', onClick: async () => {
-        closeDrawer();
-        const toRemove = ours.filter((id) => wanted.has(id));
-        if (live && toRemove.length) {
-          toast('Removing demo tables…');
-          const res = await bridge.removeTables(toRemove);
-          if (res.failed.length) toast(`Removed ${res.removed.length}; ${res.failed.length} could not be removed — see the console.`, 'err');
-          else if (res.removed.length) toast(`Removed ${res.removed.length} demo table${res.removed.length === 1 ? '' : 's'}.`, 'ok');
-          if (provider?.refreshTables) { try { await provider.refreshTables(); } catch {} }
-        }
-        if (live) await bridge.clearStoredConfig();
-        working = emptySite();
-        activeTabId = working.tabs[0].id;
-        dirty = true;
-        rerender();
-        toast('Blank canvas — add your first element to begin.', 'ok');
-      } }),
-    ],
-  });
-}
-
 function openTemplatesPanel() {
   openTemplatePicker({
     provider,
+    config: working,
     onApply: (newConfig) => {
       working = newConfig;
       activeTabId = working.tabs?.[0]?.id || null;

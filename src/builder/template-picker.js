@@ -13,7 +13,8 @@
 
 import { el, clone, toast, escapeHtml } from '../util.js';
 import { icon } from '../assets/icons.js';
-import { openDrawer, closeDrawer, primaryBtn, ghostBtn, subhead, divider, field, selectInput } from './ui.js';
+import { openDrawer, closeDrawer, primaryBtn, ghostBtn, subhead, divider, field, selectInput, checkboxRow } from './ui.js';
+import { emptySite } from '../data/default-site.js';
 import { TEMPLATES } from '../data/templates/index.js';
 import { adaptTemplateToTable, DummyProvider } from '../data/provider.js';
 import { TEMPLATE_SAMPLE_DATA } from '../data/templates/sample-data.js';
@@ -26,6 +27,40 @@ import { mountCalendars } from '../render/calendar.js';
 import * as bridge from '../grist/bridge.js';
 
 const OWN = '__own__'; // sentinel: "materialize the template's own table" (create or backfill)
+
+// Which tables in this document came from one of our templates?
+//
+// config.createdTables is the trustworthy answer, but it only exists for tables created since we
+// started recording it — a document that already had templates applied has nothing on that list,
+// which is exactly the document whose owner most wants to tidy up. So legacy tables are INFERRED,
+// and the inference is deliberately strict: the name must match a template table AND every column
+// that template declares must be present, with almost no extras. Name alone is far too weak, since
+// "Tasks", "Clients" or "Team" is a name anyone might pick — but a user's own Tasks table also
+// happening to carry Task, Priority, Project, AssignedTo, DueDate, Status and Outcome is not a
+// realistic coincidence.
+//
+// Inferred tables are still never removed on their own account: the UI lists them separately and
+// leaves them unticked, so deleting one is always a deliberate act by the person who knows.
+export function detectTemplateTables(provider) {
+  const found = [];
+  const seen = new Set();
+  if (!provider?.columns) return found;
+  for (const [tplId, data] of Object.entries(TEMPLATE_SAMPLE_DATA)) {
+    for (const [name, spec] of Object.entries(data.tables || {})) {
+      if (name === 'Data' || seen.has(name)) continue;
+      let cols;
+      try { cols = provider.columns(name); } catch { cols = null; }
+      if (!cols || !cols.length) continue;
+      const have = new Set(cols.map((c) => c.id));
+      const want = (spec.columns || []).map((c) => c.id);
+      if (!want.length) continue;
+      const allPresent = want.every((id) => have.has(id));
+      const noBloat = have.size <= want.length + 2; // tolerate a stray user column or two
+      if (allPresent && noBloat) { found.push({ name, template: tplId }); seen.add(name); }
+    }
+  }
+  return found;
+}
 
 // Walks a template's tabs/blocks and returns the deduped list of real table names it references
 // (skipping 'Data', the shared placeholder). Drives the confirm-step per-table setup controls.
@@ -90,11 +125,12 @@ function remapUsedTables(config, choices) {
   return c;
 }
 
-export function openTemplatePicker({ provider, onApply }) {
+export function openTemplatePicker(opts) {
+  const { provider, onApply } = opts;
   // tableChoices: per template-table, { target: OWN | <user table id>, columns: {templateCol: userCol} }.
   // Default OWN for every table = "create it with sample data" (or backfill if a same-named empty
   // one exists) — the user can instead point any table at one of their own via the confirm step.
-  const state = { picked: null, tableChoices: {}, applying: false };
+  const state = { picked: null, tableChoices: {}, applying: false, scratch: false, scratchWanted: new Set() };
   let previewHost = null; // set by buildLivePreview(); mounted only once actually in the document
   render();
 
@@ -108,9 +144,9 @@ export function openTemplatePicker({ provider, onApply }) {
   function render() {
     previewHost = null;
     openDrawer({
-      title: state.picked ? 'Preview & apply' : 'Choose a starting template',
-      body: state.picked ? confirmBody() : pickBody(),
-      footer: state.picked ? confirmFooter() : pickFooter(),
+      title: state.scratch ? 'Start from scratch' : state.picked ? 'Preview & apply' : 'Choose a starting point',
+      body: state.scratch ? scratchBody() : state.picked ? confirmBody() : pickBody(),
+      footer: state.scratch ? scratchFooter() : state.picked ? confirmFooter() : pickFooter(),
     });
     // Charts/maps/counters size themselves off clientWidth/clientHeight, which is only
     // meaningful once this content is actually attached — openDrawer() just appended it above,
@@ -120,6 +156,17 @@ export function openTemplatePicker({ provider, onApply }) {
   }
 
   function pickBody() {
+    // Starting blank is a choice of starting point like any other, so it belongs on this list
+    // rather than behind its own button in the toolbar.
+    const blank = el('button', { class: 'ap-addtile ap-addtile--blank' }, [
+      el('span', { class: 'ap-addtile__icon' }, [icon('plus')]),
+      el('div', { class: 'ap-addtile__text' }, [
+        el('div', { class: 'ap-addtile__title', text: 'Start from scratch' }),
+        el('div', { class: 'ap-addtile__desc', text: 'One empty page — and optionally clean up demo tables a template left behind' }),
+      ]),
+    ]);
+    blank.addEventListener('click', () => { state.scratch = true; render(); });
+
     const grid = el('div', { style: { display: 'grid', gap: '10px' } },
       TEMPLATES.map((t) => {
         const card = el('button', { class: 'ap-addtile' }, [
@@ -134,10 +181,78 @@ export function openTemplatePicker({ provider, onApply }) {
       }));
     return [
       el('p', { class: 'ap-muted', style: { fontSize: '13px', marginBottom: '4px' }, text: 'Pick a starting point for your site — pages, sample cards and copy included. Everything is fully editable afterward.' }),
+      blank,
+      divider(),
       grid,
     ];
   }
   function pickFooter() { return [ghostBtn('Cancel', () => closeDrawer())]; }
+
+  // ---- Start from scratch ----
+  function scratchBody() {
+    const recorded = Array.isArray(opts.config?.createdTables) ? opts.config.createdTables : [];
+    const present = new Set((provider?.tables?.() || []).map((t) => t.id));
+    const confirmed = recorded.filter((id) => present.has(id));
+    // Inferred, minus anything already on the confirmed list.
+    const guessed = detectTemplateTables(provider).map((x) => x.name).filter((n) => !confirmed.includes(n));
+    state.scratchWanted = new Set(confirmed); // confirmed on by default, inferred off
+
+    const rows = (names, on) => el('div', { class: 'ap-scratch-list' }, names.map((id) => checkboxRow(id, on, (v) => {
+      if (v) state.scratchWanted.add(id); else state.scratchWanted.delete(id);
+    })));
+
+    const body = [
+      el('div', { class: 'ap-trust' }, [
+        el('div', {}, [
+          el('strong', { text: 'This clears the design, not your data' }),
+          el('div', { text: 'Your own tables and everything in them are left exactly as they are. '
+            + 'Only the tables you tick below are removed, and nothing is ticked that we are not sure about.' }),
+        ]),
+      ]),
+      subhead('Start with'),
+      el('div', { class: 'ap-muted', style: { fontSize: '13px', marginBottom: '10px' }, text:
+        'One empty page. Every page, block, theme choice and uploaded image in the current design is discarded.' }),
+      divider(),
+    ];
+
+    if (confirmed.length) {
+      body.push(subhead('Created by a template in this document'), rows(confirmed, true));
+    }
+    if (guessed.length) {
+      body.push(
+        subhead('Look like template tables'),
+        el('div', { class: 'ap-muted', style: { fontSize: '12px', marginBottom: '8px' }, text:
+          'Matched by name and by every column a template creates — most likely ours, but added before this widget started keeping a record. '
+          + 'Left unticked on purpose: tick only the ones you know are demo data.' }),
+        rows(guessed, false),
+      );
+    }
+    if (!confirmed.length && !guessed.length) {
+      body.push(el('div', { class: 'ap-muted', style: { fontSize: '13px' }, text:
+        'No demo tables found — nothing in this document matches a table one of our templates creates.' }));
+    }
+    return body;
+  }
+
+  function scratchFooter() {
+    const go = el('button', { class: 'ap-btn ap-btn--danger', text: 'Erase and start fresh' });
+    go.addEventListener('click', async () => {
+      const toRemove = [...(state.scratchWanted || [])];
+      go.disabled = true;
+      if (toRemove.length) {
+        toast('Removing demo tables…');
+        const res = await bridge.removeTables(toRemove);
+        if (res.failed.length) toast(`Removed ${res.removed.length}; ${res.failed.length} could not be removed — see the console.`, 'err');
+        else if (res.removed.length) toast(`Removed ${res.removed.length} table${res.removed.length === 1 ? '' : 's'}.`, 'ok');
+        if (provider?.refreshTables) { try { await provider.refreshTables(); } catch {} }
+      }
+      await bridge.clearStoredConfig();
+      closeDrawer();
+      opts.onApply(emptySite());
+      toast('Blank canvas — add your first element to begin.', 'ok');
+    });
+    return [ghostBtn('Back', () => { state.scratch = false; render(); }), go];
+  }
 
   // A real rendered preview of every tab/block in the template, using its own sample dataset
   // (falls back to a bare "table not available" empty state for any template id missing one,
