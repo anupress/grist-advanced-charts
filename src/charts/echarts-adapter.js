@@ -3,6 +3,10 @@
 // restyle instantly when the palette changes.
 
 import { groupAggregate, scatterPoints, aggregate } from '../stats/aggregate.js';
+
+// Chart types whose shape claims to show a whole. Treemap is included for the same reason as pie;
+// funnel is not, because its stages are a sequence rather than a partition of one total.
+const WHOLE_SHAPED = new Set(['pie', 'doughnut', 'treemap']);
 import { getChartType, CARTESIAN, SINGLE_SERIES } from './catalog.js';
 import { currentSeriesColors, readVar } from '../theme/apply.js';
 import { fmtNumber } from '../util.js';
@@ -79,6 +83,11 @@ export function buildOption(block, ctx) {
   const g = groupAggregate(rows, {
     dims: cfg.dims || [], measures: cfg.measures || [], agg: cfg.agg || 'sum',
     sortByValue: cfg.sortByValue ?? SINGLE_SERIES.has(type), limit: cfg.limit || 0,
+    // A pie or doughnut asserts parts-of-a-whole by its shape, so truncating the tail draws a
+    // complete circle out of incomplete data — an 8-category pie limited to 5 showed 83% of the
+    // total and looked like all of it. Pooling the remainder keeps the circle honest. Bars and
+    // lines make no such claim, so there a limit still simply means "top N".
+    otherLabel: WHOLE_SHAPED.has(type) ? 'Other' : null,
   });
 
   // Display labels only — the aggregation above already used the raw values.

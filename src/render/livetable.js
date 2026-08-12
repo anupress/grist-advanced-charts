@@ -3,8 +3,22 @@
 // tablesInConfig), so — unlike Counter/Image/Testimonials — this needs no lazy-mount pass; all
 // its interactivity (search/sort/page) is self-contained DOM event wiring set up once here.
 
-import { el } from '../util.js';
+import { el, debounce } from '../util.js';
 import { icon } from '../assets/icons.js';
+import { isDateColumn } from '../grist/dates.js';
+
+// Tolerates the separators people actually have in their data — "1,200", "$1,200", "45%", "(300)"
+// for a negative in accounting style. parseFloat stopped at the first comma and read "1,200" as 1.
+function toNumber(v) {
+  if (v == null || v === '') return null;
+  if (typeof v === 'number') return isFinite(v) ? v : null;
+  let s = String(v).trim();
+  const parenNegative = /^\((.*)\)$/.exec(s);
+  if (parenNegative) s = '-' + parenNegative[1];
+  s = s.replace(/[^0-9.eE+-]/g, '');
+  const n = parseFloat(s);
+  return isFinite(n) ? n : null;
+}
 
 // Spreadsheet-style column letters -> 0-indexed column position ("A"->0, "Z"->25, "AA"->26).
 function colLetterToIndex(letters) {
@@ -84,14 +98,49 @@ export function renderLiveTable(block, ctx) {
       rows = rows.filter((r) => cols.some((col) => String(r[col.id] ?? '').toLowerCase().includes(q)));
     }
     if (state.sortCol) {
-      const sc = state.sortCol, dir = state.sortDir === 'desc' ? -1 : 1;
-      rows = [...rows].sort((a, b) => {
-        const an = parseFloat(a[sc]), bn = parseFloat(b[sc]);
-        if (!isNaN(an) && !isNaN(bn)) return (an - bn) * dir;
-        return String(a[sc] ?? '').localeCompare(String(b[sc] ?? '')) * dir;
-      });
+      const dir = state.sortDir === 'desc' ? -1 : 1;
+      const key = comparatorFor(state.sortCol);
+      rows = [...rows].sort((a, b) => key(a, b) * dir);
     }
     return rows;
+  }
+
+  // Sorting used to try parseFloat on each value and fall back to a string compare. That reads
+  // "2026-11-30" as the number 2026, so every date in a year compared equal and sorting by date --
+  // the most likely thing anyone does here -- silently did nothing. It also read "1,200" as 1,
+  // sorting a formatted thousand below 35. Deciding once per COLUMN from its declared type, rather
+  // than per value, fixes both and makes the comparator consistent instead of mixing two orderings
+  // within one sort.
+  function comparatorFor(colId) {
+    const type = allCols.find((c) => c.id === colId)?.type || '';
+    const blankLast = (av, bv) => (av === bv ? 0 : av ? 1 : -1); // blanks sort to the end either way
+
+    if (isDateColumn(type)) {
+      // Dates arrive as 'YYYY-MM-DD', which sorts correctly as text — but only once blanks are
+      // separated out, and only comparing whole strings rather than a numeric prefix.
+      return (a, b) => {
+        const av = String(a[colId] ?? ''), bv = String(b[colId] ?? '');
+        if (!av || !bv) return blankLast(!av, !bv);
+        return av < bv ? -1 : av > bv ? 1 : 0;
+      };
+    }
+
+    if (/^(Numeric|Int|Currency)/i.test(type)) {
+      return (a, b) => {
+        const an = toNumber(a[colId]), bn = toNumber(b[colId]);
+        if (an == null || bn == null) return blankLast(an == null, bn == null);
+        return an - bn;
+      };
+    }
+
+    // Text and anything untyped. `numeric: true` gives a natural order, so "item 2" precedes
+    // "item 10" and version-ish strings behave, without the old numeric/string split.
+    const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+    return (a, b) => {
+      const av = String(a[colId] ?? ''), bv = String(b[colId] ?? '');
+      if (!av || !bv) return blankLast(!av, !bv);
+      return collator.compare(av, bv);
+    };
   }
 
   const tbody = el('tbody');
@@ -153,7 +202,12 @@ export function renderLiveTable(block, ctx) {
   }
 
   const searchInput = searchable ? el('input', { class: 'ap-input ap-livetable__search', type: 'search', placeholder: 'Search…' }) : null;
-  if (searchInput) searchInput.addEventListener('input', () => { state.query = searchInput.value; state.page = 0; redraw(); });
+  if (searchInput) {
+    // Debounced: redrawing on every keystroke re-filtered and re-sorted the whole table per
+    // character, which is felt on any table big enough to want a search box in the first place.
+    const apply = debounce(() => { state.query = searchInput.value; state.page = 0; redraw(); }, 120);
+    searchInput.addEventListener('input', apply);
+  }
 
   redraw();
 

@@ -4,7 +4,12 @@
 export const AGGREGATIONS = [
   { id: 'sum', label: 'Sum' },
   { id: 'avg', label: 'Average' },
-  { id: 'count', label: 'Count' },
+  // 'count' counts every row, blanks included. That is a reasonable thing to want, but it is not
+  // what "Count" on a *column* suggests, and it disagrees with Average on the same column, which
+  // divides by the values that are actually there. Both are now offered under names that say which
+  // is which. 'count' keeps its old behaviour so no dashboard already built changes its numbers.
+  { id: 'count', label: 'Count rows' },
+  { id: 'countv', label: 'Count values' },
   { id: 'countd', label: 'Distinct count' },
   { id: 'min', label: 'Minimum' },
   { id: 'max', label: 'Maximum' },
@@ -13,14 +18,19 @@ export const AGGREGATIONS = [
 ];
 
 const num = (v) => { const n = typeof v === 'number' ? v : parseFloat(v); return isFinite(n) ? n : null; };
+const isBlank = (v) => v == null || (typeof v === 'string' && v.trim() === '');
 
 export function aggregate(values, agg) {
   const nums = values.map(num).filter((v) => v !== null);
   switch (agg) {
     case 'count': return values.length;
+    case 'countv': return values.filter((v) => !isBlank(v)).length;
     case 'countd': return new Set(values.map((v) => (v == null ? '∅' : v))).size;
-    case 'min': return nums.length ? Math.min(...nums) : 0;
-    case 'max': return nums.length ? Math.max(...nums) : 0;
+    // min/max used to return 0 when there was nothing to measure, which renders as a real "$0" —
+    // indistinguishable from a genuine zero, and most misleading in exactly the case where someone
+    // would act on it. null flows through fmtNumber as an em-dash instead.
+    case 'min': return nums.length ? Math.min(...nums) : null;
+    case 'max': return nums.length ? Math.max(...nums) : null;
     case 'avg': return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0;
     case 'median': return median(nums);
     case 'stdev': return stdev(nums);
@@ -109,13 +119,24 @@ export function groupAggregate(rows, opts) {
   // Optional sort by total value of the first series (great for bar/pie ranking).
   let categories = cats;
   if (sortByValue && !temporal && series.length) {
-    const order = categories.map((c, i) => i).sort((a, b) => series[0].data[b] - series[0].data[a]);
+    const order = categories.map((c, i) => i)
+      .sort((a, b) => (Number(series[0].data[b]) || 0) - (Number(series[0].data[a]) || 0));
     categories = order.map((i) => categories[i]);
     series = series.map((s) => ({ ...s, data: order.map((i) => s.data[i]) }));
   }
   if (limit > 0 && categories.length > limit) {
-    categories = categories.slice(0, limit);
-    series = series.map((s) => ({ ...s, data: s.data.slice(0, limit) }));
+    // With otherLabel set, the tail is pooled into one final category instead of being dropped —
+    // see the call site in charts/echarts-adapter.js for which chart shapes need that.
+    if (opts.otherLabel) {
+      series = series.map((s) => ({
+        ...s,
+        data: [...s.data.slice(0, limit), round(s.data.slice(limit).reduce((a, b) => a + (Number(b) || 0), 0))],
+      }));
+      categories = [...categories.slice(0, limit), opts.otherLabel];
+    } else {
+      categories = categories.slice(0, limit);
+      series = series.map((s) => ({ ...s, data: s.data.slice(0, limit) }));
+    }
   }
 
   const total = series.reduce((acc, s) => acc + s.data.reduce((a, b) => a + b, 0), 0);
@@ -178,4 +199,9 @@ export function sparkSeries(rows, { column, deltaBy, agg = 'sum' }) {
   return g.series[0] ? g.series[0].data : [];
 }
 
-function round(n) { return Math.round((Number(n) || 0) * 100) / 100; }
+// null passes straight through: min/max return it when there is nothing to measure, and collapsing
+// that to 0 here would put the misleading "$0" back that removing it from aggregate() just fixed.
+function round(n) {
+  if (n == null) return null;
+  return Math.round((Number(n) || 0) * 100) / 100;
+}
