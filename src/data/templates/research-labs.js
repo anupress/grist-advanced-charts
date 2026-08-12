@@ -21,7 +21,7 @@ export const TEMPLATE = {
   tagline: 'Samples, reagents, tasks and people — one live dashboard',
   config: {
     version: 1,
-    theme: { paletteId: 'ocean', fontId: 'humanist', mode: 'light' },
+    theme: { paletteId: 'ocean', fontId: 'humanist', mode: 'auto' },
     dataTable: 'Samples',
     header: {
       logoData: null, title: 'Anupress Lab', slogan: 'Advancing science, one study at a time',

@@ -37,7 +37,7 @@ export const TEMPLATE = {
   tagline: 'Campaigns, content, events and customer sentiment',
   config: {
     version: 1,
-    theme: { paletteId: 'sunset', fontId: 'geometric', mode: 'light' },
+    theme: { paletteId: 'sunset', fontId: 'geometric', mode: 'auto' },
     dataTable: 'Campaigns',
     header: {
       logoData: null, title: 'Anupress Marketing', slogan: 'Every channel, one scoreboard',

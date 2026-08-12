@@ -25,7 +25,7 @@ export const TEMPLATE = {
   tagline: 'Issues, releases, incidents and uptime — dark by default',
   config: {
     version: 1,
-    theme: { paletteId: 'midnight', fontId: 'mono', mode: 'dark' },
+    theme: { paletteId: 'midnight', fontId: 'mono', mode: 'auto' },
     dataTable: 'Issues',
     header: {
       logoData: null, title: 'Anupress Dev', slogan: 'APIs and tools developers actually enjoy',

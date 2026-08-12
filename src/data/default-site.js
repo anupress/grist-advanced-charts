@@ -29,7 +29,7 @@ export const SITE_VERSION = 1;
 export function emptySite() {
   return {
     version: SITE_VERSION,
-    theme: { paletteId: 'aurora', fontId: 'system', mode: 'light' },
+    theme: { paletteId: 'aurora', fontId: 'system', mode: 'auto' },
     dataTable: null,
     header: { logoData: null, title: 'My dashboard', slogan: '', menu: [{ label: 'Page 1', tab: 'tab-1' }] },
     footer: { text: '', links: [], showCredit: true },
@@ -53,7 +53,7 @@ const chart = (id, title, chartType, dims, measures, extra = {}, span = 6) =>
 
 export const DEFAULT_SITE = {
   version: SITE_VERSION,
-  theme: { paletteId: 'aurora', fontId: 'system', mode: 'light' },
+  theme: { paletteId: 'aurora', fontId: 'system', mode: 'auto' },
   dataTable: 'Sales',
   header: {
     logoData: null, // null => ANUPRESS brand mark

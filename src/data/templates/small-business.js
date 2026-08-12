@@ -27,7 +27,7 @@ export const TEMPLATE = {
   tagline: 'Pipeline, customers, team and costs — one owner’s view',
   config: {
     version: 1,
-    theme: { paletteId: 'warmclay', fontId: 'humanist', mode: 'light' },
+    theme: { paletteId: 'warmclay', fontId: 'humanist', mode: 'auto' },
     dataTable: 'Deals',
     header: {
       logoData: null, title: 'Anupress Supply Co.', slogan: 'Locally owned, built on repeat business',

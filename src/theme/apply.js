@@ -2,13 +2,52 @@
 
 import { getPalette, getFontPair } from './palettes.js';
 
+// Light or dark? Three states, and 'auto' is the default a template or a blank site ships with.
+//
+// Grist gives a custom widget no way to read the app's own theme — there is nothing theme-related
+// in the plugin API and the request for it is still open upstream (grist-core#552). The closest
+// honest signal is the OS colour-scheme preference, which is what Grist's own default theme
+// setting follows, so a user running Grist dark is almost always running their system dark too.
+//
+//   'light' | 'dark'  an explicit choice, made by the person using the widget — always wins
+//   'auto'            follow the system, and keep following it if the system changes
+//   absent            legacy configs: fall back to the palette's own mode, then the system
+//
+// Templates ship 'auto' on purpose. Before this, every template carried a hard-coded mode, so
+// applying one flipped the page between light and dark each time you switched — the reported bug.
+const systemPrefersDark = () => {
+  try { return window.matchMedia('(prefers-color-scheme: dark)').matches; } catch { return false; }
+};
+export function resolveMode(theme = {}, palette = null) {
+  if (theme.mode === 'light' || theme.mode === 'dark') return theme.mode;
+  if (theme.mode === 'auto') return systemPrefersDark() ? 'dark' : 'light';
+  if (palette?.mode) return palette.mode;              // legacy config, palette had an opinion
+  return systemPrefersDark() ? 'dark' : 'light';
+}
+
+// Re-apply when the system flips, but only while the site is actually on 'auto' — an explicit
+// choice must not be overridden by someone's laptop switching at sunset. Registered once.
+let _autoWatch = null;
+function watchSystemMode(getTheme, root) {
+  if (_autoWatch) { _autoWatch.getTheme = getTheme; _autoWatch.root = root; return; }
+  let mq; try { mq = window.matchMedia('(prefers-color-scheme: dark)'); } catch { return; }
+  _autoWatch = { getTheme, root };
+  const onChange = () => {
+    const t = _autoWatch.getTheme?.();
+    if (t && t.mode === 'auto') applyTheme(t, _autoWatch.root);
+  };
+  if (mq.addEventListener) mq.addEventListener('change', onChange);
+  else if (mq.addListener) mq.addListener(onChange);
+}
+
 export function applyTheme(theme = {}, rootEl) {
   const root = rootEl || document.getElementById('anupress-root') || document.documentElement;
   const style = document.documentElement.style;
 
   const pal = theme.palette && theme.palette.series ? theme.palette : getPalette(theme.paletteId);
   const fonts = theme.fonts && theme.fonts.head ? theme.fonts : getFontPair(theme.fontId);
-  const mode = theme.mode || pal.mode || 'light';
+  const mode = resolveMode(theme, pal);
+  watchSystemMode(() => theme, root);
 
   set(style, '--ap-primary', theme.primary || pal.primary);
   set(style, '--ap-accent', theme.accent || pal.accent);

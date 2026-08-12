@@ -21,7 +21,7 @@ export const TEMPLATE = {
   tagline: 'Invoices, payroll and expenses — one live cash cockpit',
   config: {
     version: 1,
-    theme: { paletteId: 'corporate', fontId: 'system', mode: 'light' },
+    theme: { paletteId: 'corporate', fontId: 'system', mode: 'auto' },
     dataTable: 'Invoices',
     header: {
       logoData: null, title: 'Anupress Financial', slogan: 'Every dollar, in one view',

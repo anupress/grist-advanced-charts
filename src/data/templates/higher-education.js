@@ -30,7 +30,7 @@ export const TEMPLATE = {
   tagline: 'Courses, enrolment, research funding and faculty',
   config: {
     version: 1,
-    theme: { paletteId: 'corporate', fontId: 'serifmix', mode: 'light' },
+    theme: { paletteId: 'corporate', fontId: 'serifmix', mode: 'auto' },
     dataTable: 'Courses',
     header: {
       logoData: null, title: 'Anupress University', slogan: 'Teaching and research, in the open',

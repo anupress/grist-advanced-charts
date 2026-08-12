@@ -32,7 +32,7 @@ export const TEMPLATE = {
   tagline: 'Matters, billable hours and experts — one practice view',
   config: {
     version: 1,
-    theme: { paletteId: 'mono', fontId: 'serifmix', mode: 'light' },
+    theme: { paletteId: 'mono', fontId: 'serifmix', mode: 'auto' },
     dataTable: 'Matters',
     header: {
       logoData: null, title: 'Anupress Legal', slogan: 'Trusted counsel, clear results',

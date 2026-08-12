@@ -248,7 +248,7 @@ export function openTemplatePicker(opts) {
       }
       await bridge.clearStoredConfig();
       closeDrawer();
-      opts.onApply(emptySite());
+      opts.onApply(keepChosenMode(emptySite()));
       toast('Blank canvas — add your first element to begin.', 'ok');
     });
     return [ghostBtn('Back', () => { state.scratch = false; render(); }), go];
@@ -419,10 +419,21 @@ export function openTemplatePicker(opts) {
     finishApply(adaptTemplateToTable(cfg, provider));
   }
 
+  // Templates and the blank site all ship mode:'auto' so they follow the environment. But if the
+  // person using this has already picked light or dark for themselves, that choice must survive
+  // switching template — otherwise the page flips under them every time they try another one,
+  // which is precisely the complaint. A palette is the template's to change; light/dark is not.
+  function keepChosenMode(applied) {
+    const current = opts.config?.theme?.mode;
+    if (current !== 'light' && current !== 'dark') return applied; // never chosen — stay on auto
+    applied.theme = { ...(applied.theme || {}), mode: current };
+    return applied;
+  }
+
   function finishApply(applied) {
     state.applying = false;
     closeDrawer();
-    onApply(applied);
+    onApply(keepChosenMode(applied));
   }
 
   function confirmFooter() {

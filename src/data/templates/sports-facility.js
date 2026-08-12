@@ -28,7 +28,7 @@ export const TEMPLATE = {
   tagline: 'Bookings, members, classes and leagues — one front desk',
   config: {
     version: 1,
-    theme: { paletteId: 'candy', fontId: 'geometric', mode: 'light' },
+    theme: { paletteId: 'candy', fontId: 'geometric', mode: 'auto' },
     dataTable: 'Bookings',
     header: {
       logoData: null, title: 'Anupress Sports', slogan: 'Where every game finds its home',

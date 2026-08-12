@@ -29,7 +29,7 @@ export const TEMPLATE = {
   tagline: 'Donations, grants, volunteers and impact — one transparent view',
   config: {
     version: 1,
-    theme: { paletteId: 'forest', fontId: 'humanist', mode: 'light' },
+    theme: { paletteId: 'forest', fontId: 'humanist', mode: 'auto' },
     dataTable: 'Donations',
     header: {
       logoData: null, title: 'Anupress Community', slogan: 'Making a measurable difference, together',
