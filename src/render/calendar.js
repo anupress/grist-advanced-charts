@@ -80,6 +80,7 @@ export function renderCalendar(block, ctx) {
   function placePopover(anchorEl) {
     const body = grid.parentElement;
     const hostRect = body.getBoundingClientRect(), r = anchorEl.getBoundingClientRect();
+    popover._apOpener = anchorEl; // remembered so Escape can hand focus back to it
     popover.hidden = false;
     popover.style.left = Math.max(4, Math.min(r.left - hostRect.left, hostRect.width - 200)) + 'px';
     popover.style.top = (r.bottom - hostRect.top + 6) + 'px';
@@ -128,10 +129,13 @@ export function renderCalendar(block, ctx) {
     return index;
   }
 
+  // A <button>, not a <div>: the pill opens a detail popover on click, so it needs to be in the tab
+  // order and operable from the keyboard like any other control. Native button semantics give both
+  // without a roving-tabindex dance, and dragging still works on one.
   function eventPill(row, cmap) {
     const color = cmap ? cmap.get(row[c.colorBy] == null ? '' : String(row[c.colorBy])) : null;
-    const pill = el('div', {
-      class: 'ap-calendar__event', style: { '--ap-cal-dot': color || 'var(--ap-primary)' },
+    const pill = el('button', {
+      type: 'button', class: 'ap-calendar__event', style: { '--ap-cal-dot': color || 'var(--ap-primary)' },
       draggable: canDrag, text: String(row[c.titleColumn] ?? 'Untitled'),
     });
     pill.addEventListener('click', (e) => { e.stopPropagation(); showPopover(pill, row); });
@@ -190,7 +194,7 @@ export function renderCalendar(block, ctx) {
       const dayEvents = dayIndex.get(key) || [];
       const shown = dayEvents.slice(0, 3).map(({ r }) => eventPill(r, cmap));
       if (dayEvents.length > 3) {
-        const moreEl = el('div', { class: 'ap-calendar__more', text: `+${dayEvents.length - 3} more` });
+        const moreEl = el('button', { type: 'button', class: 'ap-calendar__more', text: `+${dayEvents.length - 3} more` });
         moreEl.addEventListener('click', (e) => { e.stopPropagation(); showDayPopover(moreEl, d, dayEvents); });
         shown.push(moreEl);
       }
@@ -219,6 +223,15 @@ export function renderCalendar(block, ctx) {
   // clickable, so only a click on the grid background counts as "dismiss".
   body.addEventListener('click', (e) => {
     if (!e.target.closest('.ap-calendar__event, .ap-calendar__more, .ap-calendar__popover')) closePopover();
+  });
+  // Escape closes it and puts focus back where it came from. Clicking away is a mouse gesture; a
+  // keyboard user who opened the popover with Enter otherwise had no way to dismiss it.
+  body.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || popover.hidden) return;
+    e.stopPropagation();
+    const opener = popover._apOpener;
+    closePopover();
+    if (opener?.isConnected) opener.focus();
   });
 
   const card = el('div', { class: 'ap-card ap-calendar', dataset: { blockId: block.id } }, [

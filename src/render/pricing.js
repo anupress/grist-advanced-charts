@@ -18,7 +18,11 @@ function planButton(label, target, ctx, cls) {
     node.addEventListener('click', (e) => { if (!isLivePage) { e.preventDefault(); return; } ctx.onNav?.(target.tab); });
     return node;
   }
-  return el('span', { class: cls, text: label || 'Choose plan' });
+  // No target set. This used to be a <span> wearing the button classes: it looked pressable, was
+  // not focusable, was not announced as a control, and did nothing when clicked — an affordance
+  // making a promise the element could not keep. A real disabled button reads as deliberately
+  // inactive to both eyes and screen readers.
+  return el('button', { class: cls, type: 'button', disabled: true, text: label || 'Choose plan' });
 }
 
 function renderPlan(p, ctx) {

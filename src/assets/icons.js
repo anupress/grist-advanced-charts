@@ -108,10 +108,21 @@ export const EMPTY_ART = `
   <path d="M40 116h120" stroke="#6d5efc" stroke-opacity=".3" stroke-width="2" stroke-linecap="round"/>
 </svg>`;
 
+// Icons here are decoration: every button and link that carries one already has its own
+// aria-label or visible text, so announcing the glyph as well only adds an unlabelled graphic to
+// each pass through the page — 96 of them on the demo. Hiding them from the accessibility tree
+// leaves the label as the single thing announced. focusable="false" is for IE/Edge legacy, where
+// inline SVG lands in the tab order otherwise; it costs nothing elsewhere.
+function decorative(node) {
+  node.setAttribute('aria-hidden', 'true');
+  node.setAttribute('focusable', 'false');
+  return node;
+}
+
 export function icon(name, cls) {
-  const node = fromHTML(ICONS[name] || ICONS.sparkles);
+  const node = decorative(fromHTML(ICONS[name] || ICONS.sparkles));
   if (cls) node.setAttribute('class', cls);
   return node;
 }
-export function chartIcon(name) { return fromHTML(CHART_ICONS[name] || CHART_ICONS.bar); }
+export function chartIcon(name) { return decorative(fromHTML(CHART_ICONS[name] || CHART_ICONS.bar)); }
 export function iconHTML(name) { return ICONS[name] || ''; }

@@ -12,7 +12,7 @@
 .ap-brand__logo { height: 40px; width: auto; flex: none; display: grid; place-items: center; }
 .ap-brand__logo img, .ap-brand__logo svg { height: 40px; width: auto; }
 .ap-brand__text { display: flex; flex-direction: column; min-width: 0; }
-.ap-brand__name { font-family: var(--ap-font-head); font-weight: 800; font-size: var(--ap-fs-lg); letter-spacing: -.02em; line-height: 1.1; color: var(--ap-text); }
+.ap-brand__name { margin: 0; font-family: var(--ap-font-head); font-weight: 800; font-size: var(--ap-fs-lg); letter-spacing: -.02em; line-height: 1.1; color: var(--ap-text); }
 .ap-brand__slogan { font-size: var(--ap-fs-xs); color: var(--ap-text-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .ap-nav { display: flex; align-items: center; gap: 4px; }
@@ -44,7 +44,7 @@
    correctly at any viewport. Scoped to .ap-main so it never affects a smaller preview context. */
 .ap-main .ap-hero:not(.ap-hero--stretched) { margin-left: calc(-1 * var(--ap-hero-bleed)); margin-right: calc(-1 * var(--ap-hero-bleed)); }
 .ap-hero::after { content: ""; position: absolute; inset: 0; background: radial-gradient(120% 140% at 100% 0%, rgba(255,255,255,.25), transparent 55%); pointer-events: none; }
-.ap-hero h1 { font-size: var(--ap-fs-2xl); margin: 0 0 .25em; position: relative; z-index: 1; }
+.ap-hero__title { font-size: var(--ap-fs-2xl); margin: 0 0 .25em; position: relative; z-index: 1; }
 .ap-hero p { font-size: var(--ap-fs-lg); opacity: .92; max-width: 60ch; margin: 0; position: relative; z-index: 1; }
 .ap-hero[style*="center"] p, .ap-hero[style*="right"] p { max-width: none; }
 .ap-hero-off { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; margin-bottom: var(--ap-gap); border: 2px dashed var(--ap-border); border-radius: var(--ap-radius); color: var(--ap-text-mute); font-weight: 600; font-size: var(--ap-fs-sm); }
@@ -117,6 +117,10 @@
 /* ---- Text block ---- */
 .ap-textblock { padding: 18px 22px; border-radius: var(--ap-radius); }
 .ap-textblock h2 { font-size: var(--ap-fs-xl); }
+/* Prose gets a measure. A full-span text block on a 2560px screen ran about 213 characters per
+   line, against a comfortable 45-85 — the layout held, it just stopped being readable. Only the
+   running text is capped; tables, images and embeds inside a text block keep the full width. */
+.ap-richtext > p, .ap-richtext > ul, .ap-richtext > ol, .ap-richtext > blockquote { max-width: 72ch; }
 
 /* ---- "Needs a table" notice (a block whose table isn't in this document — see blocks.js) ---- */
 .ap-needstable { padding: 18px 20px; border-radius: var(--ap-radius); border: 1px dashed var(--ap-border); background: var(--ap-bg-soft); display: flex; flex-direction: column; gap: 10px; height: 100%; }
@@ -275,8 +279,14 @@
 .ap-livetable__scroll { overflow-x: auto; border: 1px solid var(--ap-border); border-radius: var(--ap-radius-sm); }
 .ap-livetable__table { width: 100%; border-collapse: collapse; font-size: var(--ap-fs-sm); }
 .ap-livetable__table th { text-align: left; padding: 9px 12px; background: var(--ap-bg-soft); color: var(--ap-text-soft); font-weight: 700; font-size: var(--ap-fs-xs); text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; border-bottom: 1px solid var(--ap-border); }
-.ap-livetable__table th.is-sortable { cursor: pointer; user-select: none; }
-.ap-livetable__table th.is-sortable:hover { color: var(--ap-primary); }
+.ap-livetable__table th.is-sortable { padding: 0; }
+/* The sort control is a real <button> now (it has to be keyboard-operable). These rules strip the
+   button chrome so the header still looks like a header, while keeping its focus ring. */
+.ap-livetable__sortbtn { display: flex; align-items: center; gap: 4px; width: 100%; padding: 9px 12px;
+  background: none; border: 0; font: inherit; color: inherit; text-transform: inherit;
+  letter-spacing: inherit; text-align: left; cursor: pointer; user-select: none; }
+.ap-livetable__sortbtn:hover { color: var(--ap-primary); }
+.ap-livetable__sortbtn:focus-visible { outline: 2px solid var(--ap-primary); outline-offset: -2px; }
 .ap-livetable__sorticon { width: 11px; height: 11px; margin-left: 4px; opacity: .3; vertical-align: -1px; transition: transform .15s var(--ap-ease), opacity .15s; }
 .ap-livetable__table th.is-sorted .ap-livetable__sorticon { opacity: 1; color: var(--ap-primary); }
 .ap-livetable__table th.is-sorted[data-dir="desc"] .ap-livetable__sorticon { transform: rotate(180deg); }
@@ -307,6 +317,10 @@
 .ap-calendar__cell.is-droptarget { background: color-mix(in srgb, var(--ap-primary) 10%, transparent); border-color: var(--ap-primary); }
 .ap-calendar__daynum { font-size: var(--ap-fs-xs); font-weight: 600; color: var(--ap-text-mute); }
 .ap-calendar__events { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+/* A <button> for keyboard reach — reset to the pill it looks like, keeping the focus ring. */
+.ap-calendar__event { width: 100%; border: 0; font-family: inherit; text-align: left; }
+.ap-calendar__event:focus-visible, .ap-calendar__more:focus-visible { outline: 2px solid var(--ap-primary); outline-offset: 1px; }
+.ap-calendar__more { background: none; border: 0; font-family: inherit; text-align: left; width: 100%; }
 .ap-calendar__event { display: block; font-size: 11px; line-height: 1.3; padding: 2px 5px; border-radius: 5px;
   background: color-mix(in srgb, var(--ap-cal-dot, var(--ap-primary)) 16%, transparent); color: var(--ap-text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; border-left: 3px solid var(--ap-cal-dot, var(--ap-primary)); }
@@ -444,7 +458,7 @@
 /* ---- Typography polish ----
    text-wrap: balance evens out the line lengths of a wrapped heading instead of leaving one
    orphaned word on the last line. Unsupported browsers simply ignore it. */
-.ap-hero h1, .ap-slide__cap h2, .ap-chartcard__title, .ap-livetable__title { text-wrap: balance; }
+.ap-hero__title, .ap-slide__cap h2, .ap-chartcard__title, .ap-livetable__title { text-wrap: balance; }
 .ap-hero p, .ap-slide__cap p { text-wrap: pretty; }
 
 /* ================= Print / Save as PDF =================
@@ -479,7 +493,7 @@
   }
   .ap-hero { color: #000 !important; background: none !important; border: none !important; }
   .ap-hero::after { display: none; }
-  .ap-hero h1, .ap-hero p { color: #000 !important; }
+  .ap-hero__title, .ap-hero p { color: #000 !important; }
 
   /* A table is the thing most likely to be printed here, so let it run to its full length
      instead of being clipped to its on-screen scroll box. */

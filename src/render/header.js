@@ -11,10 +11,15 @@ export function buildHeader(config, opts = {}) {
     : el('span', { class: 'ap-brand__logo' }, [brandLogo(40)]);
 
   const hasText = !!(h.title || h.slogan);
+  // The site name is the page's <h1>. Nothing else can be: hero headlines belong to a tab, and
+  // every inactive tab is [hidden] — so on a tab without a hero the page had no top-level heading
+  // at all, leaving heading navigation with nothing to start from. Styling is by class, so this
+  // is a semantics change with no visual one, and the hero (now h2) still reads as the loudest
+  // thing on the page.
   const brand = el('div', { class: 'ap-brand' + (opts.editing ? ' ap-editable' : '') }, [
     logo,
     hasText ? el('div', { class: 'ap-brand__text' }, [
-      h.title ? el('span', { class: 'ap-brand__name', text: h.title }) : null,
+      h.title ? el('h1', { class: 'ap-brand__name', text: h.title }) : null,
       h.slogan ? el('span', { class: 'ap-brand__slogan', text: h.slogan }) : null,
     ]) : null,
     opts.editing ? el('span', { class: 'ap-edit-tag', text: 'header' }) : null,

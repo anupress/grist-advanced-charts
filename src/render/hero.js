@@ -73,7 +73,10 @@ function buildBanner(hero, tab, fullWidth) {
   const va = hero.vAlign || 'bottom';
   return el('section', { class: `ap-hero ap-va-${va}` + (fullWidth ? ' ap-hero--stretched' : ''),
     style: { textAlign: hero.align || 'left', ...heightStyle(hero) } }, [
-    el('h1', { text: tieTrailingEmoji(hero.title || tab.title), style: headStyle(hero, 'xl') }),
+    // h2, not h1 — the site name in the header carries the page's single h1. A hero belongs to one
+    // tab, and every other tab is [hidden], so a per-tab h1 made the top-level heading change
+    // identity as you navigated. Appearance is driven by headStyle, not by the tag.
+    el('h2', { class: 'ap-hero__title', text: tieTrailingEmoji(hero.title || tab.title), style: headStyle(hero, 'xl') }),
     hero.subtitle ? el('p', { text: hero.subtitle, style: textStyle(hero) }) : null,
   ]);
 }

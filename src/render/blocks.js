@@ -160,7 +160,9 @@ function sparkline(data) {
   const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
   const area = line + ` L ${w} ${h} L 0 ${h} Z`;
   const col = readVar('--ap-primary') || '#6d5efc';
-  return fromHTML(`<svg class="ap-stat__spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+  // aria-hidden: the sparkline restates the trend the card already gives as a number and a
+  // percentage change, so announcing it again adds an unlabelled graphic and no information.
+  return fromHTML(`<svg class="ap-stat__spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true" focusable="false">
     <path d="${area}" fill="${col}" opacity="0.10"/>
     <path d="${line}" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/></svg>`);
 }

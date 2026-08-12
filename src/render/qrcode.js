@@ -6,7 +6,7 @@
 import { el, fromHTML } from '../util.js';
 import { encodeQR } from '../qr/encoder.js';
 
-function buildSvg(modCount, modules, pixelSize, fg, bg) {
+function buildSvg(modCount, modules, pixelSize, fg, bg, label) {
   const quiet = 4; // standard 4-module quiet zone, required for reliable scanning
   const total = modCount + quiet * 2;
   let path = '';
@@ -14,8 +14,13 @@ function buildSvg(modCount, modules, pixelSize, fg, bg) {
     if (modules[r][c]) path += `M${c + quiet},${r + quiet}h1v1h-1z`;
   }
   const esc = (s) => String(s).replace(/"/g, '&quot;');
+  // Unlike the icons and sparklines, this one is NOT decorative — the whole point of the block is
+  // the content encoded in it, which a sighted user can reach with a phone and a screen reader
+  // user otherwise cannot reach at all. role="img" plus the encoded text as the name gives them
+  // the destination directly.
   return fromHTML(
-    `<svg viewBox="0 0 ${total} ${total}" width="${pixelSize}" height="${pixelSize}" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">` +
+    `<svg viewBox="0 0 ${total} ${total}" width="${pixelSize}" height="${pixelSize}" shape-rendering="crispEdges" ` +
+    `role="img" aria-label="${esc(label)}" xmlns="http://www.w3.org/2000/svg">` +
     `<rect width="${total}" height="${total}" fill="${esc(bg)}"/><path d="${path}" fill="${esc(fg)}"/></svg>`,
   );
 }
@@ -32,7 +37,8 @@ export function renderQRCode(block) {
   } else {
     try {
       const { size: modCount, modules } = encodeQR(text, level);
-      content = buildSvg(modCount, modules, size, c.fg || '#000000', c.bg || '#ffffff');
+      const label = c.caption ? `QR code: ${c.caption} (${text})` : `QR code for ${text}`;
+      content = buildSvg(modCount, modules, size, c.fg || '#000000', c.bg || '#ffffff', label);
     } catch (e) {
       content = el('div', { class: 'ap-qr__empty', text: e.message });
     }

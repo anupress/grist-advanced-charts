@@ -147,18 +147,24 @@ export function renderLiveTable(block, ctx) {
   const pager = el('div', { class: 'ap-livetable__pager' });
   const theadRow = el('tr', {}, cols.map((col) => headerCell(col)));
 
+  // A sortable header used to be a <th> with a click handler: mouse-only, absent from the tab
+  // order, and with nothing telling a screen reader which column was sorted or which way. The
+  // control is a real <button> now, so it is focusable and operable by Enter/Space for free, and
+  // the <th> carries aria-sort, which is the attribute assistive tech actually reads for this.
+  // scope="col" ties the header to its column in a block whose whole point is tabular data.
   function headerCell(col) {
-    const th = el('th', {}, [el('span', { text: col.label }), sortable ? icon('chevron', 'ap-livetable__sorticon') : null]);
-    if (sortable) {
-      th.classList.add('is-sortable');
-      th.addEventListener('click', () => {
-        if (state.sortCol === col.id) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
-        else { state.sortCol = col.id; state.sortDir = 'asc'; }
-        state.page = 0;
-        redraw();
-      });
-    }
-    return th;
+    const label = el('span', { text: col.label });
+    if (!sortable) return el('th', { scope: 'col' }, [label]);
+
+    const btn = el('button', { type: 'button', class: 'ap-livetable__sortbtn' },
+      [label, icon('chevron', 'ap-livetable__sorticon')]);
+    btn.addEventListener('click', () => {
+      if (state.sortCol === col.id) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+      else { state.sortCol = col.id; state.sortDir = 'asc'; }
+      state.page = 0;
+      redraw();
+    });
+    return el('th', { scope: 'col', class: 'is-sortable' }, [btn]);
   }
 
   function redraw() {
@@ -198,6 +204,9 @@ export function renderLiveTable(block, ctx) {
       const isSorted = cols[i]?.id === state.sortCol;
       th.classList.toggle('is-sorted', isSorted);
       if (isSorted) th.dataset.dir = state.sortDir; else delete th.dataset.dir;
+      // aria-sort belongs on the header cell, not the button, and only the sorted one carries it.
+      if (isSorted) th.setAttribute('aria-sort', state.sortDir === 'desc' ? 'descending' : 'ascending');
+      else if (sortable) th.setAttribute('aria-sort', 'none');
     });
   }
 
