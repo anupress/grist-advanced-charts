@@ -142,6 +142,9 @@ function repairBlockColumns(b, cols) {
   const has = (id) => id != null && cols.some((x) => x.id === id);
   if (b.type === 'stat') {
     if (!has(b.config.column)) b.config.column = measureCol(cols)?.id ?? null;
+    // A deltaBy pointing at a column this table doesn't have yields no trend and no sparkline,
+    // silently. Delete rather than null it — unset means "automatic", null means "off on purpose".
+    if (b.config.deltaBy != null && !has(b.config.deltaBy)) delete b.config.deltaBy;
   } else if (b.type === 'chart') {
     const dims = b.config.dims || [], measures = b.config.measures || [];
     if (!dims.every(has)) { const d = dimCol(cols); b.config.dims = d ? [d.id] : []; }

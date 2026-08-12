@@ -154,6 +154,23 @@ export function computeKpi(rows, { column, agg = 'sum', deltaBy }) {
   return { value, delta };
 }
 
+// Which column should a KPI's delta and sparkline run along? Three states, deliberately:
+//   undefined   -> not configured. Pick the table's first date column, so a stat shows its trend
+//                  without the author having to discover the option. This is what makes the little
+//                  wave under a KPI the norm rather than something only the demo site had.
+//   null        -> the author explicitly turned it off. Respected; never auto-filled.
+//   'ColumnId'  -> that column — but only while it still exists on the table. Repointing a stat at
+//                  another table used to leave this dangling at the old table's column, which
+//                  silently killed the sparkline; now it falls back to automatic.
+export function autoDeltaColumn(columns) {
+  return (columns || []).find((c) => /date/i.test(c.type || ''))?.id ?? null;
+}
+export function resolveDeltaBy(configured, columns) {
+  if (configured === null) return null;
+  if (configured !== undefined && (columns || []).some((c) => c.id === configured)) return configured;
+  return autoDeltaColumn(columns);
+}
+
 // Sparkline series for a KPI card (aggregate measure across a temporal dim).
 export function sparkSeries(rows, { column, deltaBy, agg = 'sum' }) {
   if (!deltaBy) return [];

@@ -4,7 +4,7 @@
 
 import { el, fromHTML, fmtNumber, interpolate, clamp } from '../util.js';
 import { icon, chartIcon, EMPTY_ART } from '../assets/icons.js';
-import { computeKpi, sparkSeries, aggregate, AGGREGATIONS } from '../stats/aggregate.js';
+import { computeKpi, sparkSeries, aggregate, AGGREGATIONS, resolveDeltaBy } from '../stats/aggregate.js';
 import { renderChart } from '../charts/echarts-adapter.js';
 import { getChartType } from '../charts/catalog.js';
 import { readVar } from '../theme/apply.js';
@@ -124,9 +124,13 @@ function btn(ic, title, cls, on) {
 
 function renderStat(block, ctx) {
   const c = block.config || {};
-  const { rows } = blockData(block, ctx);
-  const { value, delta } = computeKpi(rows, { column: c.column, agg: c.agg || 'sum', deltaBy: c.deltaBy });
-  const spark = sparkSeries(rows, { column: c.column, deltaBy: c.deltaBy, agg: c.agg || 'sum' });
+  const { rows, columns } = blockData(block, ctx);
+  // Resolved, not read straight off the config — see resolveDeltaBy: an unset value picks a date
+  // column automatically, and one left pointing at a table the block no longer uses falls back
+  // instead of quietly producing no trend at all.
+  const deltaBy = resolveDeltaBy(c.deltaBy, columns);
+  const { value, delta } = computeKpi(rows, { column: c.column, agg: c.agg || 'sum', deltaBy });
+  const spark = sparkSeries(rows, { column: c.column, deltaBy, agg: c.agg || 'sum' });
   const card = el('div', { class: 'ap-card ap-stat', dataset: { blockId: block.id } }, [
     el('div', { class: 'ap-stat__head' }, [
       el('div', {}, [

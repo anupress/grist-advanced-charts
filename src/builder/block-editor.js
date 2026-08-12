@@ -6,7 +6,7 @@ import { icon, chartIcon } from '../assets/icons.js';
 import { openDrawer, closeDrawer, field, textInput, selectInput, checkboxRow, segmented, subhead, divider, primaryBtn, ghostBtn, iconPickerField, linkTargetField, colorInput } from './ui.js';
 import { CHART_TYPES, getChartType, CARTESIAN } from '../charts/catalog.js';
 import { evaluateTypes, isMeasure, autoPick } from '../charts/recommend.js';
-import { AGGREGATIONS } from '../stats/aggregate.js';
+import { AGGREGATIONS, autoDeltaColumn } from '../stats/aggregate.js';
 import { renderChart } from '../charts/echarts-adapter.js';
 import { renderBlock, mountCharts } from '../render/blocks.js';
 import { mountMaps, detectLatLon } from '../render/map.js';
@@ -192,6 +192,10 @@ function openStatEditor(block, ctx) {
   function buildDyn() {
     const cols = provider.columns(wb.config.table);
     if (cols.length && !cols.find((c) => c.id === wb.config.column)) wb.config.column = cols[0].id;
+    // Repointing the stat at another table used to leave deltaBy on the OLD table's column, which
+    // killed the sparkline with no hint why. Drop it back to automatic instead.
+    if (wb.config.deltaBy && !cols.some((c) => c.id === wb.config.deltaBy)) delete wb.config.deltaBy;
+    const autoCol = autoDeltaColumn(cols);
     dynHost.replaceChildren(
       field('Value column',
         selectInput(cols.map((c) => ({ value: c.id, label: c.label + (isMeasure(c) ? '' : '  (text)') })), wb.config.column, (v) => {
@@ -202,7 +206,21 @@ function openStatEditor(block, ctx) {
         }),
         'Sum / Average need a number column. Count and Distinct count work on any column.'),
       field('Summarize by', selectInput(AGGREGATIONS.map((a) => ({ value: a.id, label: a.label })), wb.config.agg || 'sum', (v) => { wb.config.agg = v; refreshPreview(); })),
-      field('Compare over (optional)', selectInput([{ value: '', label: '— none —' }].concat(cols.map((c) => ({ value: c.id, label: c.label }))), wb.config.deltaBy || '', (v) => { wb.config.deltaBy = v || null; refreshPreview(); })),
+      // Tri-state (see resolveDeltaBy in stats/aggregate.js): '__auto' leaves the key unset so a
+      // date column is picked for you, '' stores an explicit null meaning "no trend, on purpose",
+      // and a column id pins it. The auto label names the column it landed on, so the choice is
+      // never a mystery.
+      field('Trend & sparkline',
+        selectInput(
+          [{ value: '__auto', label: autoCol ? `Automatic — ${cols.find((c) => c.id === autoCol)?.label || autoCol}` : 'Automatic — no date column found' },
+            { value: '', label: '— none —' }].concat(cols.map((c) => ({ value: c.id, label: c.label }))),
+          wb.config.deltaBy === undefined ? '__auto' : (wb.config.deltaBy || ''),
+          (v) => {
+            if (v === '__auto') delete wb.config.deltaBy;
+            else wb.config.deltaBy = v || null;
+            refreshPreview();
+          }),
+        'The little wave and the "vs prev. period" figure under the number. Automatic uses the table\'s date column.'),
     );
   }
 

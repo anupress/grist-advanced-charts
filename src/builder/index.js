@@ -98,7 +98,10 @@ function defaultBlock(type, tabId) {
   if (type === 'stat') {
     const m = cols.filter(isMeasure)[0];
     const col = m || cols[0];
-    return { id: uid('blk'), type: 'stat', span: 3, __isNew: true, config: { table, label: 'New metric', column: col?.id, agg: m ? 'sum' : 'count', icon: 'pulse', deltaBy: null, format: { compact: true } } };
+    // deltaBy is deliberately absent, not null: unset means "automatic", so a new stat picks up
+    // the table's date column and shows a trend without anyone finding the setting. An explicit
+    // null would mean the author had switched it off. See resolveDeltaBy in stats/aggregate.js.
+    return { id: uid('blk'), type: 'stat', span: 3, __isNew: true, config: { table, label: 'New metric', column: col?.id, agg: m ? 'sum' : 'count', icon: 'pulse', format: { compact: true } } };
   }
   if (type === 'text') return { id: uid('blk'), type: 'text', span: 12, __isNew: true, config: { heading: 'New section', html: 'Write something here…' } };
   if (type === 'breakdown') {
