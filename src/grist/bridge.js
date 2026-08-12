@@ -282,8 +282,13 @@ async function saveChunked(json) {
   return true;
 }
 
+// Stamped on every save so the two stores can be compared. Without it there is no way to tell a
+// fresh config from a stale one, which is the whole problem described on loadConfig() below.
+const REV_KEY = '__apRev';
+const revOf = (cfg) => { const r = Number(cfg?.[REV_KEY]); return isFinite(r) ? r : 0; };
+
 export async function saveConfig(configObj) {
-  const json = JSON.stringify(configObj);
+  const json = JSON.stringify({ ...configObj, [REV_KEY]: Date.now() });
   // The widget option is only a fast render cache. Past a sensible size it stops being a good
   // one, so it is cleared rather than stuffed — loadConfig then falls through to the table.
   // Clearing matters: a stale small option left behind would be preferred over the fresh data.
@@ -417,10 +422,13 @@ export async function clearStoredConfig() {
   } catch (e) { console.warn('[ANUPRESS] clearStoredConfig failed', e); return false; }
 }
 
-export async function loadConfig() {
-  // Prefer the widget-option cache (cheap, low access); fall back to the table.
+async function loadFromOption() {
   const opt = await getOption();
-  if (opt) { try { return JSON.parse(opt); } catch {} }
+  if (!opt) return null;
+  try { return JSON.parse(opt); } catch { return null; }
+}
+
+async function loadFromTable() {
   if (!hasGrist()) return null;
   try {
     // safeListAll, not docApi.listTables directly: it goes through the memo, and it returns the
@@ -449,8 +457,37 @@ export async function loadConfig() {
       return JSON.parse(out.join(''));
     }
     return parsed;
-  } catch (e) { console.warn('[ANUPRESS] loadConfig failed', e); }
+  } catch (e) { console.warn('[ANUPRESS] loadConfig: could not read the config table', e); }
   return null;
+}
+
+/**
+ * The stored design, resolved from the two places it lives.
+ *
+ * There are two stores for a reason: the config TABLE is durable and document-wide, while the
+ * widget OPTION can be read at plain 'read table' access, which is all a viewer's first paint has.
+ * This used to return the option whenever one existed and only fall through to the table when it
+ * did not — so the option silently outranked the table, permanently, with nothing able to correct
+ * it.
+ *
+ * That broke as soon as the two disagreed, and they disagree easily: widget options are stored
+ * PER VIEW SECTION, so a document with the widget on two pages has two independent copies, while
+ * the table is shared. Install a template from one page and the other page keeps serving whatever
+ * it last saw. Reported as "I installed Higher Education, pressed Save, and it went back to
+ * Research Labs" — and the giveaway in the log was that the boot sequence never fetched
+ * ANUPRESS_Config at all before going off to fetch tables that no longer existed.
+ *
+ * Both are read now and the newer one wins, by the revision saveConfig() stamps. A config written
+ * before revisions existed scores 0, so the table wins that tie — which also means an old stale
+ * option repairs itself on the next load rather than needing to be cleared by hand.
+ */
+export async function loadConfig() {
+  const [fromOption, fromTable] = await Promise.all([
+    loadFromOption().catch(() => null),
+    loadFromTable().catch(() => null),
+  ]);
+  if (fromOption && fromTable) return revOf(fromOption) > revOf(fromTable) ? fromOption : fromTable;
+  return fromTable || fromOption || null;
 }
 
 // ---- Writing to the user's own tables (needs full access) ----
