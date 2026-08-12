@@ -61,12 +61,35 @@ function mountOne(container) {
 
   let entry = registry.get(container);
   if (!entry) {
-    const street = Lf.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap', maxZoom: 19 });
-    const sat = Lf.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri', maxZoom: 19, maxNativeZoom: 17 });
-    const topo = Lf.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenTopoMap', maxZoom: 17 });
+    // Attribution wording is not decorative — it is the condition each licence is granted on.
+    // OpenStreetMap's ODbL asks for "OpenStreetMap contributors" specifically, since the credit
+    // belongs to the people who surveyed the data rather than to the project; OpenTopoMap needs
+    // its CC-BY-SA rendering licence named alongside the OSM data credit. Both were short.
+    const OSM_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
+    const street = Lf.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: OSM_ATTR, maxZoom: 19 });
+    const topo = Lf.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+      { attribution: `${OSM_ATTR}, rendering &copy; <a href="https://opentopomap.org/" target="_blank" rel="noopener">OpenTopoMap</a> (CC-BY-SA)`, maxZoom: 17 });
     const map = Lf.map(container, { layers: [street], worldCopyJump: true, attributionControl: false }).setView([20, 0], 2);
     Lf.control.attribution({ position: 'bottomleft', prefix: false }).addTo(map);
-    Lf.control.layers({ Street: street, Satellite: sat, Terrain: topo }, null, { position: 'bottomright', collapsed: true }).addTo(map);
+    // The Satellite layer used to hotlink Esri's World_Imagery tiles. Their terms require an ArcGIS
+    // account for use in an application — a publicly reachable endpoint is not a grant — so it has
+    // been removed rather than left for our users to breach on our behalf. There is no free,
+    // global, high-resolution aerial source that permits redistribution without an API key: the
+    // open ones are either non-commercial (EOX Sentinel-2 cloudless is CC BY-NC-SA), region-locked
+    // (USGS is US-only), or far too coarse (NASA GIBS tops out around zoom 9, versus 17 here).
+    // Bring-your-own aerial tiles is the honest way to offer this; see the Map block editor.
+    // A user who holds a tile licence — an ArcGIS, MapTiler, Mapbox or Stadia account, or their
+    // own server — can point the block at it, and supplies the attribution their provider requires.
+    // The licence then sits with the person who actually has it, which is the only arrangement that
+    // works for a widget shipped to everyone.
+    const layers = { Street: street, Terrain: topo };
+    if (c.tileUrl && /^https:\/\//i.test(c.tileUrl)) {
+      layers[c.tileLabel || 'Satellite'] = Lf.tileLayer(c.tileUrl, {
+        attribution: c.tileAttribution || '', maxZoom: 19,
+        maxNativeZoom: Number(c.tileMaxZoom) || 19,
+      });
+    }
+    Lf.control.layers(layers, null, { position: 'bottomright', collapsed: true }).addTo(map);
     const layer = (typeof Lf.markerClusterGroup === 'function')
       ? Lf.markerClusterGroup({ disableClusteringAtZoom: 17, maxClusterRadius: 45, chunkedLoading: true })
       : Lf.layerGroup();

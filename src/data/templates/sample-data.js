@@ -63,16 +63,16 @@ function buildSamples() {
 }
 
 const REAGENT_ITEMS = [
-  { category: 'Glassware', item: 'Test Tubes', unit: 'pcs', code: 'TT-001', price: 0.60, supplier: 'Thermo Fisher', storage: 'Shelf A' },
-  { category: 'Consumables', item: 'Pipette Tips', unit: 'pcs', code: 'PT-002', price: 0.48, supplier: 'Sigma-Aldrich', storage: 'Shelf B' },
-  { category: 'Chemicals', item: 'Tris-HCl Buffer', unit: 'L', code: 'THB-019', price: 30, supplier: 'BD Biosciences', storage: 'Chemical Shelf' },
+  { category: 'Glassware', item: 'Test Tubes', unit: 'pcs', code: 'TT-001', price: 0.60, supplier: 'Northvale Scientific', storage: 'Shelf A' },
+  { category: 'Consumables', item: 'Pipette Tips', unit: 'pcs', code: 'PT-002', price: 0.48, supplier: 'Calder Reagents', storage: 'Shelf B' },
+  { category: 'Chemicals', item: 'Tris-HCl Buffer', unit: 'L', code: 'THB-019', price: 30, supplier: 'Halden Biosystems', storage: 'Chemical Shelf' },
   { category: 'Glassware', item: 'Glass Slides', unit: 'pcs', code: 'GS-009', price: 0.15, supplier: 'Lonza', storage: 'Drawer D' },
-  { category: 'Plasticware', item: 'Microcentrifuge Tubes', unit: 'pcs', code: 'MT-003', price: 1.50, supplier: 'Corning', storage: 'Freezer' },
-  { category: 'Reagents', item: 'Antibodies', unit: 'µg', code: 'AB-012', price: 100, supplier: 'Abcam', storage: 'Fridge' },
-  { category: 'Consumables', item: 'Agar Plates', unit: 'pcs', code: 'AP-005', price: 0.30, supplier: 'Fisher Scientific', storage: 'Freezer' },
-  { category: 'Equipment', item: 'pH Meter', unit: 'pcs', code: 'PHM-006', price: 200, supplier: 'Bio-Rad', storage: 'Lab Bench 1' },
-  { category: 'Consumables', item: 'DNA Extraction Kit', unit: 'pcs', code: 'DEK-008', price: 100, supplier: 'Qiagen', storage: 'Drawer C' },
-  { category: 'Chemicals', item: 'Ethanol', unit: 'L', code: 'ET-004', price: 50, supplier: 'Merck', storage: 'Chemical Shelf' },
+  { category: 'Plasticware', item: 'Microcentrifuge Tubes', unit: 'pcs', code: 'MT-003', price: 1.50, supplier: 'Glasswell Scientific', storage: 'Freezer' },
+  { category: 'Reagents', item: 'Antibodies', unit: 'µg', code: 'AB-012', price: 100, supplier: 'Larkfield Antibodies', storage: 'Fridge' },
+  { category: 'Consumables', item: 'Agar Plates', unit: 'pcs', code: 'AP-005', price: 0.30, supplier: 'Corvus Labware', storage: 'Freezer' },
+  { category: 'Equipment', item: 'pH Meter', unit: 'pcs', code: 'PHM-006', price: 200, supplier: 'Ashgrove Instruments', storage: 'Lab Bench 1' },
+  { category: 'Consumables', item: 'DNA Extraction Kit', unit: 'pcs', code: 'DEK-008', price: 100, supplier: 'Solvane Diagnostics', storage: 'Drawer C' },
+  { category: 'Chemicals', item: 'Ethanol', unit: 'L', code: 'ET-004', price: 50, supplier: 'Brookmere Chemicals', storage: 'Chemical Shelf' },
 ];
 const REAGENTS_COLUMNS = [
   { id: 'Category', label: 'Category', type: 'Choice' }, { id: 'Item', label: 'Item', type: 'Text' }, { id: 'Unit', label: 'Unit', type: 'Text' },
@@ -147,13 +147,13 @@ function buildTasks() {
 }
 
 const PEOPLE_ROWS = [
-  { id: 1, Name: 'Dr. Jane Smith', Title: 'Principal Investigator', Email: 'jane.smith@anupresslab.org', Phone: '+1 (555) 010-1001' },
-  { id: 2, Name: 'David Lee', Title: 'Lab Manager', Email: 'david.lee@anupresslab.org', Phone: '+1 (555) 010-1002' },
-  { id: 3, Name: 'Emily Johnson', Title: 'Data Scientist', Email: 'emily.johnson@anupresslab.org', Phone: '+1 (555) 010-1003' },
-  { id: 4, Name: 'John Doe', Title: 'Cell Biologist', Email: 'john.doe@anupresslab.org', Phone: '+1 (555) 010-1004' },
-  { id: 5, Name: 'Michael Brown', Title: 'Biochemist', Email: 'michael.brown@anupresslab.org', Phone: '+1 (555) 010-1005' },
-  { id: 6, Name: 'Sarah Wilson', Title: 'Environmental Scientist', Email: 'sarah.wilson@anupresslab.org', Phone: '+1 (555) 010-1006' },
-  { id: 7, Name: 'Amanda Taylor', Title: 'Microbiologist', Email: 'amanda.taylor@anupresslab.org', Phone: '+1 (555) 010-1007' },
+  { id: 1, Name: 'Dr. Jane Smith', Title: 'Principal Investigator', Email: 'jane.smith@example.org', Phone: '+1 (212) 555-0101' },
+  { id: 2, Name: 'David Lee', Title: 'Lab Manager', Email: 'david.lee@example.org', Phone: '+1 (212) 555-0102' },
+  { id: 3, Name: 'Emily Johnson', Title: 'Data Scientist', Email: 'emily.johnson@example.org', Phone: '+1 (212) 555-0103' },
+  { id: 4, Name: 'John Doe', Title: 'Cell Biologist', Email: 'john.doe@example.org', Phone: '+1 (212) 555-0104' },
+  { id: 5, Name: 'Michael Brown', Title: 'Biochemist', Email: 'michael.brown@example.org', Phone: '+1 (212) 555-0105' },
+  { id: 6, Name: 'Sarah Wilson', Title: 'Environmental Scientist', Email: 'sarah.wilson@example.org', Phone: '+1 (212) 555-0106' },
+  { id: 7, Name: 'Amanda Taylor', Title: 'Microbiologist', Email: 'amanda.taylor@example.org', Phone: '+1 (212) 555-0107' },
 ];
 const PEOPLE_COLUMNS = [
   { id: 'Name', label: 'Name', type: 'Text' }, { id: 'Title', label: 'Title', type: 'Text' },
@@ -166,20 +166,20 @@ const PEOPLE_COLUMNS = [
 // highlights when it slips. CalibrationDue/Compliant are pre-split 1/0 helper columns because a
 // stat block can only SUM a column — it can't filter by status (same trick as Finance's Invoices).
 const INSTRUMENTS = [
-  ['Mass Spectrometer', 'Thermo Fisher', 'Lab A', 'Dr. Jane Smith'],
-  ['HPLC System', 'Agilent', 'Lab A', 'Michael Brown'],
-  ['PCR Thermocycler', 'Bio-Rad', 'Molecular Lab', 'Emily Johnson'],
-  ['Refrigerated Centrifuge', 'Eppendorf', 'Prep Room', 'David Lee'],
-  ['Microplate Reader', 'BioTek', 'Assay Room', 'Amanda Taylor'],
-  ['-80°C Freezer', 'Thermo Fisher', 'Cold Room', 'David Lee'],
+  ['Mass Spectrometer', 'Northvale Scientific', 'Lab A', 'Dr. Jane Smith'],
+  ['HPLC System', 'Meridian Analytical', 'Lab A', 'Michael Brown'],
+  ['PCR Thermocycler', 'Ashgrove Instruments', 'Molecular Lab', 'Emily Johnson'],
+  ['Refrigerated Centrifuge', 'Tessaro Labware', 'Prep Room', 'David Lee'],
+  ['Microplate Reader', 'Verity Instruments', 'Assay Room', 'Amanda Taylor'],
+  ['-80°C Freezer', 'Northvale Scientific', 'Cold Room', 'David Lee'],
   ['Autoclave', 'Tuttnauer', 'Sterilization', 'John Doe'],
   ['Fluorescence Microscope', 'Zeiss', 'Imaging Suite', 'Emily Johnson'],
   ['UV-Vis Spectrophotometer', 'Shimadzu', 'Lab B', 'Michael Brown'],
   ['CO₂ Incubator', 'Panasonic', 'Cell Culture', 'John Doe'],
-  ['Flow Cytometer', 'BD Biosciences', 'Imaging Suite', 'Amanda Taylor'],
+  ['Flow Cytometer', 'Halden Biosystems', 'Imaging Suite', 'Amanda Taylor'],
   ['Water Purification System', 'Milli-Q', 'Lab B', 'Sarah Wilson'],
   ['Analytical Balance', 'Mettler Toledo', 'Prep Room', 'Sarah Wilson'],
-  ['Gas Chromatograph', 'Agilent', 'Lab A', 'Dr. Jane Smith'],
+  ['Gas Chromatograph', 'Meridian Analytical', 'Lab A', 'Dr. Jane Smith'],
 ];
 const INSTRUMENTS_COLUMNS = [
   { id: 'InstrumentID', label: 'Asset ID', type: 'Text' }, { id: 'Name', label: 'Instrument', type: 'Text' },

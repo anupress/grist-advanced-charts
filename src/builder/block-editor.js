@@ -338,6 +338,23 @@ function openMapEditor(block, ctx) {
     field('Data table', selectInput(provider.tables().map((t) => ({ value: t.id, label: t.label })), wb.config.table,
       async (v) => { wb.config.table = v; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
     dynHost,
+    // Street and Terrain ship built in. A satellite layer does not, because no free global aerial
+    // imagery permits redistribution without an account — so instead of hotlinking someone else's
+    // servers against their terms, the block takes a tile URL from whoever holds the licence.
+    subhead('Extra map layer (optional)'),
+    el('p', { class: 'ap-muted', style: { margin: '0 0 10px', fontSize: '12px' } }, [
+      'Street and Terrain are included. To add satellite or any other basemap, paste a tile URL '
+      + 'from a provider you have an account with (ArcGIS, MapTiler, Mapbox, Stadia, or your own '
+      + 'server) along with the credit line they require.',
+    ]),
+    field('Tile URL', textInput(wb.config.tileUrl || '', (v) => { wb.config.tileUrl = v.trim(); refreshPreview(); },
+      { placeholder: 'https://…/{z}/{x}/{y}.png' })),
+    twoUp(
+      field('Layer name', textInput(wb.config.tileLabel || '', (v) => { wb.config.tileLabel = v; refreshPreview(); }, { placeholder: 'Satellite' })),
+      field('Max zoom', textInput(wb.config.tileMaxZoom || '', (v) => { wb.config.tileMaxZoom = v; refreshPreview(); }, { placeholder: '19' })),
+    ),
+    field('Attribution', textInput(wb.config.tileAttribution || '', (v) => { wb.config.tileAttribution = v; refreshPreview(); },
+      { placeholder: 'e.g. Tiles © Esri' })),
     field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
     subhead('Live preview'), previewHost,
   ];

@@ -11,6 +11,11 @@ document, so it is yours, portable, and reloads automatically.
 > receives, stores, or transmits your data — your data stays inside your Grist document. The first
 > time you click **Edit**, you’ll see a consent screen that states exactly this and names the one
 > table it will create.
+>
+> One caveat, stated plainly: a **Map** block loads its background tiles from a public map provider
+> (OpenStreetMap or OpenTopoMap). Those requests come from the viewer's browser, so the provider
+> sees the viewer's IP address and roughly which area is on screen. No table data is sent, and no
+> other block makes any outside request at all.
 
 ---
 
