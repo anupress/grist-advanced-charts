@@ -335,8 +335,70 @@ export async function removeTables(tableIds) {
   return out;
 }
 
+// ---- The record of which tables WE created -------------------------------------------------
+//
+// This used to live inside the design, as config.createdTables. Two things went wrong with that.
+//
+// First, "Start from scratch" wipes the design — so the moment you used it, the record of every
+// table we had ever made went with it. Second, applying a template built the record from the
+// TEMPLATE's config rather than the document's current one, so it only ever remembered the most
+// recent install: put Research Labs in, then Legal on top, and Research Labs' five tables became
+// unrecorded. Unrecorded tables fall into the picker's "we think these are ours, but we're not
+// certain" group, which is deliberately unticked — so scratch quietly left them behind, which is
+// exactly what it looked like from the outside: press erase, tables stay.
+//
+// Its own key in the config table fixes both. clearStoredConfig() only removes the design rows
+// (CONFIG_KEY and its chunks), so this one survives, and it accumulates across installs.
+const CREATED_KEY = 'createdTables';
+
+async function readConfigRow(key) {
+  if (!hasGrist()) return null;
+  try {
+    const ids = await safeListAll();
+    if (!ids.includes(CONFIG_TABLE)) return null;
+    const tbl = await g().docApi.fetchTable(CONFIG_TABLE);
+    for (let i = 0; i < (tbl.id?.length || 0); i++) if (tbl.Key[i] === key) return { rowId: tbl.id[i], value: tbl.Value[i] };
+  } catch (e) { console.warn('[ANUPRESS] readConfigRow failed', e); }
+  return null;
+}
+
+export async function loadCreatedTables() {
+  const row = await readConfigRow(CREATED_KEY);
+  if (!row?.value) return [];
+  try { const v = JSON.parse(row.value); return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []; }
+  catch { return []; }
+}
+
+async function writeCreatedTables(names) {
+  if (!hasGrist()) return false;
+  try {
+    await ensureTables();
+    const json = JSON.stringify([...new Set(names)]);
+    const row = await readConfigRow(CREATED_KEY);
+    if (row) await g().docApi.applyUserActions([['UpdateRecord', CONFIG_TABLE, row.rowId, { Value: json }]]);
+    else await g().docApi.applyUserActions([['AddRecord', CONFIG_TABLE, null, { Key: CREATED_KEY, Value: json }]]);
+    return true;
+  } catch (e) { console.warn('[ANUPRESS] writeCreatedTables failed', e); return false; }
+}
+
+// Additive: a second template installed alongside a first must not erase the first's entry.
+export async function recordCreatedTables(names) {
+  if (!Array.isArray(names) || !names.length) return false;
+  const prev = await loadCreatedTables();
+  return writeCreatedTables([...prev, ...names]);
+}
+
+// Called after scratch actually removes them, so the list stays a record of what still exists.
+export async function forgetCreatedTables(names) {
+  if (!Array.isArray(names) || !names.length) return false;
+  const drop = new Set(names);
+  const prev = await loadCreatedTables();
+  return writeCreatedTables(prev.filter((n) => !drop.has(n)));
+}
+
 // Wipe the stored design: the row in our own config table plus the widget-option cache. The table
-// itself is left in place (it is ours, it is empty, and the next save needs it anyway).
+// itself is left in place (it is ours, it is empty, and the next save needs it anyway). The
+// createdTables row is deliberately NOT touched — see above.
 export async function clearStoredConfig() {
   await setOption('');
   if (!hasGrist()) return false;

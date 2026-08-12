@@ -165,7 +165,15 @@ export function openTemplatePicker(opts) {
         el('div', { class: 'ap-addtile__desc', text: 'One empty page — and optionally clean up demo tables a template left behind' }),
       ]),
     ]);
-    blank.addEventListener('click', () => { state.scratch = true; render(); });
+    // The durable record is read here rather than at render time, because scratchBody() is
+    // synchronous and needs it in hand to decide which tables are confirmed-ours (ticked) versus
+    // merely schema-matched (left alone).
+    blank.addEventListener('click', async () => {
+      try { state.createdRecord = await bridge.loadCreatedTables(); }
+      catch (e) { console.warn('[ANUPRESS] could not read the created-tables record', e); state.createdRecord = []; }
+      state.scratch = true;
+      render();
+    });
 
     const grid = el('div', { style: { display: 'grid', gap: '10px' } },
       TEMPLATES.map((t) => {
@@ -190,7 +198,13 @@ export function openTemplatePicker(opts) {
 
   // ---- Start from scratch ----
   function scratchBody() {
-    const recorded = Array.isArray(opts.config?.createdTables) ? opts.config.createdTables : [];
+    // Two sources, unioned. state.createdRecord is the durable row in the config table, loaded
+    // before this view renders; opts.config.createdTables is where the record used to live, read
+    // as well so a document written by an earlier version still gets its tables recognised.
+    const recorded = [...new Set([
+      ...(state.createdRecord || []),
+      ...(Array.isArray(opts.config?.createdTables) ? opts.config.createdTables : []),
+    ])];
     const present = new Set((provider?.tables?.() || []).map((t) => t.id));
     const confirmed = recorded.filter((id) => present.has(id));
     // Inferred, minus anything already on the confirmed list.
@@ -244,6 +258,10 @@ export function openTemplatePicker(opts) {
         const res = await bridge.removeTables(toRemove);
         if (res.failed.length) toast(`Removed ${res.removed.length}; ${res.failed.length} could not be removed — see the console.`, 'err');
         else if (res.removed.length) toast(`Removed ${res.removed.length} table${res.removed.length === 1 ? '' : 's'}.`, 'ok');
+        // Drop what actually went, so the record stays a list of tables that still exist. Skipped
+        // ones (already gone) count too; only genuine failures stay on the list for a later try.
+        const gone = [...res.removed, ...res.skipped].filter(Boolean);
+        if (gone.length) { try { await bridge.forgetCreatedTables(gone); } catch {} }
         if (provider?.refreshTables) { try { await provider.refreshTables(); } catch {} }
       }
       await bridge.clearStoredConfig();
@@ -399,8 +417,13 @@ export function openTemplatePicker(opts) {
         if (await bridge.createTableWithRecords(name, spec.columns, spec.records)) { created++; madeByUs.push(name); } else failed++;
       }
       if (madeByUs.length) {
-        const prev = Array.isArray(cfg.createdTables) ? cfg.createdTables : [];
-        cfg.createdTables = [...new Set([...prev, ...madeByUs])];
+        // Written to its own row in the config table, which survives "Start from scratch" wiping
+        // the design and accumulates across installs. `prev` used to be read from `cfg` — the
+        // TEMPLATE's config — which is always empty, so the record only ever held the last
+        // template's tables and everything installed before it was silently forgotten.
+        await bridge.recordCreatedTables(madeByUs);
+        const prev = Array.isArray(opts.config?.createdTables) ? opts.config.createdTables : [];
+        cfg.createdTables = [...new Set([...prev, ...madeByUs])]; // legacy mirror, still read on load
       }
       await provider.refreshTables(); // learn the newly created tables (and load their rows)
       for (const name of emptyPresent) {
@@ -430,10 +453,28 @@ export function openTemplatePicker(opts) {
     return applied;
   }
 
-  function finishApply(applied) {
+  // Applying a template writes the design to the document straight away, rather than leaving it
+  // dirty for the next Save.
+  //
+  // Creating the tables takes several seconds — one round trip per table, plus its rows — and the
+  // edit bar's own Save button stays live behind this drawer the whole time. Pressing it during
+  // "Setting up tables…" saved the config as it was BEFORE the template was applied: the new
+  // tables existed, full of data, while the stored design was still the old one. That is the
+  // "imported perfectly but didn't save the latest version" case. Writing it here closes the
+  // window, because the design lands in the same operation that created the tables.
+  async function finishApply(applied) {
+    const cfg = keepChosenMode(applied);
     state.applying = false;
     closeDrawer();
-    onApply(keepChosenMode(applied));
+    onApply(cfg);
+    if (!provider?.isLive) return;
+    try {
+      const ok = await bridge.saveConfig(cfg);
+      if (!ok) toast('Template applied, but saving the design failed — press Save to try again.', 'err');
+    } catch (e) {
+      console.warn('[ANUPRESS] could not save the applied template', e);
+      toast('Template applied, but saving the design failed — press Save to try again.', 'err');
+    }
   }
 
   function confirmFooter() {
