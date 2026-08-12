@@ -205,19 +205,138 @@ async function safeListAll() { try { return await g().docApi.listTables(); } cat
 
 }
 
+// ---- Config size and chunked storage ----
+//
+// Grist caps an API request body at 1 MB, and that cap is IDENTICAL on every plan — Free, Pro and
+// Business differ on rows, document data and attachment space, but not on this. So a paying
+// customer with 300 MB of document allowance still cannot push more than 1 MB in a single save,
+// and there is nothing to unlock by detecting their plan.
+//
+// The whole design — layout, theme, logo, hero slides, uploaded images — is one JSON string, so
+// that cap was the real ceiling. Splitting the JSON across several ROWS inside one request would
+// not have helped (the limit is on the request, not the row), but splitting it across several
+// REQUESTS does, and that is what happens below: no ceiling, on any plan.
+//
+// Crash safety comes from writing in the right order. Every part is written first, under a fresh
+// generation id, and only then is the pointer row flipped to that generation. An interrupted save
+// therefore leaves the previous config whole and readable — a half-written design is never what
+// gets loaded. Stale generations are swept afterwards.
+//
+// Note this trades against the document DATA quota (10 MB Free / 200 MB Pro / 300 MB Business),
+// which chunking cannot change. Images stored as Grist attachments would draw on the separate
+// 1-3 GB attachment allowance instead; that remains the better long-term home for artwork.
+const CHUNK_BYTES = 300 * 1024;    // comfortably inside the 1 MB request cap, headroom for overhead
+const OPTION_MAX = 300 * 1024;     // widget options are a render cache, not the source of truth
+const CHUNK_PREFIX = 'site~';      // rows are site~<gen>~<index>
+export const CONFIG_SOFT_LIMIT = 700 * 1024;   // informational: the design is getting heavy
+export const CONFIG_HARD_LIMIT = 1024 * 1024;  // one request's worth — above this we chunk
+
+export function measureConfig(configObj) {
+  let bytes = 0;
+  try { bytes = new Blob([JSON.stringify(configObj)]).size; }
+  catch { try { bytes = JSON.stringify(configObj).length; } catch { bytes = 0; } }
+  return { bytes, overSoft: bytes >= CONFIG_SOFT_LIMIT, overHard: bytes >= CONFIG_HARD_LIMIT, chunked: bytes > CHUNK_BYTES };
+}
+
+const splitChunks = (s, n) => { const out = []; for (let i = 0; i < s.length; i += n) out.push(s.slice(i, i + n)); return out; };
+
+// Write one config across as many requests as it takes. Returns true only if the pointer flipped.
+async function saveChunked(json) {
+  const parts = splitChunks(json, CHUNK_BYTES);
+  const gen = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const tbl = await g().docApi.fetchTable(CONFIG_TABLE);
+  const byKey = new Map();
+  for (let i = 0; i < (tbl.id?.length || 0); i++) byKey.set(tbl.Key[i], tbl.id[i]);
+
+  // 1. every part, one request each, under the new generation
+  for (let i = 0; i < parts.length; i++) {
+    await g().docApi.applyUserActions([['AddRecord', CONFIG_TABLE, null, { Key: `${CHUNK_PREFIX}${gen}~${i}`, Value: parts[i] }]]);
+  }
+  // 2. flip the pointer — the single moment the new config becomes the live one
+  const pointer = JSON.stringify({ __apChunked: 1, gen, parts: parts.length });
+  if (byKey.has(CONFIG_KEY)) await g().docApi.applyUserActions([['UpdateRecord', CONFIG_TABLE, byKey.get(CONFIG_KEY), { Value: pointer }]]);
+  else await g().docApi.applyUserActions([['AddRecord', CONFIG_TABLE, null, { Key: CONFIG_KEY, Value: pointer }]]);
+  // 3. sweep older generations; failure here wastes space but breaks nothing
+  const stale = [];
+  for (const [key, id] of byKey) if (key.startsWith(CHUNK_PREFIX) && !key.startsWith(`${CHUNK_PREFIX}${gen}~`)) stale.push(id);
+  if (stale.length) {
+    try { await g().docApi.applyUserActions([['BulkRemoveRecord', CONFIG_TABLE, stale]]); }
+    catch (e) { console.warn('[ANUPRESS] could not sweep old config chunks', e); }
+  }
+  return true;
+}
+
 export async function saveConfig(configObj) {
   const json = JSON.stringify(configObj);
-  await setOption(json); // fast render cache (always attempt)
+  // The widget option is only a fast render cache. Past a sensible size it stops being a good
+  // one, so it is cleared rather than stuffed — loadConfig then falls through to the table.
+  // Clearing matters: a stale small option left behind would be preferred over the fresh data.
+  await setOption(json.length <= OPTION_MAX ? json : '');
   if (!hasGrist()) return false;
   try {
     await ensureTables();
+    if (json.length > CHUNK_BYTES) return await saveChunked(json);
+
+    // Small enough for one request — the original single-row form, kept so ordinary designs
+    // stay a single readable cell and older documents need no migration.
     const tbl = await g().docApi.fetchTable(CONFIG_TABLE);
     let rowId = null;
-    for (let i = 0; i < (tbl.id?.length || 0); i++) if (tbl.Key[i] === CONFIG_KEY) { rowId = tbl.id[i]; break; }
+    const stale = [];
+    for (let i = 0; i < (tbl.id?.length || 0); i++) {
+      if (tbl.Key[i] === CONFIG_KEY) rowId = tbl.id[i];
+      else if (String(tbl.Key[i] || '').startsWith(CHUNK_PREFIX)) stale.push(tbl.id[i]);
+    }
     if (rowId) await g().docApi.applyUserActions([['UpdateRecord', CONFIG_TABLE, rowId, { Value: json }]]);
     else await g().docApi.applyUserActions([['AddRecord', CONFIG_TABLE, null, { Key: CONFIG_KEY, Value: json }]]);
+    // A design that shrank back below the threshold leaves its old parts behind otherwise.
+    if (stale.length) {
+      try { await g().docApi.applyUserActions([['BulkRemoveRecord', CONFIG_TABLE, stale]]); }
+      catch (e) { console.warn('[ANUPRESS] could not sweep old config chunks', e); }
+    }
     return true;
   } catch (e) { console.warn('[ANUPRESS] saveConfig table write failed', e); return false; }
+}
+
+// ---- Start from scratch ----
+// Removing tables is the one destructive thing this widget can do to a document, so the rules are
+// narrow and enforced here rather than trusted to the caller:
+//   • only ids the caller passes, which the UI takes solely from config.createdTables — the record
+//     of tables the template picker itself created;
+//   • never our own config table, and never anything whose name we don't recognise as ours;
+//   • one table per action, so a single failure can't take the batch down with it.
+// The user's own tables are never in that list, so there is no path from this function to them.
+export async function removeTables(tableIds) {
+  const out = { removed: [], failed: [], skipped: [] };
+  if (!hasGrist() || !Array.isArray(tableIds) || !tableIds.length) return out;
+  const existing = new Set(await safeListAll());
+  for (const id of tableIds) {
+    if (!id || id === CONFIG_TABLE || id === THEME_TABLE) { out.skipped.push(id); continue; }
+    if (!existing.has(id)) { out.skipped.push(id); continue; } // already gone; nothing to do
+    try { await g().docApi.applyUserActions([['RemoveTable', id]]); out.removed.push(id); }
+    catch (e) { console.warn('[ANUPRESS] removeTables failed for ' + id, e); out.failed.push(id); }
+  }
+  invalidateMetaCache();
+  return out;
+}
+
+// Wipe the stored design: the row in our own config table plus the widget-option cache. The table
+// itself is left in place (it is ours, it is empty, and the next save needs it anyway).
+export async function clearStoredConfig() {
+  await setOption('');
+  if (!hasGrist()) return false;
+  try {
+    const ids = await safeListAll();
+    if (!ids.includes(CONFIG_TABLE)) return true;
+    const tbl = await g().docApi.fetchTable(CONFIG_TABLE);
+    const rowIds = [];
+    for (let i = 0; i < (tbl.id?.length || 0); i++) {
+      const k = String(tbl.Key[i] || '');
+      // The pointer AND every chunk row — clearing only the pointer would strand the parts.
+      if (k === CONFIG_KEY || k.startsWith(CHUNK_PREFIX)) rowIds.push(tbl.id[i]);
+    }
+    if (rowIds.length) await g().docApi.applyUserActions([['BulkRemoveRecord', CONFIG_TABLE, rowIds]]);
+    return true;
+  } catch (e) { console.warn('[ANUPRESS] clearStoredConfig failed', e); return false; }
 }
 
 export async function loadConfig() {
@@ -229,7 +348,27 @@ export async function loadConfig() {
     const ids = await g().docApi.listTables();
     if (!ids.includes(CONFIG_TABLE)) return null;
     const tbl = await g().docApi.fetchTable(CONFIG_TABLE);
-    for (let i = 0; i < (tbl.id?.length || 0); i++) if (tbl.Key[i] === CONFIG_KEY) return JSON.parse(tbl.Value[i]);
+    const values = new Map();
+    let head = null;
+    for (let i = 0; i < (tbl.id?.length || 0); i++) {
+      const k = tbl.Key[i];
+      if (k === CONFIG_KEY) head = tbl.Value[i]; else values.set(k, tbl.Value[i]);
+    }
+    if (head == null) return null;
+    const parsed = JSON.parse(head);
+    // A pointer, not a config: reassemble the parts written by saveChunked.
+    if (parsed && parsed.__apChunked) {
+      const out = [];
+      for (let i = 0; i < parsed.parts; i++) {
+        const part = values.get(`${CHUNK_PREFIX}${parsed.gen}~${i}`);
+        // A missing part means an interrupted write or a manually edited table. Reassembling
+        // around the hole would hand back silently corrupt JSON, so refuse instead.
+        if (part == null) { console.warn(`[ANUPRESS] config part ${i + 1}/${parsed.parts} is missing — not loading a partial design`); return null; }
+        out.push(part);
+      }
+      return JSON.parse(out.join(''));
+    }
+    return parsed;
   } catch (e) { console.warn('[ANUPRESS] loadConfig failed', e); }
   return null;
 }

@@ -233,3 +233,12 @@
 .ap-toast--err { background: var(--ap-series-5); }
 
 @media (max-width: 520px) { .ap-typegrid { grid-template-columns: repeat(3,1fr); } }
+
+/* ---- Start from scratch ---- */
+/* The destructive action gets a filled red button, not the outline .ap-btn--danger used for the
+   small per-block delete icons: erasing a design and dropping demo tables should not look like
+   the same weight of action as removing one card. */
+.ap-drawer__foot .ap-btn--danger { background: var(--ap-warn); border-color: transparent; color: #fff; }
+.ap-drawer__foot .ap-btn--danger:hover { filter: brightness(1.06); }
+.ap-scratch-list { display: grid; gap: 2px; padding: 4px 0; }
+.ap-scratch-list .ap-row { margin-bottom: 4px !important; }

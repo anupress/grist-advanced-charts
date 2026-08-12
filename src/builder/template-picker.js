@@ -274,9 +274,18 @@ export function openTemplatePicker({ provider, onApply }) {
       for (const name of present) { let rows = []; try { rows = await provider.refresh(name); } catch {} if (!(rows && rows.length)) emptyPresent.push(name); }
 
       let created = 0, populated = 0, failed = 0;
+      // Remember exactly which tables WE brought into existence. Nothing else can tell them apart
+      // from the user's own afterwards — a table called Tasks might be ours or theirs — and
+      // "Start from scratch" must only ever offer to remove tables on this list. Recorded on the
+      // config so it travels with the document rather than living in this browser.
+      const madeByUs = [];
       for (const name of absent) {
         const spec = sample.tables[name];
-        if (await bridge.createTableWithRecords(name, spec.columns, spec.records)) created++; else failed++;
+        if (await bridge.createTableWithRecords(name, spec.columns, spec.records)) { created++; madeByUs.push(name); } else failed++;
+      }
+      if (madeByUs.length) {
+        const prev = Array.isArray(cfg.createdTables) ? cfg.createdTables : [];
+        cfg.createdTables = [...new Set([...prev, ...madeByUs])];
       }
       await provider.refreshTables(); // learn the newly created tables (and load their rows)
       for (const name of emptyPresent) {

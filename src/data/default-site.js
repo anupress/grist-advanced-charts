@@ -21,6 +21,22 @@ import {
 
 export const SITE_VERSION = 1;
 
+// A genuinely blank starting point, for "Start from scratch". Not a stripped-down copy of the demo
+// — one empty page, no blocks, no sample copy, no createdTables record — so the first thing a user
+// sees is their own canvas and the Add Element button, with nothing of ours to delete first.
+// Deliberately keeps a header title and one page: a site with zero pages has nothing to click and
+// no way back into the editor.
+export function emptySite() {
+  return {
+    version: SITE_VERSION,
+    theme: { paletteId: 'aurora', fontId: 'system', mode: 'light' },
+    dataTable: null,
+    header: { logoData: null, title: 'My dashboard', slogan: '', menu: [{ label: 'Page 1', tab: 'tab-1' }] },
+    footer: { text: '', links: [], showCredit: true },
+    tabs: [{ id: 'tab-1', title: 'Page 1', hero: { enabled: false }, blocks: [] }],
+  };
+}
+
 const GUIDE = 'https://anupress.com/advanced-charts-grist-widget-guide/';
 const VIOLET = '#6d5efc';
 const TEAL = '#16c4a6';
