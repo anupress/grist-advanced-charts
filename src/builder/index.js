@@ -134,7 +134,7 @@ function defaultBlock(type, tabId) {
   if (type === 'invoice') {
     const guess = guessInvoiceConfig(cols, provider.tables());
     return { id: uid('blk'), type: 'invoice', span: 12, __isNew: true, config: {
-      title: 'Invoice', documentTitle: 'Invoice', table, ...guess,
+      title: 'Invoice', documentTitle: 'Invoice', style: 'classic', footerText: null, table, ...guess,
       clientNameColumn: 'Name', clientAddressColumns: [],
       itemsTable: null, itemsLinkColumn: null, itemDescColumn: null, itemQtyColumn: null,
       itemPriceColumn: null, itemTotalColumn: null,

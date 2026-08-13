@@ -15,7 +15,7 @@ import { mountAttachmentImages } from '../render/media-mount.js';
 import { mountCountdowns } from '../render/countdown.js';
 import { currentSeriesColors } from '../theme/apply.js';
 import { openDataEditor } from './data-editor.js';
-import { guessInvoiceConfig } from '../render/invoice.js';
+import { guessInvoiceConfig, STYLES, STYLE_LABELS } from '../render/invoice.js';
 import { pickImage, readFileAsDataURL } from './imageutil.js';
 
 const SPANS = [{ value: 3, label: 'XS' }, { value: 4, label: 'S' }, { value: 6, label: 'M' }, { value: 8, label: 'L' }, { value: 12, label: 'Full' }];
@@ -1192,6 +1192,10 @@ function openInvoiceEditor(block, ctx) {
     field('Block title', textInput(c.title || '', (v) => { c.title = v; refreshPreview(); }, { placeholder: 'Invoice' })),
     field('Word on the document', textInput(c.documentTitle || '', (v) => { c.documentTitle = v; refreshPreview(); }, { placeholder: 'Invoice' })),
 
+    field('Style', segmented(STYLES.map((v) => ({ value: v, label: STYLE_LABELS[v] })), c.style || 'classic',
+      (v) => { c.style = v; refreshPreview(); })),
+    hint('Four mastheads over the same document. Banded suits a strong logo, Letterhead reads like printed stationery, Minimal drops the colour entirely.'),
+
     subhead('Where the invoices are'),
     field('Invoice table', selectInput(tableOpts(), c.table, async (v) => {
       c.table = v; await ensureRows(provider, v);
@@ -1208,7 +1212,8 @@ function openInvoiceEditor(block, ctx) {
 
     subhead('Your details'),
     hint('The same on every invoice, so they live with the design rather than in a table.'),
-    field('Business name', textInput(c.from.name || '', setFrom('name'), { placeholder: 'Your business' })),
+    hint('Leave the name or logo blank and the invoice uses the ones from your site header, so it is branded without being configured twice.'),
+    field('Business name', textInput(c.from.name || '', setFrom('name'), { placeholder: 'From your site header' })),
     field('Address', textInput(c.from.address || '', setFrom('address'), { textarea: true, rows: 3, placeholder: '1 Example Street\nCity, Postcode' })),
     twoUp(
       field('Email', textInput(c.from.email || '', setFrom('email'), { placeholder: 'billing@example.com' })),
@@ -1229,6 +1234,9 @@ function openInvoiceEditor(block, ctx) {
       field('Tax label', textInput(c.taxLabel || '', (v) => { c.taxLabel = v; refreshPreview(); }, { placeholder: 'VAT' })),
       field('Tax rate %', textInput(String(c.taxRate ?? 0), (v) => { c.taxRate = v; refreshPreview(); }, { placeholder: '0' })),
     ),
+    field('Closing line', textInput(c.footerText != null ? c.footerText : '', (v) => { c.footerText = v; refreshPreview(); },
+      { placeholder: 'From your site footer' })),
+    hint('Printed in a band at the foot of the document. Left blank it uses your site footer text; type a single space to leave it off entirely.'),
     field('Payment terms', textInput(c.terms || '', (v) => { c.terms = v; refreshPreview(); }, { textarea: true, rows: 2, placeholder: 'Payment due within 30 days.' })),
 
     field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),

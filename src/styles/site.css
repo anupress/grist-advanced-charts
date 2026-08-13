@@ -534,6 +534,26 @@
   .ap-invoice__bar { display: none !important; }
   .ap-invoice { border: none !important; }
   .ap-invoice__doc { padding: 0 !important; }
+
+  /* An invoice is a printed artefact and prints on paper, so it takes a light palette regardless
+     of what the screen was showing. Printing a dark dashboard produced near-white text on a dark
+     slab over a white page — the tokens are redefined here rather than each rule being overridden,
+     so every descendant that reads --ap-text or --ap-border comes right at once. */
+  .ap-invoice, .ap-invoice__doc {
+    --ap-surface: #ffffff;
+    --ap-bg-soft: #f5f6f8;
+    --ap-text: #11141c;
+    --ap-text-soft: #3d4552;
+    --ap-text-mute: #6b7484;
+    --ap-border: #d5d9e0;
+    background: #ffffff !important;
+    color: #11141c !important;
+  }
+  .ap-invoice__doc * { color: inherit; }
+  .ap-invoice__partylabel, .ap-invoice__metalabel, .ap-invoice__partyline--meta,
+  .ap-invoice__table th { color: #5a6270 !important; }
+  .ap-invoice__word, .ap-invoice__meta.is-total .ap-invoice__metavalue { color: var(--ap-inv-accent) !important; }
+  .ap-invoice__brandband { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .ap-invoice__table { break-inside: auto; }
   .ap-invoice__table tr { break-inside: avoid; page-break-inside: avoid; }
   .ap-invoice__table thead { display: table-header-group; }
@@ -643,3 +663,52 @@
 .ap-logofield__preview { width: 76px; height: 46px; display: grid; place-items: center; flex: none;
   border: 1px dashed var(--ap-border); border-radius: var(--ap-radius-sm, 6px); overflow: hidden; }
 .ap-logofield__preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+/* ---- Invoice styles ----
+   Four mastheads over one body. Each is a different answer to the same question — how does this
+   document introduce who is sending it — so only the top of the page changes and the lines,
+   totals and terms below are shared. */
+
+/* BANDED: a full-width colour band with the mark centred in it. */
+.ap-invoice__brandband { margin: calc(-1 * clamp(20px, 4vw, 40px)) calc(-1 * clamp(20px, 4vw, 40px)) 0;
+  padding: 28px 24px 22px; background: var(--ap-inv-accent); color: #fff; text-align: center; }
+.ap-invoice__logo--band { max-height: 54px; max-width: 240px; margin: 0 auto 10px; display: block; }
+.ap-invoice__bandname { font-family: var(--ap-font-head); font-weight: 800; font-size: var(--ap-fs-xl);
+  letter-spacing: .04em; text-transform: uppercase; }
+.ap-invoice__bandmeta { margin-top: 8px; font-size: var(--ap-fs-xs); letter-spacing: .22em;
+  text-transform: uppercase; opacity: .88; display: flex; justify-content: center; gap: 10px; }
+.ap-invoice__banddot { opacity: .6; }
+.ap-invoice__doc.is-banded .ap-invoice__parties { padding-top: 28px; }
+
+/* LETTERHEAD: a tinted strip, business left, mark right — printed stationery. */
+.ap-invoice__strip { margin: calc(-1 * clamp(20px, 4vw, 40px)) calc(-1 * clamp(20px, 4vw, 40px)) 0;
+  padding: 22px clamp(20px, 4vw, 40px); display: flex; align-items: center; justify-content: space-between;
+  gap: 20px; background: color-mix(in srgb, var(--ap-inv-accent) 10%, transparent);
+  border-bottom: 3px solid var(--ap-inv-accent); }
+.ap-invoice__stripleft .ap-invoice__fromname { font-size: var(--ap-fs-xl); }
+.ap-invoice__striptag { margin-top: 2px; font-size: var(--ap-fs-xs); letter-spacing: .16em;
+  text-transform: uppercase; color: var(--ap-text-mute); }
+.ap-invoice__logo--strip { max-height: 48px; max-width: 170px; flex: none; }
+.ap-invoice__doc.is-letterhead .ap-invoice__parties { padding-top: 26px; }
+
+/* MINIMAL: no colour, hairline rules, everything carried by spacing and weight. */
+.ap-invoice__doc.is-minimal { --ap-inv-accent: var(--ap-text); }
+.ap-invoice__doc.is-minimal .ap-invoice__head { border-bottom-width: 1px; }
+.ap-invoice__doc.is-minimal .ap-invoice__word { font-size: var(--ap-fs-xl); letter-spacing: .18em;
+  font-weight: 600; text-transform: uppercase; }
+.ap-invoice__doc.is-minimal .ap-invoice__totalrow.is-grand { border-top-width: 1px; }
+.ap-invoice__doc.is-minimal .ap-invoice__status { background: none; border: 1px solid currentColor; }
+
+/* The status pill when the masthead has no room for it. */
+.ap-invoice__statusrow { padding-top: 18px; }
+
+/* Closing band, echoing the site footer. */
+.ap-invoice__brandfoot { display: flex; align-items: center; gap: 12px; margin: 26px calc(-1 * clamp(20px, 4vw, 40px)) calc(-1 * clamp(20px, 4vw, 40px));
+  padding: 16px clamp(20px, 4vw, 40px); border-top: 1px solid var(--ap-border);
+  background: var(--ap-bg-soft); font-size: var(--ap-fs-xs); color: var(--ap-text-mute); }
+.ap-invoice__logo--foot { max-height: 24px; max-width: 90px; flex: none; opacity: .8; }
+.ap-invoice__brandfoottext { flex: 1; }
+
+@media (max-width: 720px) {
+  .ap-invoice__strip { flex-direction: column; align-items: flex-start; }
+}

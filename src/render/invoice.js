@@ -24,6 +24,15 @@ import { el, fmtNumber, clone } from '../util.js';
 import { icon } from '../assets/icons.js';
 import { sanitizeToFragment } from '../security/sanitize.js';
 
+// Four masthead treatments. They share one document body — only the top of the page changes,
+// because that is the part that carries a brand.
+//   classic     split masthead, accent rule, the default
+//   banded      full-width colour band with the mark centred; the most formal
+//   letterhead  tinted strip, business left and mark right, like printed stationery
+//   minimal     hairline rules and no colour, for the most conservative recipient
+export const STYLES = ['classic', 'banded', 'letterhead', 'minimal'];
+export const STYLE_LABELS = { classic: 'Classic', banded: 'Banded', letterhead: 'Letterhead', minimal: 'Minimal' };
+
 const num = (v) => { const n = typeof v === 'number' ? v : parseFloat(String(v ?? '').replace(/[^0-9.eE+-]/g, '')); return isFinite(n) ? n : 0; };
 const money = (v, cur) => fmtNumber(v, { currency: cur || '$', decimals: 2 });
 
@@ -109,9 +118,33 @@ function metaField(label, value, cls) {
   ]);
 }
 
+/**
+ * Who is sending this, resolved against the site's own branding.
+ *
+ * The block has its own name/logo fields, but leaving them blank should not produce an invoice
+ * headed "Your business" with no mark on it — the site already knows both, because the header
+ * carries them on every page. So the block's values win when set and the site's fill in when not,
+ * which means a usable, branded invoice with nothing configured at all. The footer line works the
+ * same way: a business that has put its legal name and registration in the site footer is not
+ * going to want to retype them here.
+ */
+function brandFor(c, ctx) {
+  const from = c.from || {};
+  const header = ctx.config?.header || {};
+  const footer = ctx.config?.footer || {};
+  return {
+    ...from,
+    name: from.name || header.title || 'Your business',
+    logoData: from.logoData || header.logoData || null,
+    // An explicit empty string in the block means "no footer line"; undefined means "use the site's".
+    footerText: c.footerText != null ? c.footerText : (footer.text || ''),
+  };
+}
+
 // The document itself, for one invoice row.
 function buildDocument(row, c, ctx) {
-  const from = c.from || {};
+  const from = brandFor(c, ctx);
+  const style = STYLES.includes(c.style) ? c.style : 'classic';
   const cur = c.currency || '$';
   const client = resolveClient(row, c, ctx);
   const lines = resolveLines(row, c, ctx);
@@ -119,21 +152,58 @@ function buildDocument(row, c, ctx) {
   const status = c.statusColumn ? String(row[c.statusColumn] ?? '') : '';
   const itemised = lines.some((l) => l.itemised);
 
-  const logo = from.logoData
-    ? el('img', { class: 'ap-invoice__logo', src: from.logoData, alt: from.name || 'Logo' })
+  const logo = (cls) => from.logoData
+    ? el('img', { class: cls || 'ap-invoice__logo', src: from.logoData, alt: from.name })
+    : null;
+  const word = c.documentTitle || 'Invoice';
+  const number = String(row[c.numberColumn] ?? `#${row.id}`);
+  const statusPill = status
+    ? el('span', { class: 'ap-invoice__status', dataset: { status: status.toLowerCase() }, text: status })
     : null;
 
-  const head = el('div', { class: 'ap-invoice__head' }, [
-    el('div', { class: 'ap-invoice__brand' }, [
-      logo,
-      el('div', { class: 'ap-invoice__fromname', text: from.name || 'Your business' }),
-    ]),
-    el('div', { class: 'ap-invoice__title' }, [
-      el('div', { class: 'ap-invoice__word', text: c.documentTitle || 'Invoice' }),
-      el('div', { class: 'ap-invoice__number', text: String(row[c.numberColumn] ?? `#${row.id}`) }),
-      status ? el('span', { class: 'ap-invoice__status', dataset: { status: status.toLowerCase() }, text: status }) : null,
-    ]),
-  ]);
+  // Four masthead treatments over one document body. They differ only in how the top of the page
+  // introduces the sender — which is the part that carries a brand — so the lines, totals and
+  // terms below stay identical and nothing has to be maintained four times.
+  let head;
+  if (style === 'banded') {
+    // A full-width band with the mark centred in it: the most formal of the four, and the one that
+    // survives being folded into a window envelope.
+    head = el('div', { class: 'ap-invoice__brandband' }, [
+      logo('ap-invoice__logo ap-invoice__logo--band'),
+      el('div', { class: 'ap-invoice__bandname', text: from.name }),
+      el('div', { class: 'ap-invoice__bandmeta' }, [
+        el('span', { text: word.toUpperCase() }),
+        el('span', { class: 'ap-invoice__banddot', text: '·' }),
+        el('span', { text: number }),
+      ]),
+    ]);
+  } else if (style === 'letterhead') {
+    // A tinted strip: business on the left, mark on the right, the way a printed letterhead runs.
+    head = el('div', { class: 'ap-invoice__strip' }, [
+      el('div', { class: 'ap-invoice__stripleft' }, [
+        el('div', { class: 'ap-invoice__fromname', text: from.name }),
+        el('div', { class: 'ap-invoice__striptag', text: `${word} ${number}` }),
+      ]),
+      logo('ap-invoice__logo ap-invoice__logo--strip'),
+    ]);
+  } else {
+    // classic and minimal share the split masthead; the difference between them is all in the CSS.
+    head = el('div', { class: 'ap-invoice__head' }, [
+      el('div', { class: 'ap-invoice__brand' }, [
+        logo(),
+        el('div', { class: 'ap-invoice__fromname', text: from.name }),
+      ]),
+      el('div', { class: 'ap-invoice__title' }, [
+        el('div', { class: 'ap-invoice__word', text: word }),
+        el('div', { class: 'ap-invoice__number', text: number }),
+        statusPill,
+      ]),
+    ]);
+  }
+  // The banded and letterhead mastheads have no room for a status pill, so it rides above the
+  // parties instead of being dropped.
+  const statusRow = (style === 'banded' || style === 'letterhead') && statusPill
+    ? el('div', { class: 'ap-invoice__statusrow' }, [statusPill]) : null;
 
   const parties = el('div', { class: 'ap-invoice__parties' }, [
     party('From', from.name, String(from.address || '').split('\n').map((s) => s.trim()).filter(Boolean),
@@ -182,8 +252,20 @@ function buildDocument(row, c, ctx) {
     ]) : null,
   ]) : null;
 
-  return el('div', { class: 'ap-invoice__doc', style: c.accent ? { '--ap-inv-accent': c.accent } : null }, [
-    head, parties, el('div', { class: 'ap-invoice__linesbox' }, [table]), totals, foot,
+  // The closing band, carrying the same line the site footer shows. A business that has put its
+  // legal name and registration number in the footer wants them on the invoice too.
+  const footBand = from.footerText
+    ? el('div', { class: 'ap-invoice__brandfoot' }, [
+        logo('ap-invoice__logo ap-invoice__logo--foot'),
+        el('div', { class: 'ap-invoice__brandfoottext', text: from.footerText }),
+      ])
+    : null;
+
+  return el('div', {
+    class: `ap-invoice__doc is-${style}`,
+    style: c.accent ? { '--ap-inv-accent': c.accent } : null,
+  }, [
+    head, statusRow, parties, el('div', { class: 'ap-invoice__linesbox' }, [table]), totals, foot, footBand,
   ]);
 }
 
