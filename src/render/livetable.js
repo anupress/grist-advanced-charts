@@ -89,7 +89,7 @@ export function renderLiveTable(block, ctx) {
   // sort/search since those only filter/reorder this same array, never clone its row objects.
   const naturalRow = new Map(allRows.map((r, i) => [r, i]));
 
-  const state = { query: '', sortCol: c.defaultSort?.column || null, sortDir: c.defaultSort?.dir || 'asc', page: 0 };
+  const state = { query: '', sortCol: c.defaultSort?.column || null, sortDir: c.defaultSort?.dir || 'asc', page: 0, printing: false };
 
   function visibleRows() {
     let rows = allRows;
@@ -143,6 +143,13 @@ export function renderLiveTable(block, ctx) {
     };
   }
 
+  // Numbers belong on the right, where their digits line up and a column can be scanned for
+  // magnitude. It matters most on paper, where there is no scrolling to help. Declared before
+  // theadRow below, which calls headerCell() immediately — a const is in its temporal dead zone
+  // until its own line runs, so declaring it after would throw on the first render.
+  const isNumeric = (type) => /^(Numeric|Int|Currency)/i.test(type || '');
+  const numCols = new Set(allCols.filter((col) => isNumeric(col.type)).map((col) => col.id));
+
   const tbody = el('tbody');
   const pager = el('div', { class: 'ap-livetable__pager' });
   const theadRow = el('tr', {}, cols.map((col) => headerCell(col)));
@@ -154,7 +161,8 @@ export function renderLiveTable(block, ctx) {
   // scope="col" ties the header to its column in a block whose whole point is tabular data.
   function headerCell(col) {
     const label = el('span', { text: col.label });
-    if (!sortable) return el('th', { scope: 'col' }, [label]);
+    const numCls = numCols.has(col.id) ? ' is-num' : '';
+    if (!sortable) return el('th', { scope: 'col', class: numCls.trim() || null }, [label]);
 
     const btn = el('button', { type: 'button', class: 'ap-livetable__sortbtn' },
       [label, icon('chevron', 'ap-livetable__sorticon')]);
@@ -164,14 +172,18 @@ export function renderLiveTable(block, ctx) {
       state.page = 0;
       redraw();
     });
-    return el('th', { scope: 'col', class: 'is-sortable' }, [btn]);
+    return el('th', { scope: 'col', class: 'is-sortable' + numCls }, [btn]);
   }
 
   function redraw() {
     const rows = visibleRows();
     const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
     state.page = Math.min(state.page, totalPages - 1);
-    const pageRows = rows.slice(state.page * pageSize, (state.page + 1) * pageSize);
+    // On paper the pager is meaningless — there is nothing to click — so printing gets every row.
+    // The print stylesheet could only ever style what was in the DOM, and that was one page of
+    // ten, so "Print / Save as PDF" on a 200-row ledger produced a ten-row document that looked
+    // deliberate. Search is still honoured: printing a filtered view prints the filtered rows.
+    const pageRows = state.printing ? rows : rows.slice(state.page * pageSize, (state.page + 1) * pageSize);
 
     tbody.replaceChildren(...(pageRows.length
       ? pageRows.map((r) => {
@@ -184,7 +196,8 @@ export function renderLiveTable(block, ctx) {
               const fg = readableOn(hl);
               if (fg) style.color = fg; // keeps the text legible against the swatch in either mode
             }
-            return el('td', { text: String(r[col.id] ?? ''), title: String(r[col.id] ?? ''), style });
+            return el('td', { class: numCols.has(col.id) ? 'is-num' : null,
+              text: String(r[col.id] ?? ''), title: String(r[col.id] ?? ''), style });
           }));
         })
       : [el('tr', {}, [el('td', { class: 'ap-muted', colspan: String(cols.length || 1), text: 'No matching rows.' })])]));
@@ -221,7 +234,7 @@ export function renderLiveTable(block, ctx) {
   redraw();
 
   const table = el('table', { class: 'ap-livetable__table' }, [el('thead', {}, [theadRow]), tbody]);
-  return el('div', { class: 'ap-card ap-livetable', dataset: { blockId: block.id } }, [
+  const card = el('div', { class: 'ap-card ap-livetable', dataset: { blockId: block.id } }, [
     (c.title || searchInput) ? el('div', { class: 'ap-livetable__head' }, [
       c.title ? el('div', { class: 'ap-livetable__title', text: c.title }) : el('span'),
       searchInput,
@@ -229,4 +242,23 @@ export function renderLiveTable(block, ctx) {
     el('div', { class: 'ap-livetable__scroll' }, [table]),
     pager,
   ]);
+
+  // Expand to every row for the duration of the print, then put the pager back.
+  //
+  // The listeners are on window because that is where the events fire, and they un-register
+  // themselves once the card leaves the document — a tab switch or a re-render would otherwise
+  // leave one behind per table, redrawing detached nodes on every subsequent print.
+  const onBefore = () => {
+    if (!card.isConnected) { window.removeEventListener('beforeprint', onBefore); window.removeEventListener('afterprint', onAfter); return; }
+    state.printing = true; redraw();
+  };
+  const onAfter = () => {
+    if (!card.isConnected) { window.removeEventListener('beforeprint', onBefore); window.removeEventListener('afterprint', onAfter); return; }
+    state.printing = false; redraw();
+  };
+  window.addEventListener('beforeprint', onBefore);
+  window.addEventListener('afterprint', onAfter);
+  card._apPrintAll = { onBefore, onAfter }; // exposed for the tests
+
+  return card;
 }

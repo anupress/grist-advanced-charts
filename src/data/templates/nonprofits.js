@@ -100,7 +100,7 @@ export const TEMPLATE = {
             id: 'np27', type: 'calendar', span: 12,
             config: { title: 'Proposal deadlines', table: 'Grants', dateColumn: 'ProposalDeadline', titleColumn: 'GrantName', detailColumns: ['Foundation', 'AmountRequested', 'Status', 'Assignee'], colorBy: 'Status', draggable: true },
           },
-          text('np28', '', 'Drag a proposal to a new day to move its deadline — on the published page that writes straight back to your Grants table, so the whole team sees the same dates. Grist\'s own grant tracker records deadlines but has no calendar to work them from.'),
+          text('np28', '', 'Drag a proposal to a new day to move its deadline — on the published page that writes straight back to your Grants table, so the whole team sees the same dates. A deadline sitting in a column is a fact; a deadline on a calendar is a plan, and only one of those tells you that three proposals are due the same week.'),
           spacer('np28s', 10),
           {
             id: 'np29', type: 'livetable', span: 12,
@@ -159,7 +159,7 @@ export const TEMPLATE = {
               highlights: [{ ranges: 'F1:F16', color: '#e7f5ff' }],
             },
           },
-          text('np45', '', 'Volunteer applications, hours and background-check status live in one table — the same shape Grist\'s own volunteer guidance recommends, published here so coordinators and the board see one roster.'),
+          text('np45', '', 'Volunteer applications, hours and background-check status live in one table, published here so coordinators and the board work from one roster instead of a rota, a spreadsheet and somebody’s inbox.'),
           spacer('np45s', 10),
           { id: 'np46', type: 'chart', span: 8, config: { table: 'Events', title: 'Event capacity vs registrations', chartType: 'column', dims: ['Event'], measures: ['Capacity', 'Registered'], agg: 'sum' } },
           {

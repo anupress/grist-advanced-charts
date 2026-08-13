@@ -68,7 +68,7 @@ export const TEMPLATE = {
             },
           },
           text('fa11n', 'Sending this to a client',
-            'The official Grist invoicing template renders a printable PDF, and the same need applies here. Use <b>Print / Save as PDF</b> below and the page prints as a document: navigation, editor chrome and card shadows stripped out, the table running to full length with its header repeated on every page. Any desktop browser can save that straight to PDF from its print dialog. The <b>Status</b> column stays highlighted, so unpaid and overdue rows still stand out on paper.'),
+            'An invoice ledger is something you send, not only something you read. Use <b>Print / Save as PDF</b> below and this page becomes a document: navigation, editor chrome and card shadows drop away, and the table prints in full — every row, not just the page you happen to be viewing — with its header repeated across page breaks. Any desktop browser saves that straight to PDF from its own print dialog. The <b>Status</b> column keeps its highlighting, so unpaid and overdue rows still stand out on paper.'),
           button('fa11p', 'Print / Save as PDF', 'primary', 'left', printTarget(), 4),
           { id: 'fa12', type: 'calendar', span: 12, config: { title: 'Invoice due dates', table: 'Invoices', dateColumn: 'DueDate', titleColumn: 'Client', detailColumns: ['InvoiceNumber', 'Amount', 'Status'], colorBy: 'Status', draggable: true } },
           text('fa12n', '', 'Drag an invoice to a new day to reschedule its due date — on the published page that writes straight back to your Invoices table, so your AR follow-up stays in sync both ways.'),

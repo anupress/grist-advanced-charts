@@ -82,7 +82,7 @@ export const TEMPLATE = {
               highlights: [{ ranges: 'G1:G16', color: '#d3f9d8' }],
             },
           },
-          text('he19', '', '<b>Spots left</b> is highlighted — the one column a student actually scans for. It is a rollup of confirmed enrolments against capacity, exactly as Grist\'s own enrolment template computes it, so it can never drift from the register.'),
+          text('he19', '', '<b>Spots left</b> is highlighted — the one column a student actually scans for. It is a rollup of confirmed enrolments against capacity rather than a number anyone maintains, so it cannot drift from the register.'),
         ],
       },
       {
@@ -103,7 +103,7 @@ export const TEMPLATE = {
               highlights: [{ ranges: 'D1:D60', color: '#e7f5ff' }],
             },
           },
-          text('he26', 'Why there are no names here', 'This table is deliberately anonymised. Grist\'s own enrolment template stores insurance carriers, physician contacts, allergies and medical forms alongside each student — exactly the material that must never reach a public page. Keep those columns behind row-level access rules and publish the cohort view instead: the reporting still works, and the record stays protected.'),
+          text('he26', 'Why there are no names here', 'This table is deliberately anonymised. A real student record carries far more than a name — insurance carriers, physician contacts, allergies, accommodation and medical forms — and every one of those is material that must never reach a public page. Keep those columns behind row-level access rules and publish the cohort view instead: the reporting still works, and the record stays protected.'),
           accordion('he27', 'Advising & progression', [
             { q: 'How are advisors assigned?', a: 'By department, at intake. Every cohort record carries its advisor so caseloads can be balanced without opening individual files.' },
             { q: 'What counts as “on leave”?', a: 'A student with an approved interruption who retains their place. They are excluded from the enrolled count but stay in the cohort for retention reporting.' },

@@ -102,7 +102,7 @@ export const TEMPLATE = {
           { id: 'mk17', type: 'breakdown', span: 4, config: { table: 'Campaigns', title: 'Campaigns by status', column: 'Status', limit: 5, display: 'chart', chartType: 'doughnut' } },
           { id: 'mk18', type: 'divider', span: 12, config: { style: 'solid', thickness: 1, color: null } },
           text('mk19', 'Tag the link, then print it',
-            'Grist\'s UTM Link Builder assembles <code>utm_source</code>, <code>utm_medium</code> and <code>utm_campaign</code> into a final URL. That is exactly what you need for a dashboard — and exactly what you cannot put on a banner. This block turns the tagged link into a QR code you can drop straight into print or a slide, so offline collateral lands in the same attribution report as everything else.'),
+            'A tagged campaign URL — <code>utm_source</code>, <code>utm_medium</code>, <code>utm_campaign</code> — is what makes a click traceable back to the campaign that earned it. It is also unusable on anything physical: nobody types ninety characters off a banner. This block turns the tagged link into a QR code you can drop straight into print or a slide, so offline collateral lands in the same attribution report as everything else.'),
           {
             id: 'mk20', type: 'qrcode', span: 4,
             config: { text: 'https://anupress.com/advanced-charts-grist-widget-guide/', level: 'M', fg: '#0b1020', bg: '#ffffff', size: 180, caption: 'Tagged campaign link — scan to test' },
@@ -136,7 +136,7 @@ export const TEMPLATE = {
           { id: 'mk27', type: 'chart', span: 8, config: { table: 'Content', title: 'Pageviews by section', chartType: 'bar', dims: ['Section'], measures: ['Pageviews'], agg: 'sum', sortByValue: true } },
           { id: 'mk28', type: 'breakdown', span: 4, config: { table: 'Content', title: 'Pages by section', column: 'Section', limit: 6, display: 'chart', chartType: 'doughnut' } },
           text('mk29', 'The orphan problem',
-            'An orphaned page is one no other page links to. Search engines struggle to find it, readers never stumble onto it, and it quietly earns nothing — which is why the register above flags it as a column you can sort on rather than burying it in a filter. Grist\'s own tracker derives the flag with <code>len(Links.lookupRecords(To=$id)) &lt; 1</code>; the same idea, surfaced where you will actually see it.'),
+            'An orphaned page is one no other page links to. Search engines struggle to find it, readers never stumble onto it, and it quietly earns nothing — which is why the register above flags it as a column you can sort on rather than burying it in a filter. The flag is derived rather than typed: a page counts as orphaned while nothing links to it, so the moment you add a link the row stops flagging itself, with nobody having to remember to clear it.'),
           { id: 'mk30', type: 'chart', span: 12, config: { table: 'Content', title: 'Inbound links vs pageviews', chartType: 'column', dims: ['Section'], measures: ['InboundLinks', 'Pageviews'], agg: 'avg' } },
         ],
       },
@@ -192,7 +192,7 @@ export const TEMPLATE = {
           { id: 'mk46', type: 'chart', span: 8, config: { table: 'Events', title: 'Ticket revenue by event', chartType: 'bar', dims: ['Name'], measures: ['TicketRevenue'], agg: 'sum', sortByValue: true } },
           { id: 'mk47', type: 'chart', span: 4, config: { table: 'Events', title: 'Capacity vs registered', chartType: 'column', dims: ['Name'], measures: ['Capacity', 'Registered'], agg: 'sum' } },
           text('mk48', 'No more reconciling lists',
-            'Grist\'s own event template derives registrations and ticket revenue straight from the registration records — <code>len(All_Registrations.lookupRecords(Event=$id))</code> and a sum of each attendee\'s ticket value. Because the numbers are derived rather than typed, the headcount on this page and the list at the door can never drift apart.'),
+            'Registrations and ticket revenue come from the registration records themselves — a count of who signed up and the sum of what they paid — rather than being typed into the event row. Because the numbers are computed rather than maintained by hand, the headcount on this page and the list at the door cannot drift apart.'),
         ],
       },
       {
@@ -207,7 +207,7 @@ export const TEMPLATE = {
           { id: 'mk54', type: 'chart', span: 8, config: { table: 'Feedback', title: 'Score distribution', chartType: 'column', dims: ['Score'], measures: ['Score'], agg: 'count' } },
           { id: 'mk55', type: 'chart', span: 12, config: { table: 'Feedback', title: 'NPS by customer segment', chartType: 'bar', dims: ['Segment'], measures: ['NpsPoints'], agg: 'avg', sortByValue: true } },
           text('mk56', 'How the score is worked out',
-            'Anyone scoring 9 or 10 is a promoter, 7 or 8 is passive, 0 to 6 is a detractor — Grist\'s survey template applies exactly that split. The score itself is the share of promoters minus the share of detractors, so it runs from −100 to +100 and passives deliberately count for nothing. Each response here stores +100, 0 or −100, which means a plain average of that column <em>is</em> the NPS, and it stays right as new responses arrive.'),
+            'Anyone scoring 9 or 10 is a promoter, 7 or 8 is passive, 0 to 6 is a detractor. The score itself is the share of promoters minus the share of detractors, so it runs from −100 to +100 and passives deliberately count for nothing. Each response here stores +100, 0 or −100, which means a plain average of that column <em>is</em> the NPS, and it stays right as new responses arrive.'),
           {
             id: 'mk57', type: 'livetable', span: 12,
             config: {

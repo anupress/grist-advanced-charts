@@ -103,7 +103,7 @@ export const TEMPLATE = {
               highlights: [{ ranges: 'F1:F8', color: '#d3f9d8' }],
             },
           },
-          text('sf24', '', '<b>Utilisation</b> is highlighted because it is the number that decides everything else — whether to raise the hourly rate, move a class to a quieter slot, or build another court. It is booked hours against sellable hours, the same per-space model Grist\'s rental template uses for income.'),
+          text('sf24', '', '<b>Utilisation</b> is highlighted because it is the number that decides everything else — whether to raise the hourly rate, move a class to a quieter slot, or build another court. It is booked hours against sellable hours, measured per space, so a court that looks busy and a court that actually earns are told apart.'),
           { id: 'sf25', type: 'chart', span: 12, config: { table: 'Facilities', title: 'Booked vs available hours', chartType: 'column', dims: ['Name'], measures: ['BookedHours', 'AvailableHours'], agg: 'sum', stacked: true } },
         ],
       },
@@ -127,7 +127,7 @@ export const TEMPLATE = {
               highlights: [{ ranges: 'G1:G10', color: '#d3f9d8' }],
             },
           },
-          text('sf34', '', '<b>Spots left</b> is the column members actually scan. It is capacity minus confirmed enrolments — a rollup, exactly as Grist\'s class-enrolment template computes it, so a class can never quietly overfill.'),
+          text('sf34', '', '<b>Spots left</b> is the column members actually scan. It is capacity minus confirmed enrolments, derived on every read rather than adjusted by hand, so a class cannot quietly overfill.'),
           {
             id: 'sf35', type: 'livetable', span: 12,
             config: {
@@ -155,7 +155,7 @@ export const TEMPLATE = {
               highlights: [{ ranges: 'G1:G10', color: '#ffe8cc' }],
             },
           },
-          text('sf40', '', 'In your own document these columns should be formulas, not entries: Grist\'s league template derives wins as <code>len(Game_Schedule.lookupRecords(Winner=$id))</code> straight from the fixture list. Record the results once and the table can never disagree with them.'),
+          text('sf40', '', 'In your own document these columns should be formulas, not entries — a win count derived by counting the fixtures a team actually won. Record each result once and the standings cannot disagree with the fixture list.'),
           { id: 'sf41', type: 'chart', span: 12, config: { table: 'Standings', title: 'Win rate by team', chartType: 'column', dims: ['Team'], measures: ['WinRate'], agg: 'avg', sortByValue: true } },
           spacer('sf41s', 10),
           iconBlock('sf42', 'target', 'l', PINK, '#ffffff', 'center', 3),

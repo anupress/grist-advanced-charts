@@ -290,6 +290,8 @@
 .ap-livetable__sorticon { width: 11px; height: 11px; margin-left: 4px; opacity: .3; vertical-align: -1px; transition: transform .15s var(--ap-ease), opacity .15s; }
 .ap-livetable__table th.is-sorted .ap-livetable__sorticon { opacity: 1; color: var(--ap-primary); }
 .ap-livetable__table th.is-sorted[data-dir="desc"] .ap-livetable__sorticon { transform: rotate(180deg); }
+/* Numeric columns right-align so digits line up down the column. */
+.ap-livetable__table .is-num { text-align: right; font-variant-numeric: tabular-nums; }
 .ap-livetable__table td { padding: 9px 12px; border-bottom: 1px solid var(--ap-border); color: var(--ap-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
 .ap-livetable__table tr:last-child td { border-bottom: none; }
 .ap-livetable__table tbody tr:hover td { background: var(--ap-bg-soft); }
@@ -462,11 +464,12 @@
 .ap-hero p, .ap-slide__cap p { text-wrap: pretty; }
 
 /* ================= Print / Save as PDF =================
-   Grist's own invoicing template ships a widget that renders a printable PDF invoice, and the
-   same need shows up across these templates — an invoice, a statement of account, a booking
-   confirmation, a grant budget. Rather than build a PDF engine, this makes the PAGE print
-   properly: every browser's print dialog can already "Save as PDF", so a clean print stylesheet
-   is the export feature. A Button block with target {kind:'print'} opens that dialog.
+   A dashboard is often also a document that has to leave the building — an invoice, a statement of
+   account, a booking confirmation, a grant budget. Rather than ship a PDF engine, this makes the
+   PAGE print properly: every browser's print dialog already saves to PDF, so a careful print
+   stylesheet IS the export feature. A Button block with target {kind:'print'} opens that dialog,
+   and render/livetable.js expands its table to every row first, so what prints is the whole
+   ledger rather than whichever page was on screen.
 
    The rules below remove the things nobody wants on paper and stop cards being sliced in half
    across a page boundary. */
@@ -498,9 +501,33 @@
   /* A table is the thing most likely to be printed here, so let it run to its full length
      instead of being clipped to its on-screen scroll box. */
   .ap-livetable__scroll { overflow: visible !important; border: none !important; }
-  .ap-livetable__table { font-size: 11px; }
+  .ap-livetable__table { font-size: 10.5px; width: 100%; }
   .ap-livetable__table tr { break-inside: avoid; page-break-inside: avoid; }
   .ap-livetable__table thead { display: table-header-group; } /* repeat headers on every page */
+
+  /* On screen a cell is one ellipsised line inside a scroll box, which is right for scanning and
+     wrong for a document — a truncated invoice number is not an invoice number. On paper cells
+     wrap and the column cap comes off, so every value prints in full. */
+  .ap-livetable__table td { white-space: normal !important; overflow: visible !important;
+    text-overflow: clip !important; max-width: none !important; vertical-align: top; }
+  .ap-livetable__table th { white-space: normal !important; }
+
+  /* Zebra striping to follow a row across a wide table, and rules light enough not to dominate
+     the numbers. Highlighted cells keep their colour — that is the point of them. */
+  .ap-livetable__table tbody tr:nth-child(even) td { background: #f7f7f9; }
+  .ap-livetable__table td, .ap-livetable__table th { border-bottom: 1px solid #ddd !important; }
+  .ap-livetable__table thead th { border-bottom: 1.5px solid #333 !important; background: none !important;
+    color: #000 !important; }
+  /* The sort control is a button on screen; on paper it is just the column name. */
+  .ap-livetable__sortbtn { padding: 4px 6px !important; color: #000 !important; }
+  .ap-livetable__sorticon { display: none !important; }
+
+  /* Numeric columns read far better right-aligned once they are on a page. */
+  .ap-livetable__table td.is-num, .ap-livetable__table th.is-num { text-align: right; }
+
+  /* The card wrapper adds nothing to a printed ledger. */
+  .ap-livetable { border: none !important; padding: 0 !important; }
+  .ap-livetable__title { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
 
   /* Charts and maps are canvas/tiles; keep them from spilling across a page break. */
   .ap-chart, .ap-map__canvas { break-inside: avoid; page-break-inside: avoid; }
