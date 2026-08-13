@@ -206,7 +206,12 @@ export function iconPickerField(site, config, onChange) {
     results.replaceChildren();
 
     if (!q) {
-      results.append(el('div', { class: 'ap-iconpick__grid' }, STARTER_ICONS.map(chipFor)));
+      // Whatever is currently chosen leads the row, even when it is not one of the starters —
+      // otherwise picking something from the full library returned you here with no sign it had
+      // taken, because the chosen glyph simply was not among the ten on show.
+      const chosen = !config.iconData && config.icon && !STARTER_ICONS.includes(config.icon)
+        ? [config.icon] : [];
+      results.append(el('div', { class: 'ap-iconpick__grid' }, [...chosen, ...STARTER_ICONS].map(chipFor)));
       // Uploads sit with the starters: they are the other thing already chosen for this site.
       const mine = getMediaLibrary(site);
       if (mine.length) {
@@ -245,8 +250,21 @@ export function iconPickerField(site, config, onChange) {
     config.iconData = data; search.value = ''; draw(); onChange();
   }));
 
+  // Searching only works when you already know the word. Browsing is for when you do not, and a
+  // 420px drawer is the wrong place for it — this opens the whole library full-window, with names
+  // showing and the drawer still underneath, so picking returns you to the block you were editing.
+  const browse = el('button', { class: 'ap-btn ap-btn--soft ap-btn--sm', type: 'button' },
+    [icon('grid2'), `Browse all ${allIconNames().length}`]);
+  browse.addEventListener('click', async () => {
+    const { openIconBrowser } = await import('./icon-browser.js');
+    openIconBrowser({
+      current: config.iconData ? null : config.icon,
+      onPick: (name) => { config.icon = name; config.iconData = null; draw(); onChange(); },
+    });
+  });
+
   draw();
-  wrap.append(search, count, results, up);
+  wrap.append(search, count, results, el('div', { class: 'ap-row', style: { gap: '8px' } }, [browse, up]));
   return wrap;
 }
 

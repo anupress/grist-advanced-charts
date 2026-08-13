@@ -167,6 +167,62 @@
   background: color-mix(in srgb, var(--ap-primary) 15%, var(--ap-surface)); }
 .ap-iconchip svg { width: 17px; height: 17px; }
 
+/* ---- Icon library: the full-window browse view ----
+   z-index above the drawer (80) that opens it, because the drawer stays open underneath and the
+   browser has to sit on top of it rather than beside it. */
+.ap-iconbrowser { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center;
+  padding: clamp(8px, 3vw, 40px); background: color-mix(in srgb, #0b0d18 72%, transparent);
+  animation: ap-fade-in .16s var(--ap-ease) both; }
+.ap-ib__panel { width: min(1100px, 100%); height: min(760px, 100%); display: flex; flex-direction: column;
+  background: var(--ap-surface); color: var(--ap-text); border: 1px solid var(--ap-border);
+  border-radius: var(--ap-radius-lg); box-shadow: var(--ap-shadow-lg); overflow: hidden;
+  animation: ap-pop .22s var(--ap-ease) both; }
+.ap-ib__head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--ap-border); }
+.ap-ib__title { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: var(--ap-fs-lg); }
+.ap-ib__title svg { width: 18px; height: 18px; color: var(--ap-link); }
+.ap-ib__search { flex: 1; min-width: 200px; }
+/* Two panes that scroll independently: the category list stays put while the grid moves. */
+.ap-ib__main { flex: 1; display: grid; grid-template-columns: 210px 1fr; min-height: 0; }
+.ap-ib__nav { overflow-y: auto; padding: 10px; border-right: 1px solid var(--ap-border);
+  background: var(--ap-surface-2); display: flex; flex-direction: column; gap: 2px; }
+.ap-ib__navitem { appearance: none; -webkit-appearance: none; font: inherit; text-align: left;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer;
+  padding: 7px 10px; border-radius: 8px; border: 0; background: transparent; color: var(--ap-text-soft);
+  font-size: var(--ap-fs-xs); font-weight: 600; }
+.ap-ib__navitem:hover { background: color-mix(in srgb, var(--ap-primary) 10%, transparent); color: var(--ap-link); }
+.ap-ib__navitem.is-active { background: color-mix(in srgb, var(--ap-primary) 16%, transparent); color: var(--ap-link); }
+.ap-ib__navn { font-size: 10px; opacity: .65; font-variant-numeric: tabular-nums; }
+.ap-ib__body { overflow-y: auto; padding: 6px 16px 24px; }
+.ap-ib__group { display: flex; align-items: center; gap: 8px; margin: 18px 0 10px; font-size: var(--ap-fs-sm);
+  font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--ap-text-mute);
+  position: sticky; top: 0; background: var(--ap-surface); padding: 8px 0 6px; z-index: 1; }
+.ap-ib__groupn { font-size: 10px; padding: 1px 6px; border-radius: 999px;
+  background: color-mix(in srgb, var(--ap-primary) 14%, transparent); color: var(--ap-link); }
+.ap-ib__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.ap-ib__tile { appearance: none; -webkit-appearance: none; font: inherit; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 6px 9px;
+  border-radius: 12px; border: 1px solid var(--ap-border); background: var(--ap-surface);
+  color: var(--ap-text-soft); transition: border-color .12s var(--ap-ease), background .12s var(--ap-ease),
+  color .12s var(--ap-ease), transform .1s var(--ap-ease); }
+.ap-ib__tile:hover { border-color: var(--ap-primary); color: var(--ap-link); transform: translateY(-1px);
+  background: color-mix(in srgb, var(--ap-primary) 8%, var(--ap-surface)); }
+.ap-ib__tile:focus-visible { outline: none; box-shadow: var(--ap-ring); }
+.ap-ib__tile.is-active { border-color: var(--ap-primary); color: var(--ap-link);
+  background: color-mix(in srgb, var(--ap-primary) 15%, var(--ap-surface)); }
+.ap-ib__glyph svg { width: 22px; height: 22px; }
+/* The name is the point of this view, so it wraps rather than truncating to an ellipsis. */
+.ap-ib__name { font-size: 10px; line-height: 1.25; text-align: center; word-break: break-word;
+  color: var(--ap-text-mute); }
+.ap-ib__empty { padding: 40px 10px; text-align: center; }
+@media (max-width: 640px) {
+  .ap-ib__main { grid-template-columns: 1fr; }
+  /* The category list becomes a scrolling strip above the grid rather than a column beside it. */
+  .ap-ib__nav { flex-direction: row; overflow-x: auto; border-right: 0;
+    border-bottom: 1px solid var(--ap-border); }
+  .ap-ib__navitem { white-space: nowrap; }
+}
+
 /* "Not sure? Let me help" tile — highlighted top item in the chooser. */
 .ap-addtile--wizard { background: color-mix(in srgb, var(--ap-primary) 10%, var(--ap-surface)); border-color: color-mix(in srgb, var(--ap-primary) 30%, var(--ap-border)); }
 .ap-addtile--wizard:hover { background: color-mix(in srgb, var(--ap-primary) 16%, var(--ap-surface)); }
@@ -309,8 +365,70 @@
   font-size: var(--ap-fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
   color: var(--ap-text-soft);
 }
-.ap-dataedit__th { display: flex; align-items: center; gap: 5px; padding: 8px 10px; }
+.ap-dataedit__th { display: flex; align-items: center; gap: 4px; padding: 0; position: relative; }
 .ap-dataedit__lockicon { width: 11px; height: 11px; opacity: .6; flex: none; }
+
+/* ---- Sorting and filtering the grid ----
+   The label sorts, the funnel filters. Two buttons rather than one, because they are two
+   intentions and a combined control makes both harder to hit. */
+.ap-dataedit__toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 -4px; }
+.ap-dataedit__sortbtn {
+  appearance: none; -webkit-appearance: none; font: inherit; cursor: pointer; text-align: left;
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 5px; padding: 8px 4px 8px 10px;
+  border: 0; background: none; color: inherit; font-size: inherit; font-weight: inherit;
+  text-transform: inherit; letter-spacing: inherit;
+}
+/* Headings wrap rather than truncate. Eleven columns sit at their 120px minimum whatever the
+   window is doing, so "Satisfaction" clipped to "Satisf…" even full screen — and a header row has
+   vertical room it was not using. Two lines, then ellipsis for anything genuinely long. */
+.ap-dataedit__sortbtn > span:first-child {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
+  overflow: hidden; overflow-wrap: anywhere; line-height: 1.2; text-align: left;
+}
+/* Tighter padding in the heading than in the cells, so a long single word like "Satisfaction" has
+   somewhere to go before it has to break. */
+.ap-dataedit__row--head .ap-dataedit__sortbtn { padding-left: 8px; padding-right: 2px; }
+.ap-dataedit__sortbtn:hover { color: var(--ap-link); }
+.ap-dataedit__sortbtn:focus-visible { outline: none; box-shadow: var(--ap-ring); border-radius: 6px; }
+.ap-dataedit__sorticon { width: 12px; height: 12px; flex: none; color: var(--ap-link); }
+.ap-dataedit__filterbtn {
+  appearance: none; -webkit-appearance: none; cursor: pointer; flex: none;
+  display: grid; place-items: center; width: 24px; height: 24px; margin-right: 6px;
+  border: 0; border-radius: 6px; background: none; color: var(--ap-text-mute);
+}
+.ap-dataedit__filterbtn svg { width: 13px; height: 13px; }
+.ap-dataedit__filterbtn:hover { background: color-mix(in srgb, var(--ap-primary) 14%, transparent); color: var(--ap-link); }
+.ap-dataedit__filterbtn.is-on { color: var(--ap-link); background: color-mix(in srgb, var(--ap-primary) 18%, transparent); }
+.ap-dataedit__th.is-filtered { box-shadow: inset 0 -2px 0 var(--ap-primary); }
+
+/* The value list. Positioned against its own header cell, which is why the cell is relative. */
+.ap-dataedit__filterpop {
+  position: absolute; top: 100%; left: 0; z-index: 5; width: 250px; margin-top: 2px;
+  background: var(--ap-surface); border: 1px solid var(--ap-border); border-radius: var(--ap-radius-sm);
+  box-shadow: var(--ap-shadow-lg); padding: 10px; text-transform: none; letter-spacing: normal;
+}
+.ap-dataedit__filterhead { font-weight: 800; font-size: var(--ap-fs-sm); margin-bottom: 8px; color: var(--ap-text); }
+.ap-input--sm { padding: 6px 9px; font-size: var(--ap-fs-xs); }
+.ap-dataedit__filterlist { max-height: 210px; overflow-y: auto; display: flex; flex-direction: column; gap: 1px; }
+.ap-dataedit__filteritem {
+  display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 6px; cursor: pointer;
+  font-size: var(--ap-fs-xs); font-weight: 500; color: var(--ap-text); text-transform: none;
+}
+.ap-dataedit__filteritem:hover { background: var(--ap-bg-soft); }
+.ap-dataedit__filterval { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ap-dataedit__filtercount { font-size: 10px; color: var(--ap-text-mute); font-variant-numeric: tabular-nums; }
+.ap-dataedit__filterfoot { display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px;
+  padding-top: 8px; border-top: 1px solid var(--ap-border); }
+
+/* Full screen: the drawer stops being a side panel and becomes the window. Worth having because
+   this is the one panel whose content is genuinely a table — twenty-five rows against a wall of
+   columns is a different job from the settings forms every other drawer holds. */
+/* Anchored to both edges rather than sized with 100vw: vw includes the scrollbar, so a drawer
+   pinned right and 100vw wide starts a scrollbar's width off the left edge, clipping the row
+   numbers. left:0 + right:0 lets the box work out its own width and always fits. */
+.ap-drawer--full { left: 0; right: 0; width: auto !important; max-width: none !important; border-left: 0; }
+.ap-drawer--full .ap-dataedit__grid { max-height: none; flex: 1; }
+.ap-drawer--full .ap-drawer__body { display: flex; flex-direction: column; }
 
 .ap-dataedit__rowno {
   display: grid; place-items: center; padding: 6px; font-size: 11px;

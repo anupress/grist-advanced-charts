@@ -27,6 +27,70 @@ import { openDrawer, closeDrawer, subhead, primaryBtn, ghostBtn } from './ui.js'
 // correction tool, not a spreadsheet — paging keeps the DOM sane and the intent honest.
 const PAGE = 25;
 
+/**
+ * Rows narrowed by a free-text search and by per-column value filters, then ordered.
+ *
+ * Pure and exported so the rules can be tested without a DOM: which rows survive a filter is the
+ * part that silently loses someone's data if it is wrong.
+ *
+ *   query   — matches any cell, as typed.
+ *   filters — { colId: Set(displayValue) }. A column with a set keeps only rows whose displayed
+ *             value is in it; an ABSENT or empty set means that column filters nothing. Multiple
+ *             columns combine with AND, values within one column with OR, which is what a
+ *             spreadsheet autofilter does and therefore what people expect.
+ *   sort    — { col, dir }. Numbers and dates compare as themselves; everything else compares as
+ *             text with a natural order, so "row 2" precedes "row 10".
+ */
+export function applyView(rows, cols, { query = '', filters = {}, sort = null, display = String } = {}) {
+  let out = rows;
+
+  const q = String(query || '').trim().toLowerCase();
+  if (q) out = out.filter((r) => cols.some((c) => String(r[c.id] ?? '').toLowerCase().includes(q)));
+
+  for (const [colId, allowed] of Object.entries(filters)) {
+    if (!allowed || !allowed.size) continue;
+    out = out.filter((r) => allowed.has(display(r[colId])));
+  }
+
+  if (sort?.col) {
+    const col = cols.find((c) => c.id === sort.col);
+    const dir = sort.dir === 'desc' ? -1 : 1;
+    const numeric = col && /^(Numeric|Int|Currency)/i.test(col.type || '');
+    const temporal = col && isDateColumn(col.type);
+    const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+    out = [...out].sort((a, b) => {
+      const av = a[sort.col], bv = b[sort.col];
+      // Blanks sort last whichever way the column is pointing: an empty cell is not a small value,
+      // it is an absent one, and burying them under a descending sort hides the rows most likely
+      // to need filling in.
+      const ae = av == null || av === '', be = bv == null || bv === '';
+      if (ae || be) return ae && be ? 0 : (ae ? 1 : -1);
+      if (numeric || temporal) {
+        const an = Number(av), bn = Number(bv);
+        if (Number.isFinite(an) && Number.isFinite(bn)) return (an - bn) * dir;
+      }
+      return collator.compare(String(av), String(bv)) * dir;
+    });
+  }
+  return out;
+}
+
+/** The distinct values in a column, in the order a person would scan them. */
+export function distinctValues(rows, colId, display = String) {
+  const seen = new Map();
+  for (const r of rows) {
+    const v = display(r[colId]);
+    seen.set(v, (seen.get(v) || 0) + 1);
+  }
+  return [...seen.entries()]
+    .map(([value, count]) => ({ value, count }))
+    .sort((a, b) => {
+      // Blank last, then most common first — the values worth filtering on are rarely the rare ones.
+      if (!a.value !== !b.value) return a.value ? -1 : 1;
+      return b.count - a.count || String(a.value).localeCompare(String(b.value));
+    });
+}
+
 const isNumericType = (t) => /^(Numeric|Int|Currency)/i.test(t || '');
 const isBoolType = (t) => /^Bool/i.test(t || '');
 
@@ -65,7 +129,10 @@ export function openDataEditor(opts) {
   const edits = new Map();
   // Rows typed into the blank row at the bottom, not yet written.
   const additions = [];
-  const state = { page: 0, query: '' };
+  // filters: colId -> Set of displayed values kept. sort: { col, dir }. Both are view-only — they
+  // never touch `edits`, so narrowing the table to find a row and then correcting it still saves
+  // every other pending change with it.
+  const state = { page: 0, query: '', filters: {}, sort: null, full: false };
 
   const editable = (col) => !col.isFormula;
   const dirtyCount = () => [...edits.values()].reduce((n, f) => n + Object.keys(f).length, 0) + additions.length;
@@ -74,21 +141,37 @@ export function openDataEditor(opts) {
   const status = el('div', { class: 'ap-dataedit__status ap-muted' });
   const pager = el('div', { class: 'ap-dataedit__pager' });
   let saveBtn = null;
+  let searchBox = null;
 
-  function refreshStatus() {
+  function refreshStatus(shown) {
     const n = dirtyCount();
+    const narrowed = shown != null && shown !== rows.length;
+    // The row count has to say when it is not the whole table. Someone who filters to three rows
+    // and reads "3 rows" walks away believing their table has three rows in it.
+    const scope = narrowed
+      ? `${shown} of ${rows.length} rows shown`
+      : `${rows.length} row${rows.length === 1 ? '' : 's'}`;
     status.textContent = n
-      ? `${n} unsaved change${n === 1 ? '' : 's'}`
-      : `${rows.length} row${rows.length === 1 ? '' : 's'} · editing writes straight to ${table}`;
+      ? `${n} unsaved change${n === 1 ? '' : 's'} · ${scope}`
+      : `${scope} · editing writes straight to ${table}`;
     status.classList.toggle('is-dirty', n > 0);
     if (saveBtn) saveBtn.disabled = n === 0;
   }
 
   function matching() {
-    if (!state.query) return rows;
-    const q = state.query.toLowerCase();
-    return rows.filter((r) => cols.some((c) => String(r[c.id] ?? '').toLowerCase().includes(q)));
+    return applyView(rows, cols, { query: state.query, filters: state.filters, sort: state.sort, display });
   }
+
+  // Rows that survive every filter EXCEPT this column's own. A spreadsheet filter list shows what
+  // is still reachable given the other filters, but must not hide the values you have already
+  // ticked in this column — those would vanish from their own list the moment they were chosen.
+  function rowsForFilterList(colId) {
+    const others = { ...state.filters };
+    delete others[colId];
+    return applyView(rows, cols, { query: state.query, filters: others, display });
+  }
+
+  const activeFilters = () => Object.values(state.filters).filter((s) => s && s.size).length;
 
   function cellInput(row, col) {
     const current = edits.get(row.id)?.[col.id];
@@ -143,6 +226,109 @@ export function openDataEditor(opts) {
     ]);
   }
 
+  /**
+   * A column heading that sorts and filters.
+   *
+   * The label is a real <button> so it is reachable by keyboard and announces its sort state;
+   * the funnel beside it is a second button, because "order by this" and "show only these" are
+   * different intentions and merging them into one click makes both harder to reach.
+   */
+  function headerCell(col) {
+    const sorted = state.sort?.col === col.id;
+    const filtered = state.filters[col.id]?.size > 0;
+
+    const label = el('button', {
+      class: 'ap-dataedit__sortbtn', type: 'button',
+      title: `Sort by ${col.label}`,
+    }, [
+      el('span', { text: col.label }),
+      col.isFormula ? icon('lock', 'ap-dataedit__lockicon') : null,
+      sorted ? icon(state.sort.dir === 'desc' ? 'arrowDown' : 'arrowUp', 'ap-dataedit__sorticon') : null,
+    ]);
+    label.addEventListener('click', () => {
+      // asc -> desc -> off. The third press restores the table's own order, which is the only way
+      // back to it once a sort has been applied.
+      if (!sorted) state.sort = { col: col.id, dir: 'asc' };
+      else if (state.sort.dir === 'asc') state.sort = { col: col.id, dir: 'desc' };
+      else state.sort = null;
+      state.page = 0;
+      redraw();
+    });
+
+    const funnel = el('button', {
+      class: 'ap-dataedit__filterbtn' + (filtered ? ' is-on' : ''), type: 'button',
+      title: filtered ? `Filtered — ${state.filters[col.id].size} value(s)` : `Filter ${col.label}`,
+      'aria-label': `Filter ${col.label}`,
+    }, [icon('filter2')]);
+    funnel.addEventListener('click', (e) => { e.stopPropagation(); openFilter(col, funnel); });
+
+    const cell = el('div', {
+      class: 'ap-dataedit__cell ap-dataedit__th' + (col.isFormula ? ' is-locked' : '') + (filtered ? ' is-filtered' : ''),
+      'aria-sort': sorted ? (state.sort.dir === 'desc' ? 'descending' : 'ascending') : 'none',
+    }, [label, funnel]);
+    return cell;
+  }
+
+  /** The value list for one column: tick what to keep. */
+  function openFilter(col, anchor) {
+    document.querySelectorAll('.ap-dataedit__filterpop').forEach((n) => n.remove());
+    const chosen = new Set(state.filters[col.id] || []);
+    const values = distinctValues(rowsForFilterList(col.id), col.id, display);
+
+    const list = el('div', { class: 'ap-dataedit__filterlist' });
+    const find = el('input', { class: 'ap-input ap-input--sm', type: 'search', placeholder: `Search ${values.length} values…` });
+
+    const drawList = () => {
+      const q = find.value.trim().toLowerCase();
+      const shown = q ? values.filter((v) => v.value.toLowerCase().includes(q)) : values;
+      list.replaceChildren(...(shown.length ? shown.map(({ value, count }) => {
+        const box = el('input', { type: 'checkbox', checked: chosen.has(value) });
+        box.addEventListener('change', () => { box.checked ? chosen.add(value) : chosen.delete(value); });
+        return el('label', { class: 'ap-dataedit__filteritem' }, [
+          box,
+          el('span', { class: 'ap-dataedit__filterval', text: value === '' ? '(blank)' : value }),
+          el('span', { class: 'ap-dataedit__filtercount', text: String(count) }),
+        ]);
+      }) : [el('div', { class: 'ap-muted', style: { padding: '8px 4px', fontSize: '12px' }, text: 'No values match.' })]));
+    };
+    find.addEventListener('input', debounce(drawList, 90));
+    drawList();
+
+    const apply = () => {
+      // An empty selection means "no filter on this column", not "show nothing" — a filter that
+      // can hide every row is a trap, and unticking everything is how people clear one.
+      if (chosen.size) state.filters[col.id] = chosen; else delete state.filters[col.id];
+      state.page = 0;
+      pop.remove();
+      redraw();
+    };
+
+    const pop = el('div', { class: 'ap-dataedit__filterpop' }, [
+      el('div', { class: 'ap-dataedit__filterhead', text: col.label }),
+      find,
+      el('div', { class: 'ap-row', style: { gap: '6px', margin: '6px 0' } }, [
+        el('button', { class: 'ap-btn ap-btn--ghost ap-btn--sm', type: 'button', text: 'All',
+          onClick: () => { values.forEach((v) => chosen.add(v.value)); drawList(); } }),
+        el('button', { class: 'ap-btn ap-btn--ghost ap-btn--sm', type: 'button', text: 'None',
+          onClick: () => { chosen.clear(); drawList(); } }),
+      ]),
+      list,
+      el('div', { class: 'ap-dataedit__filterfoot' }, [
+        el('button', { class: 'ap-btn ap-btn--ghost ap-btn--sm', type: 'button', text: 'Cancel', onClick: () => pop.remove() }),
+        el('button', { class: 'ap-btn ap-btn--primary ap-btn--sm', type: 'button', text: 'Apply', onClick: apply }),
+      ]),
+    ]);
+    pop.addEventListener('mousedown', (e) => e.stopPropagation());
+
+    anchor.closest('.ap-dataedit__cell')?.appendChild(pop);
+    // Nudge back inside the grid if the column sits near the right edge.
+    setTimeout(() => {
+      const r = pop.getBoundingClientRect(), host = grid.getBoundingClientRect();
+      if (r.right > host.right - 4) pop.style.left = `${Math.max(-r.width + 30, host.right - 4 - r.right)}px`;
+    }, 0);
+    setTimeout(() => find.focus({ preventScroll: true }), 0);
+  }
+
   function redraw() {
     const list = matching();
     const totalPages = Math.max(1, Math.ceil(list.length / PAGE));
@@ -151,8 +337,7 @@ export function openDataEditor(opts) {
 
     const header = el('div', { class: 'ap-dataedit__row ap-dataedit__row--head' }, [
       el('div', { class: 'ap-dataedit__rowno' }),
-      ...cols.map((c) => el('div', { class: 'ap-dataedit__cell ap-dataedit__th' + (c.isFormula ? ' is-locked' : '') },
-        [el('span', { text: c.label }), c.isFormula ? icon('lock', 'ap-dataedit__lockicon') : null])),
+      ...cols.map((c) => headerCell(c)),
     ]);
 
     grid.style.setProperty('--ap-de-cols', String(cols.length));
@@ -173,7 +358,39 @@ export function openDataEditor(opts) {
       el('button', { class: 'ap-btn ap-btn--icon ap-btn--sm', 'aria-label': 'Next page', disabled: state.page >= totalPages - 1,
         onClick: () => { state.page++; redraw(); } }, [icon('chevron')]),
     );
-    refreshStatus();
+    drawToolbar();
+    refreshStatus(list.length);
+  }
+
+  // Sits above the grid: full screen, and a way out of whatever narrowing is in force. The reset
+  // only appears when there is something to reset, so it is never a control that does nothing.
+  const toolbar = el('div', { class: 'ap-dataedit__toolbar' });
+  function drawToolbar() {
+    const nF = activeFilters();
+    const full = el('button', { class: 'ap-btn ap-btn--soft ap-btn--sm', type: 'button' },
+      [icon(state.full ? 'collapse' : 'fullscreen'), state.full ? 'Exit full screen' : 'Full screen']);
+    full.addEventListener('click', () => {
+      state.full = !state.full;
+      document.querySelector('.ap-drawer')?.classList.toggle('ap-drawer--full', state.full);
+      drawToolbar();
+    });
+
+    const bits = [full];
+    if (nF || state.sort || state.query) {
+      const reset = el('button', { class: 'ap-btn ap-btn--ghost ap-btn--sm', type: 'button' },
+        [icon('close'), 'Clear view']);
+      reset.addEventListener('click', () => {
+        state.filters = {}; state.sort = null; state.query = ''; state.page = 0;
+        if (searchBox) searchBox.value = '';
+        redraw();
+      });
+      bits.push(reset);
+      bits.push(el('span', { class: 'ap-muted', style: { fontSize: '11.5px' }, text:
+        [nF ? `${nF} filter${nF === 1 ? '' : 's'}` : null,
+          state.sort ? `sorted by ${cols.find((c) => c.id === state.sort.col)?.label || state.sort.col}` : null,
+          state.query ? 'searching' : null].filter(Boolean).join(' · ') }));
+    }
+    toolbar.replaceChildren(...bits);
   }
 
   async function save() {
@@ -213,7 +430,10 @@ export function openDataEditor(opts) {
   }
 
   const search = el('input', { class: 'ap-input', type: 'search', placeholder: 'Find a row…' });
+  searchBox = search;
   search.addEventListener('input', debounce(() => { state.query = search.value; state.page = 0; redraw(); }, 120));
+  // A click anywhere else closes an open filter list, the way a menu does.
+  document.addEventListener('mousedown', () => document.querySelectorAll('.ap-dataedit__filterpop').forEach((n) => n.remove()));
 
   const lockedCount = cols.filter((c) => c.isFormula).length;
   const body = [
@@ -227,6 +447,7 @@ export function openDataEditor(opts) {
     lockedCount ? el('div', { class: 'ap-muted', style: { fontSize: '12px', margin: '0 0 10px' },
       text: `${lockedCount} calculated column${lockedCount === 1 ? ' is' : 's are'} shown read-only — Grist computes ${lockedCount === 1 ? 'it' : 'them'} from your formulas.` }) : null,
     search,
+    toolbar,
     grid,
     pager,
     status,
