@@ -135,7 +135,14 @@ let current = null;
 // `wide` widens the panel for content that is a grid rather than a column of fields — the data
 // editor, where a settings-width drawer would put four cells on screen.
 export function openDrawer({ title, body, footer, wide = false }) {
+  // Replace, don't overlap. closeDrawer() keeps the old panel around for 320ms so it can slide
+  // out, which is right when nothing follows it and wrong when something does: for that third of
+  // a second there were two role="dialog" elements in the document, two nodes matching
+  // '.ap-drawer', and assistive tech had two panels to describe. It went unnoticed while drawers
+  // were opened one at a time from the toolbar; now that Settings opens into panels and they open
+  // back into Settings, replacement is the common case.
   closeDrawer();
+  document.querySelectorAll('.ap-drawer').forEach((d) => d.remove());
   const bodyEl = el('div', { class: 'ap-drawer__body' }, [].concat(body));
   const drawer = el('aside', { class: 'ap-drawer' + (wide ? ' ap-drawer--wide' : ''), role: 'dialog', 'aria-label': title }, [
     el('div', { class: 'ap-drawer__head' }, [

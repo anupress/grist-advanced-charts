@@ -11,7 +11,7 @@
 // block (including breakdown/map, which don't get column-level remapping when guessing) shows
 // real industry-appropriate data before you commit.
 
-import { el, clone, toast, escapeHtml } from '../util.js';
+import { el, clone, toast, escapeHtml, designSignature } from '../util.js';
 import { icon } from '../assets/icons.js';
 import { openDrawer, closeDrawer, primaryBtn, ghostBtn, subhead, divider, field, selectInput, checkboxRow } from './ui.js';
 import { emptySite } from '../data/default-site.js';
@@ -64,6 +64,27 @@ export function detectTemplateTables(provider) {
     }
   }
   return found;
+}
+
+/**
+ * Where a template stands relative to the design currently loaded.
+ *
+ *   'fresh'    — not this template. Applying it replaces whatever is here.
+ *   'active'   — this template, exactly as it was installed. Applying it again would do nothing,
+ *                so the picker says so instead of spending several seconds proving it.
+ *   'modified' — this template, built on since. Applying it again is a reset, and it throws away
+ *                work, so it has to be described as one and warned about again.
+ *
+ * The 'modified' case is the one that matters. A design nobody has touched is cheap to rebuild; an
+ * afternoon of edits is not, and the old flow discarded both without distinguishing them.
+ */
+export function templateStatus(config, templateId) {
+  if (!config || !templateId || config.templateId !== templateId) return 'fresh';
+  // A design stamped by an older version has an id but no signature. Treating that as untouched
+  // would offer to skip a reinstall someone may genuinely want, so assume it has been worked on —
+  // the cautious direction, since it only ever adds a confirmation.
+  if (!config.templateSig) return 'modified';
+  return designSignature(config) === config.templateSig ? 'active' : 'modified';
 }
 
 /**
@@ -280,11 +301,20 @@ export function openTemplatePicker(opts) {
 
     const grid = el('div', { style: { display: 'grid', gap: '10px' } },
       TEMPLATES.map((t) => {
-        const card = el('button', { class: 'ap-addtile' }, [
-          el('span', { class: 'ap-addtile__icon' }, [icon('layout')]),
+        // The one already installed says so on the list, rather than letting someone find out by
+        // reinstalling it and waiting through the table setup for a design they already had.
+        const status = templateStatus(opts.config, t.id);
+        const card = el('button', { class: 'ap-addtile' + (status === 'fresh' ? '' : ' is-current') }, [
+          el('span', { class: 'ap-addtile__icon' }, [icon(status === 'fresh' ? 'layout' : 'check')]),
           el('div', { class: 'ap-addtile__text' }, [
-            el('div', { class: 'ap-addtile__title', text: t.name }),
-            el('div', { class: 'ap-addtile__desc', text: t.tagline }),
+            el('div', { class: 'ap-addtile__title' }, [
+              el('span', { text: t.name }),
+              status === 'active' ? el('span', { class: 'ap-tilebadge', text: 'Active' }) : null,
+              status === 'modified' ? el('span', { class: 'ap-tilebadge ap-tilebadge--warn', text: 'Active · edited' }) : null,
+            ].filter(Boolean)),
+            el('div', { class: 'ap-addtile__desc', text: status === 'modified'
+              ? 'Installed, and changed since — opening this offers to reset it'
+              : status === 'active' ? 'Already installed and unchanged' : t.tagline }),
           ]),
         ]);
         card.addEventListener('click', () => pick(t));
@@ -486,6 +516,26 @@ export function openTemplatePicker(opts) {
 
   function confirmBody() {
     const t = state.picked;
+    const status = templateStatus(opts.config, t.id);
+
+    // Already installed and untouched: reinstalling would rebuild, byte for byte, what is already
+    // on screen — several seconds of table setup to arrive back where you started. Say so, and
+    // stop, rather than performing the work to prove it.
+    if (status === 'active') {
+      return [
+        el('div', { class: 'ap-trust' }, [
+          icon('check'),
+          el('div', {}, [
+            el('strong', { text: 'This template is already active.' }),
+            el('div', { class: 'ap-muted', text: `“${t.name}” is what this document is currently using, and nothing has been changed since it was installed. `
+              + 'Applying it again would rebuild the same pages and re-create the same tables to arrive exactly where you already are.' }),
+          ]),
+        ]),
+        el('div', { class: 'ap-muted', style: { fontSize: '13px', marginTop: '12px' }, text:
+          'Edit the pages directly, or go back and choose a different starting point.' }),
+      ];
+    }
+
     return [
       el('div', { class: 'ap-row', style: { marginBottom: '14px' } }, [
         el('span', { class: 'ap-addtile__icon' }, [icon('layout')]),
@@ -494,6 +544,17 @@ export function openTemplatePicker(opts) {
           el('div', { class: 'ap-muted', text: t.tagline }),
         ]),
       ]),
+      // Reinstalling the template you are already on is a reset, not an install, and the thing it
+      // destroys is your own work rather than a stock design. That deserves saying plainly and
+      // separately from the ordinary "this replaces what is here" notice at the bottom.
+      status === 'modified' ? el('div', { class: 'ap-trust ap-trust--warn' }, [
+        icon('trash'),
+        el('div', {}, [
+          el('strong', { text: 'You have changed this design since installing it.' }),
+          el('div', { class: 'ap-muted', text: `“${t.name}” is already active. Applying it again resets it to the original — every page, block, `
+            + 'theme choice and edit you have made since will be discarded. Cancel to keep your version.' }),
+        ]),
+      ]) : null,
       subhead('Pages included'),
       el('ul', { class: 'ap-consent-list' }, t.config.tabs.map((tab) => el('li', {}, [icon('layout'), el('span', { text: tab.title })]))),
       divider(),
@@ -624,6 +685,11 @@ export function openTemplatePicker(opts) {
   // window, because the design lands in the same operation that created the tables.
   async function finishApply(applied) {
     const cfg = keepChosenMode(applied);
+    // Stamp which template this is, and what it looked like the moment it landed. Nothing recorded
+    // either before, so the picker could not tell an untouched install from a design someone had
+    // spent an afternoon on — it just reinstalled, silently discarding the afternoon.
+    cfg.templateId = state.picked?.id || null;
+    cfg.templateSig = designSignature(cfg);
     state.applying = false;
     closeDrawer();
     onApply(cfg);
@@ -638,9 +704,16 @@ export function openTemplatePicker(opts) {
   }
 
   function confirmFooter() {
-    const label = state.applying ? 'Setting up tables…' : 'Apply this template';
+    const back = ghostBtn('Back', () => { if (!state.applying) { state.picked = null; render(); } });
+    const status = templateStatus(opts.config, state.picked?.id);
+    // Nothing to apply, so nothing to press. Offering a disabled "Apply" would leave someone
+    // hunting for what they had to change to enable it; there is no such thing.
+    if (status === 'active') return [back, ghostBtn('Close', () => closeDrawer())];
+
+    const label = state.applying ? 'Setting up tables…'
+      : status === 'modified' ? 'Reset to this template' : 'Apply this template';
     const btn = primaryBtn(label, 'check', doApply);
     if (state.applying) btn.disabled = true;
-    return [ghostBtn('Back', () => { if (!state.applying) { state.picked = null; render(); } }), btn];
+    return [back, btn];
   }
 }

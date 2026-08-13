@@ -66,6 +66,42 @@ function trimZero(n) { return String(Number(n.toFixed(2))); }
 
 export function isFiniteNum(v) { return typeof v === 'number' ? isFinite(v) : (v !== '' && v != null && isFinite(Number(v))); }
 
+/**
+ * A short, stable fingerprint of a design.
+ *
+ * Used to answer one question: has anything been changed since a template was applied? Comparing
+ * whole configs is no good, because several keys move on their own — the save revision, the record
+ * of which tables we created, and the template stamp itself — and a viewer flipping light/dark
+ * writes theme.mode without touching the design at all. Those are excluded; everything a person
+ * could deliberately build is included, so adding a block, retitling a page, recolouring or
+ * switching fonts all register.
+ *
+ * FNV-1a over the canonical JSON. Not cryptographic and does not need to be: a collision means one
+ * confirmation screen phrases itself slightly wrongly.
+ */
+export function designSignature(config) {
+  if (!config || typeof config !== 'object') return '0';
+  const ignore = new Set(['__apRev', 'createdTables', 'templateId', 'templateSig']);
+  const canonical = (v) => {
+    if (Array.isArray(v)) return v.map(canonical);
+    if (v && typeof v === 'object') {
+      const out = {};
+      for (const k of Object.keys(v).sort()) {
+        if (ignore.has(k)) continue;
+        out[k] = canonical(v[k]);
+      }
+      return out;
+    }
+    return v;
+  };
+  const clean = canonical(config);
+  if (clean.theme) delete clean.theme.mode; // a viewer's light/dark choice is not a design change
+  const s = JSON.stringify(clean);
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return (h >>> 0).toString(36);
+}
+
 // How a raw cell value should read to a person.
 //
 // Every table cell used to be String(value), which is fine for text and wrong for the two types

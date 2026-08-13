@@ -131,6 +131,22 @@
 .ap-addtile__title { display: block; font-weight: 700; font-size: var(--ap-fs-md); color: var(--ap-text); line-height: 1.25; }
 .ap-addtile__desc { display: block; margin-top: 3px; font-size: var(--ap-fs-xs); color: var(--ap-text-mute); line-height: 1.35; }
 
+/* The template already installed. Marked rather than hidden: it is still the fastest way back to
+   the original after edits, so it stays clickable — it just no longer looks like a fresh choice. */
+.ap-addtile.is-current { border-color: color-mix(in srgb, var(--ap-primary) 45%, var(--ap-border));
+  background: color-mix(in srgb, var(--ap-primary) 6%, var(--ap-surface)); }
+.ap-addtile__title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ap-tilebadge { font-size: 10.5px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 999px; white-space: nowrap;
+  background: color-mix(in srgb, var(--ap-primary) 16%, transparent);
+  color: var(--ap-primary); border: 1px solid color-mix(in srgb, var(--ap-primary) 35%, transparent); }
+/* Active but edited: the same fact, in the colour that means "there is something to lose here". */
+.ap-tilebadge--warn { background: color-mix(in srgb, #e8590c 16%, transparent); color: #e8590c;
+  border-color: color-mix(in srgb, #e8590c 40%, transparent); }
+.ap-trust--warn { background: color-mix(in srgb, #e8590c 12%, var(--ap-surface));
+  border-color: color-mix(in srgb, #e8590c 34%, transparent); }
+.ap-trust--warn svg { color: #e8590c; }
+
 /* "Not sure? Let me help" tile — highlighted top item in the chooser. */
 .ap-addtile--wizard { background: color-mix(in srgb, var(--ap-primary) 10%, var(--ap-surface)); border-color: color-mix(in srgb, var(--ap-primary) 30%, var(--ap-border)); }
 .ap-addtile--wizard:hover { background: color-mix(in srgb, var(--ap-primary) 16%, var(--ap-surface)); }

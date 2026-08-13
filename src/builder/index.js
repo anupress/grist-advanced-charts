@@ -75,20 +75,60 @@ function setupDnd() {
   makeTabsSortable(nav, (orderIds) => { working.tabs.sort((a, b) => orderIds.indexOf(a.id) - orderIds.indexOf(b.id)); mark(); });
 }
 
+// Everything that configures the SITE lives behind one button; the bar keeps only the two actions
+// that end the session. Five separate buttons made the bar the busiest thing on screen and put
+// "Templates" — which replaces the entire design — one stray click from "Save & Publish".
 function buildEditBar() {
   return el('div', { class: 'ap-editbar' }, [
     el('div', { class: 'ap-editbar__brand' }, [ brandLogo(24), el('span', { class: 'ap-editbar__tag', text: 'EDITING' }) ]),
     el('div', { class: 'ap-row' }, [
-      barBtn('palette', 'Theme', openThemePanel),
-      barBtn('sliders', 'Design', openDesignPanel),
-      barBtn('layout', 'Pages', openTabsPanel),
-      barBtn('type', 'Header', openHeaderPanel),
-      barBtn('copy', 'Templates', openTemplatesPanel),
+      barBtn('settings', 'Settings', openSettingsPanel),
       ghostBtnWhite('Done', finish),
       primaryWhite('Save & Publish', save),
     ]),
   ]);
 }
+
+// The settings menu. Each row opens the panel that used to sit on the bar; every one of them
+// replaces the drawer it was opened from, so Back is not needed to get between them.
+const SETTINGS_ITEMS = [
+  { ic: 'palette', title: 'Theme & colors', desc: 'Palette, font pairing, light or dark', open: () => openThemePanel() },
+  { ic: 'sliders', title: 'Design', desc: 'Corners, spacing, shadows and card style', open: () => openDesignPanel() },
+  { ic: 'layout', title: 'Pages', desc: 'Add, rename, reorder or remove pages', open: () => openTabsPanel() },
+  { ic: 'type', title: 'Header', desc: 'Site name, logo and the navigation menu', open: () => openHeaderPanel() },
+  { ic: 'menu', title: 'Footer', desc: 'Footer text, links and the credit line', open: () => openFooterPanel() },
+  { ic: 'copy', title: 'Templates', desc: 'Install a starting point, or start from scratch', open: () => openTemplatesPanel() },
+];
+
+function openSettingsPanel() {
+  openDrawer({
+    title: 'Settings',
+    body: [
+      el('p', { class: 'ap-muted', style: { fontSize: '13px', marginBottom: '12px' },
+        text: 'Everything that applies to the whole site. Blocks are edited on the page itself.' }),
+      el('div', { style: { display: 'grid', gap: '10px' } }, SETTINGS_ITEMS.map((s) => {
+        const tile = el('button', { class: 'ap-addtile' }, [
+          el('span', { class: 'ap-addtile__icon' }, [icon(s.ic)]),
+          el('div', { class: 'ap-addtile__text' }, [
+            el('div', { class: 'ap-addtile__title' }, [el('span', { text: s.title })]),
+            el('div', { class: 'ap-addtile__desc', text: s.desc }),
+          ]),
+        ]);
+        tile.addEventListener('click', s.open);
+        return tile;
+      })),
+    ],
+    footer: [ghostBtn('Close', () => closeDrawer())],
+  });
+}
+// Every settings panel is now reached THROUGH the settings menu, so each one offers the way back
+// as well as the way out. Without it, changing a colour and then wanting to change a corner meant
+// closing the drawer and reopening Settings from the bar.
+const settingsFooter = () => [
+  ghostBtn('Back', () => openSettingsPanel()),
+  primaryBtn('Done', 'check', () => { closeDrawer(); rerender(); }),
+];
+
 const barBtn = (ic, label, on) => el('button', { class: 'ap-btn ap-btn--sm', onClick: on }, [icon(ic), label]);
 const ghostBtnWhite = (label, on) => el('button', { class: 'ap-btn ap-btn--sm', onClick: on, text: label });
 const primaryWhite = (label, on) => el('button', { class: 'ap-btn ap-btn--primary ap-btn--sm', onClick: on }, [icon('save'), label]);
@@ -216,7 +256,7 @@ function openThemePanel() {
     divider(), subhead('Custom accent (optional)'),
     el('div', { class: 'ap-row' }, [ el('span', { class: 'ap-label', text: 'Primary' }), colorInput(readPrimary(), (v) => { t.primary = v; applyTheme(working.theme, root); mark(); }) ]),
     el('div', { class: 'ap-row', style: { marginTop: '8px' } }, [ el('span', { class: 'ap-label', text: 'Accent' }), colorInput(t.accent || '#16c4a6', (v) => { t.accent = v; applyTheme(working.theme, root); mark(); }) ]),
-  ], footer: [primaryBtn('Done', 'check', () => { closeDrawer(); rerender(); })] });
+  ], footer: settingsFooter() });
 }
 function readPrimary() { const p = PALETTES.find((x) => x.id === (working.theme?.paletteId)) || PALETTES[0]; return working.theme?.primary || p.primary; }
 
@@ -231,7 +271,7 @@ function openDesignPanel() {
     field('Shadows', segmented([{ value: 'flat', label: 'Flat' }, { value: 'soft', label: 'Soft' }, { value: 'bold', label: 'Bold' }], d.shadow || 'soft', (v) => { d.shadow = v; apply(); })),
     field('Text size', segmented([{ value: 0.92, label: 'Small' }, { value: 1, label: 'Normal' }, { value: 1.12, label: 'Large' }], d.fontScale ?? 1, (v) => { d.fontScale = Number(v); apply(); })),
     el('p', { class: 'ap-muted', style: { fontSize: '12px', marginTop: '6px' }, text: 'These apply site-wide, in both light and dark themes.' }),
-  ], footer: [primaryBtn('Done', 'check', () => { closeDrawer(); rerender(); })] });
+  ], footer: settingsFooter() });
 }
 
 // ---------------- Header ----------------
@@ -249,7 +289,7 @@ function openHeaderPanel() {
     divider(),
     field('Site title', textInput(h.title || '', (v) => { h.title = v; mark(); rerenderSoon(); }, { placeholder: 'Your brand' })),
     field('Slogan', textInput(h.slogan || '', (v) => { h.slogan = v; mark(); rerenderSoon(); }, { placeholder: 'A short tagline' })),
-  ], footer: [primaryBtn('Done', 'check', () => { closeDrawer(); rerender(); })] });
+  ], footer: settingsFooter() });
 }
 function logoThumb(h) {
   return h.logoData ? el('img', { src: h.logoData, alt: 'logo', style: { height: '40px', borderRadius: '8px' } }) : brandLogo(40);
@@ -280,7 +320,7 @@ function openFooterPanel() {
     field('Footer text', textInput(f.text || '', (v) => { f.text = v; mark(); rerenderSoon(); }, { placeholder: '© 2026 Your Company' })),
     el('div', { class: 'ap-muted', style: { fontSize: '12px', marginBottom: '10px' }, text: 'The “Built with ANUPRESS” credit always appears on the right.' }),
     divider(), linksHost,
-  ], footer: [primaryBtn('Done', 'check', () => { closeDrawer(); rerender(); })] });
+  ], footer: settingsFooter() });
 }
 
 // ---------------- Tabs / pages ----------------
@@ -319,7 +359,7 @@ function openTabsPanel() {
 
   render();
   renderMenu();
-  openDrawer({ title: 'Pages & menu', body: [host, divider(), menuHost], footer: [primaryBtn('Done', 'check', () => { closeDrawer(); rerender(); })] });
+  openDrawer({ title: 'Pages & menu', body: [host, divider(), menuHost], footer: settingsFooter() });
   makePagesSortable(host, (orderIds) => { working.tabs.sort((a, b) => orderIds.indexOf(a.id) - orderIds.indexOf(b.id)); mark(); rerenderSoon(); });
 }
 
@@ -328,6 +368,7 @@ function openHeroEditor(tabOrId) {
   if (!tab) return;
   openDrawer({
     title: 'Hero / slider',
+    // A hero belongs to one page and is opened by clicking it, not from Settings — so no Back.
     body: heroEditorBody(tab, { onChange: () => { mark(); rerenderSoon(); } }),
     footer: [primaryBtn('Done', 'check', () => { closeDrawer(); rerender(); })],
   });
