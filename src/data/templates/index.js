@@ -1,3 +1,4 @@
+import { TEMPLATE as demoDashboard } from './demo-dashboard.js';
 import { TEMPLATE as researchLabs } from './research-labs.js';
 import { TEMPLATE as nonprofits } from './nonprofits.js';
 import { TEMPLATE as legal } from './legal.js';
@@ -8,8 +9,12 @@ import { TEMPLATE as developers } from './developers.js';
 import { TEMPLATE as smallBusiness } from './small-business.js';
 import { TEMPLATE as sportsFacility } from './sports-facility.js';
 
-// Sourced from Grist's own published use-case categories (getgrist.com/general-purpose).
+// The industry templates are sourced from Grist's own published use-case categories
+// (getgrist.com/general-purpose). The demo dashboard leads the list because it is the design
+// everyone has already seen — it is the only entry a returning user is looking for by name, and
+// without it there was no way back to the site the widget opens with.
 export const TEMPLATES = [
+  demoDashboard,
   researchLabs,
   nonprofits,
   legal,

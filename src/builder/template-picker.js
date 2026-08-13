@@ -66,11 +66,56 @@ export function detectTemplateTables(provider) {
   return found;
 }
 
+/**
+ * Which previously-created tables may be offered for removal when a template is applied.
+ *
+ * Pure, exported and separately tested because it is the gate in front of a delete: everything it
+ * returns is ticked by default, so a mistake here removes a table nobody agreed to lose.
+ *
+ *   recorded — tables our templates created, from the durable record (never inferred: see the
+ *              caller for why guessing is fine for "Start from scratch" and not for this).
+ *   present  — table ids actually in the document right now.
+ *   inUse    — tables the incoming template has been pointed at, which must survive.
+ */
+export function tablesToCleanUp({ recorded = [], present = [], inUse = [] } = {}) {
+  const here = new Set(present);
+  const keep = new Set(inUse);
+  return [...new Set(recorded)].filter((id) => id && here.has(id) && !keep.has(id));
+}
+
+/**
+ * Which of those candidates are ticked: on by default, unless the user has said otherwise.
+ *
+ * The list changes while the drawer is open — pointing a template table at one of the user's own
+ * tables takes it off, unpointing puts it back — so "is it ticked" cannot be carried in the set
+ * alone. Doing that meant a table that left and came back returned unticked, as though someone had
+ * chosen to keep it. Only an id in `touched` has actually been decided by a person.
+ */
+export function resolveCleanupTicks({ candidates = [], wanted = new Set(), touched = new Set() } = {}) {
+  return new Set(candidates.filter((id) => (touched.has(id) ? wanted.has(id) : true)));
+}
+
 // Walks a template's tabs/blocks and returns the deduped list of real table names it references
 // (skipping 'Data', the shared placeholder). Drives the confirm-step per-table setup controls.
-function templateTables(t) {
-  return [...new Set((t.config.tabs || []).flatMap((tab) => (tab.blocks || [])
-    .map((b) => b.config?.table).filter((x) => x && x !== 'Data')))];
+// Exported for tests: it decides which tables get created, and a table it misses is one whose
+// blocks install pointing at nothing.
+//
+// An Invoice block reaches two tables beyond its own: the client directory it looks names up in,
+// and the line-items table it bills from. Reading only `config.table` missed both, so a template
+// whose items table is referenced nowhere else -- the demo dashboard's InvoiceItems -- never got
+// created, and its invoices installed with no lines on them. This is the same set
+// data/provider.js's tablesInConfig collects for priming; the two must agree, or a table gets
+// fetched but never made, or made but never loaded.
+export function templateTables(t) {
+  const ids = new Set();
+  for (const tab of t.config.tabs || []) {
+    for (const b of tab.blocks || []) {
+      for (const id of [b.config?.table, b.config?.clientTable, b.config?.itemsTable]) {
+        if (id && id !== 'Data') ids.add(id);
+      }
+    }
+  }
+  return [...ids];
 }
 
 // Every column id each template table's blocks actually reference (only these matter for how the
@@ -82,6 +127,11 @@ function referencedColumns(config) {
     const c = b.config || {}; if (!c.table) continue;
     add(c.table, c.column, c.dateColumn, c.titleColumn, c.colorBy, c.valueColumn, c.targetColumn, c.latColumn, c.lonColumn, c.labelColumn);
     add(c.table, ...(c.dims || []), ...(c.measures || []), ...(c.columns || []), ...(c.popupColumns || []), ...(c.detailColumns || []));
+    // An Invoice block's client and line-item columns belong to those tables, not to its own.
+    // Filing them under c.table would have asked the user to find a "Description" column in their
+    // invoice header table, where it does not exist.
+    add(c.clientTable, c.clientNameColumn, ...(c.clientAddressColumns || []));
+    add(c.itemsTable, c.itemsLinkColumn, c.itemDescColumn, c.itemQtyColumn, c.itemPriceColumn, c.itemTotalColumn);
   }
   const out = {}; for (const k of Object.keys(map)) out[k] = [...map[k]]; return out;
 }
@@ -117,6 +167,21 @@ function remapUsedTables(config, choices) {
   const c = clone(config);
   for (const tab of c.tabs || []) for (const b of tab.blocks || []) {
     const cfg = b.config; if (!cfg?.table) continue;
+
+    // An Invoice block's client and item tables are chosen independently of its own, so they are
+    // remapped on their own terms. Done before the main block below, which may return early.
+    for (const [tableKey, colKeys, arrKeys] of [
+      ['clientTable', ['clientNameColumn'], ['clientAddressColumns']],
+      ['itemsTable', ['itemsLinkColumn', 'itemDescColumn', 'itemQtyColumn', 'itemPriceColumn', 'itemTotalColumn'], []],
+    ]) {
+      const sub = cfg[tableKey] && choices[cfg[tableKey]];
+      if (!sub || !sub.target || sub.target === OWN) continue;
+      const sm = (id) => (id == null ? id : (sub.columns?.[id] || null));
+      for (const k of colKeys) if (k in cfg) cfg[k] = sm(cfg[k]);
+      for (const k of arrKeys) if (k in cfg) cfg[k] = (cfg[k] || []).map(sm).filter(Boolean);
+      cfg[tableKey] = sub.target;
+    }
+
     const choice = choices[cfg.table];
     if (!choice || !choice.target || choice.target === OWN) continue;
     const colMap = choice.columns || {};
@@ -134,15 +199,50 @@ export function openTemplatePicker(opts) {
   // tableChoices: per template-table, { target: OWN | <user table id>, columns: {templateCol: userCol} }.
   // Default OWN for every table = "create it with sample data" (or backfill if a same-named empty
   // one exists) — the user can instead point any table at one of their own via the confirm step.
-  const state = { picked: null, tableChoices: {}, applying: false, scratch: false, scratchWanted: new Set() };
+  const state = { picked: null, tableChoices: {}, applying: false, scratch: false,
+    scratchWanted: new Set(), cleanupWanted: new Set(), cleanupTouched: new Set(), createdRecord: null };
   let previewHost = null; // set by buildLivePreview(); mounted only once actually in the document
   render();
 
-  function pick(t) { state.picked = t; initChoices(t); render(); }
+  // The durable record of tables our templates created. Read once and reused: both the scratch
+  // view and the per-template cleanup need it, and both are rendered synchronously, so it has to
+  // be in hand before either draws rather than fetched from inside them.
+  async function ensureCreatedRecord() {
+    if (state.createdRecord) return state.createdRecord;
+    try { state.createdRecord = await bridge.loadCreatedTables(); }
+    catch (e) { console.warn('[ANUPRESS] could not read the created-tables record', e); state.createdRecord = []; }
+    return state.createdRecord;
+  }
+
+  async function pick(t) { state.picked = t; await ensureCreatedRecord(); initChoices(t); render(); }
   function initChoices(t) {
     state.tableChoices = {};
     if (!provider.isLive) return; // demo mode loads sample data directly; no per-table choices
     for (const name of templateTables(t)) state.tableChoices[name] = { target: OWN, columns: {} };
+    // Leftovers from whatever template was here before, ticked to go. Someone switching template
+    // is replacing a design, and the tables the old one brought with it are sample data they never
+    // asked for -- keeping them was how a document ended up with five industries' tables in it.
+    state.cleanupWanted = new Set(previousTemplateTables());
+    state.cleanupTouched = new Set();
+  }
+
+  // Tables in this document that one of our templates created and that are still there.
+  //
+  // Only ever the recorded ones. The inference used by "Start from scratch" is deliberately not
+  // consulted here: that view is an explicit destructive act the user navigated to, where a
+  // best-guess list left unticked is a helpful offer. This list is ticked by default, so it may
+  // contain nothing we are not certain about.
+  function previousTemplateTables() {
+    return tablesToCleanUp({
+      recorded: [
+        ...(state.createdRecord || []),
+        ...(Array.isArray(opts.config?.createdTables) ? opts.config.createdTables : []),
+      ],
+      present: (provider?.tables?.() || []).map((x) => x.id),
+      // Never offer to delete a table the incoming template has been pointed AT — that would
+      // remove the data the new design is about to read.
+      inUse: Object.values(state.tableChoices || {}).map((c) => c.target).filter((x) => x && x !== OWN),
+    });
   }
 
   function render() {
@@ -173,8 +273,7 @@ export function openTemplatePicker(opts) {
     // synchronous and needs it in hand to decide which tables are confirmed-ours (ticked) versus
     // merely schema-matched (left alone).
     blank.addEventListener('click', async () => {
-      try { state.createdRecord = await bridge.loadCreatedTables(); }
-      catch (e) { console.warn('[ANUPRESS] could not read the created-tables record', e); state.createdRecord = []; }
+      await ensureCreatedRecord();
       state.scratch = true;
       render();
     });
@@ -348,6 +447,43 @@ export function openTemplatePicker(opts) {
     return nodes;
   }
 
+  /**
+   * Clearing up after the template being replaced.
+   *
+   * Applying a template used to only ever ADD: try three of them and the document quietly
+   * accumulated three industries' sample tables, none of which the new design reads. The only way
+   * out was "Start from scratch", which also throws away the design — so people kept the clutter.
+   *
+   * Removal happens BEFORE the new tables are created, which is what makes a name collision come
+   * out right: two templates both wanting "Clients" with different columns used to leave the first
+   * one's table in place, and the new design's blocks pointed at columns that were not there.
+   * Dropping it first means it is recreated with the schema the incoming template expects.
+   */
+  function cleanupSection() {
+    if (!provider.isLive) return [];
+    // Recomputed on each render, because pointing a template table at one of the user's own tables
+    // takes it off the list — and that choice is made in the section above this one.
+    //
+    const candidates = previousTemplateTables();
+    state.cleanupWanted = resolveCleanupTicks({
+      candidates, wanted: state.cleanupWanted, touched: state.cleanupTouched });
+    if (!candidates.length) return [];
+
+    return [
+      subhead('Tidy up the previous template'),
+      el('div', { class: 'ap-muted', style: { fontSize: '12px', lineHeight: '1.5', marginBottom: '10px' }, text:
+        'These tables were created by a template in this document, and the one you are applying does not use them. '
+        + 'They are removed along with their sample data. Only tables this widget created are listed — your own are never touched, '
+        + 'and untick anything you would rather keep.' }),
+      el('div', { class: 'ap-scratch-list' }, candidates.map((id) =>
+        checkboxRow(id, state.cleanupWanted.has(id), (v) => {
+          state.cleanupTouched.add(id); // an explicit choice, to be honoured across re-renders
+          if (v) state.cleanupWanted.add(id); else state.cleanupWanted.delete(id);
+        }))),
+      divider(),
+    ];
+  }
+
   function confirmBody() {
     const t = state.picked;
     return [
@@ -362,6 +498,7 @@ export function openTemplatePicker(opts) {
       el('ul', { class: 'ap-consent-list' }, t.config.tabs.map((tab) => el('li', {}, [icon('layout'), el('span', { text: tab.title })]))),
       divider(),
       ...tablesSection(t),
+      ...cleanupSection(),
       subhead('Preview with sample data'),
       buildLivePreview(t),
       divider(),
@@ -397,11 +534,29 @@ export function openTemplatePicker(opts) {
     const choices = state.tableChoices || {};
     const cfg = remapUsedTables(t.config, choices);
     const ownTables = templateTables(t).filter((name) => (choices[name]?.target ?? OWN) === OWN && sample?.tables?.[name]);
+    const toDrop = [...(state.cleanupWanted || [])];
+    let dropped = [];
 
-    if (ownTables.length) {
+    if (toDrop.length || ownTables.length) {
       state.applying = true;
       render(); // footer button -> "Setting up tables…"
+    }
 
+    // Out with the old first. Order is the point: if the incoming template also wants a table the
+    // outgoing one created, removing it here means the loop below recreates it with the right
+    // columns, instead of finding a same-named table sitting there with the wrong ones.
+    if (toDrop.length) {
+      toast('Removing the previous template’s tables…');
+      const res = await bridge.removeTables(toDrop);
+      // Skipped means already gone, which for our purposes is the same as removed — both should
+      // leave the record. Only real failures stay on it, for a later attempt.
+      dropped = [...res.removed, ...res.skipped].filter(Boolean);
+      if (dropped.length) { try { await bridge.forgetCreatedTables(dropped); } catch {} }
+      if (res.failed.length) toast(`${res.failed.length} old table${res.failed.length === 1 ? '' : 's'} could not be removed — see the console.`, 'err');
+      try { await provider.refreshTables(); } catch {}
+    }
+
+    if (ownTables.length) {
       const have = new Set((provider.tables() || []).map((x) => x.id));
       const absent = ownTables.filter((name) => !have.has(name));
       const present = ownTables.filter((name) => have.has(name));
@@ -426,7 +581,8 @@ export function openTemplatePicker(opts) {
         // TEMPLATE's config — which is always empty, so the record only ever held the last
         // template's tables and everything installed before it was silently forgotten.
         await bridge.recordCreatedTables(madeByUs);
-        const prev = Array.isArray(opts.config?.createdTables) ? opts.config.createdTables : [];
+        const prev = (Array.isArray(opts.config?.createdTables) ? opts.config.createdTables : [])
+          .filter((id) => !dropped.includes(id)); // a table just removed is not one we still have
         cfg.createdTables = [...new Set([...prev, ...madeByUs])]; // legacy mirror, still read on load
       }
       await provider.refreshTables(); // learn the newly created tables (and load their rows)

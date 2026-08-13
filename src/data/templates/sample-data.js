@@ -6,7 +6,7 @@
 // preview time and repairs every table-bound block type's columns to fit — this data never
 // reaches a real site, it's preview-only.
 
-import { mulberry32 } from '../dummy-data.js';
+import { mulberry32, DUMMY_DATA } from '../dummy-data.js';
 
 // ---- Research Labs: a bespoke, 4-table dataset ----
 // Every other template below shares one generic {Category, Site, Value, Latitude, Longitude}
@@ -1729,6 +1729,12 @@ function buildMarketingData() {
 // not-yet-written templates is gone: all nine now ship bespoke, industry-shaped data.
 
 export const TEMPLATE_SAMPLE_DATA = {
+  // The demo dashboard's data is the bundled demo dataset itself, not a second copy of it. That
+  // dataset is what the widget already renders before anyone connects a document, so previewing
+  // this template shows precisely the site the viewer has just been exploring — and applying it
+  // creates those same six tables in their document. DUMMY_DATA's table entries already carry
+  // {columns, records}; the extra id/label keys are ignored by everything that reads this map.
+  'demo-dashboard': { defaultTable: DUMMY_DATA.defaultTable, tables: DUMMY_DATA.tables },
   'research-labs': buildResearchLabsData(),
   nonprofits: buildNonprofitData(),
   legal: buildLegalData(),
