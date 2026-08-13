@@ -21,7 +21,7 @@
 // block does anything.
 
 import { el, fmtNumber, clone } from '../util.js';
-import { icon } from '../assets/icons.js';
+import { icon, brandLogo } from '../assets/icons.js';
 import { sanitizeToFragment } from '../security/sanitize.js';
 
 // Four masthead treatments. They share one document body — only the top of the page changes,
@@ -152,9 +152,19 @@ function buildDocument(row, c, ctx) {
   const status = c.statusColumn ? String(row[c.statusColumn] ?? '') : '';
   const itemised = lines.some((l) => l.itemised);
 
-  const logo = (cls) => from.logoData
-    ? el('img', { class: cls || 'ap-invoice__logo', src: from.logoData, alt: from.name })
-    : null;
+  // The mark, falling back exactly as the site header falls back.
+  //
+  // This used to render nothing without an uploaded image, which meant an invoice with no logo on
+  // a site whose header was visibly showing one — because render/header.js drops to the bundled
+  // brand mark when no logoData is set, and the invoice did not. "Use the logo the website has"
+  // means whatever the header actually displays, so the same fallback applies here. Upload one and
+  // both change together.
+  const logo = (cls) => {
+    const node = from.logoData
+      ? el('img', { src: from.logoData, alt: from.name })
+      : brandLogo(46);
+    return el('span', { class: cls || 'ap-invoice__logo' }, [node]);
+  };
   const word = c.documentTitle || 'Invoice';
   const number = String(row[c.numberColumn] ?? `#${row.id}`);
   const statusPill = status
@@ -319,8 +329,16 @@ export function renderInvoice(block, ctx) {
     draw();
   });
 
-  const printBtn = el('button', { class: 'ap-btn ap-btn--primary ap-btn--sm ap-invoice__print', type: 'button' },
-    [icon('download'), el('span', { text: 'Print / Save as PDF' })]);
+  // "Print this invoice", not "Print / Save as PDF".
+  //
+  // A page can carry a Button block that prints the whole page, and it was labelled identically —
+  // so two controls on one page said the same words and did different things. A three-page PDF of
+  // the entire dashboard came back from the one that was never meant to produce an invoice. The
+  // label now says which of the two this is.
+  const printBtn = el('button', {
+    class: 'ap-btn ap-btn--primary ap-btn--sm ap-invoice__print', type: 'button',
+    title: 'Prints only this invoice — the rest of the page is left out',
+  }, [icon('download'), el('span', { text: 'Print this ' + (c.documentTitle || 'invoice').toLowerCase() })]);
 
   const card = el('div', { class: 'ap-card ap-invoice', dataset: { blockId: block.id } }, [
     el('div', { class: 'ap-invoice__bar' }, [

@@ -68,8 +68,8 @@ export const TEMPLATE = {
             },
           },
           text('fa11n', 'Sending this to a client',
-            'An invoice ledger is something you send, not only something you read. Use <b>Print / Save as PDF</b> below and this page becomes a document: navigation, editor chrome and card shadows drop away, and the table prints in full — every row, not just the page you happen to be viewing — with its header repeated across page breaks. Any desktop browser saves that straight to PDF from its own print dialog. The <b>Status</b> column keeps its highlighting, so unpaid and overdue rows still stand out on paper.'),
-          button('fa11p', 'Print / Save as PDF', 'primary', 'left', printTarget(), 4),
+            'An invoice ledger is something you send, not only something you read. Use <b>Print the whole ledger</b> below and this page becomes a document: navigation, editor chrome and card shadows drop away, and the table prints in full — every row, not just the page you happen to be viewing — with its header repeated across page breaks. Any desktop browser saves that straight to PDF from its own print dialog. The <b>Status</b> column keeps its highlighting, so unpaid and overdue rows still stand out on paper.'),
+          button('fa11p', 'Print the whole ledger', 'soft', 'left', printTarget(), 4),
         {
           id: 'fa11i', type: 'invoice', span: 12,
           config: {
@@ -89,7 +89,7 @@ export const TEMPLATE = {
           },
         },
         text('fa11j', 'The ledger above, as a document',
-          'Pick any invoice and it renders below as something you can send — your details, the client&#39;s, the amount, terms and how to pay. <b>Print / Save as PDF</b> prints just the invoice, not the page around it. Keep line items in their own table and the block itemises them instead of billing a single amount.'),
+          'Pick any invoice and it renders below as something you can send — your details, the client&#39;s, the amount, terms and how to pay. Its own <b>Print this invoice</b> button prints the document alone — the ledger, the charts and the rest of the page are left out, which is the difference between it and the button further up. Keep line items in their own table and the block itemises them instead of billing a single amount.'),
           { id: 'fa12', type: 'calendar', span: 12, config: { title: 'Invoice due dates', table: 'Invoices', dateColumn: 'DueDate', titleColumn: 'Client', detailColumns: ['InvoiceNumber', 'Amount', 'Status'], colorBy: 'Status', draggable: true } },
           text('fa12n', '', 'Drag an invoice to a new day to reschedule its due date — on the published page that writes straight back to your Invoices table, so your AR follow-up stays in sync both ways.'),
           spacer('fa12s', 10),

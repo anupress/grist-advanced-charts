@@ -627,7 +627,10 @@
 .ap-invoice__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px;
   padding-bottom: 20px; border-bottom: 2px solid var(--ap-inv-accent); }
 .ap-invoice__brand { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.ap-invoice__logo { max-height: 46px; max-width: 190px; object-fit: contain; }
+/* A span wrapping either an uploaded <img> or the bundled brand <svg>, so both are sized the
+   same way and the three placements below only have to change the box. */
+.ap-invoice__logo { display: inline-flex; align-items: center; max-height: 46px; max-width: 190px; }
+.ap-invoice__logo img, .ap-invoice__logo svg { max-height: 46px; max-width: 190px; width: auto; height: auto; object-fit: contain; }
 .ap-invoice__fromname { font-family: var(--ap-font-head); font-weight: 800; font-size: var(--ap-fs-lg); }
 .ap-invoice__title { text-align: right; flex: none; }
 .ap-invoice__word { font-family: var(--ap-font-head); font-weight: 800; font-size: var(--ap-fs-2xl);
@@ -692,7 +695,8 @@
 /* BANDED: a full-width colour band with the mark centred in it. */
 .ap-invoice__brandband { margin: calc(-1 * var(--ap-inv-pad)) calc(-1 * var(--ap-inv-pad)) 0;
   padding: 28px 24px 22px; background: var(--ap-inv-accent); color: #fff; text-align: center; }
-.ap-invoice__logo--band { max-height: 54px; max-width: 240px; margin: 0 auto 10px; display: block; }
+.ap-invoice__logo--band { max-height: 54px; max-width: 240px; margin: 0 auto 10px; display: flex; justify-content: center; }
+.ap-invoice__logo--band img, .ap-invoice__logo--band svg { max-height: 54px; max-width: 240px; }
 .ap-invoice__bandname { font-family: var(--ap-font-head); font-weight: 800; font-size: var(--ap-fs-xl);
   letter-spacing: .04em; text-transform: uppercase; }
 .ap-invoice__bandmeta { margin-top: 8px; font-size: var(--ap-fs-xs); letter-spacing: .22em;
@@ -709,6 +713,7 @@
 .ap-invoice__striptag { margin-top: 2px; font-size: var(--ap-fs-xs); letter-spacing: .16em;
   text-transform: uppercase; color: var(--ap-text-mute); }
 .ap-invoice__logo--strip { max-height: 48px; max-width: 170px; flex: none; }
+.ap-invoice__logo--strip img, .ap-invoice__logo--strip svg { max-height: 48px; max-width: 170px; }
 .ap-invoice__doc.is-letterhead .ap-invoice__parties { padding-top: 26px; }
 
 /* MINIMAL: no colour, hairline rules, everything carried by spacing and weight. */
@@ -727,6 +732,7 @@
   padding: 16px var(--ap-inv-pad); border-top: 1px solid var(--ap-border);
   background: var(--ap-bg-soft); font-size: var(--ap-fs-xs); color: var(--ap-text-mute); }
 .ap-invoice__logo--foot { max-height: 24px; max-width: 90px; flex: none; opacity: .8; }
+.ap-invoice__logo--foot img, .ap-invoice__logo--foot svg { max-height: 24px; max-width: 90px; }
 .ap-invoice__brandfoottext { flex: 1; }
 
 @media (max-width: 720px) {
