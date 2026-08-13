@@ -80,7 +80,13 @@ export function renderLiveTable(block, ctx) {
   const c = block.config || {};
   const allCols = ctx.provider.columns(c.table) || [];
   const cols = c.columns?.length ? allCols.filter((col) => c.columns.includes(col.id)) : allCols;
-  const allRows = ctx.provider.records(c.table) || [];
+  // maxRows caps the table at the top N. Nothing sets it in a normal design — it exists for the
+  // printable layout, where "the top 20 by value" is a document and all 3,000 rows is a phone
+  // book. Applied before search and sort so the cap means "the first N of the table", which is
+  // what someone picking a row count is actually asking for.
+  const maxRows = Number(c.maxRows) > 0 ? Number(c.maxRows) : 0;
+  const sourceRows = ctx.provider.records(c.table) || [];
+  const allRows = maxRows ? sourceRows.slice(0, maxRows) : sourceRows;
   const searchable = c.searchable !== false;
   const sortable = c.sortable !== false;
   const pageSize = Math.max(1, Number(c.pageSize) || 10);

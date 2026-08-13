@@ -614,7 +614,29 @@
   body.ap-printing-layout .ap-block__pick,
   body.ap-printing-layout .ap-tray { display: none !important; }
   body.ap-printing-layout .ap-layout__scroll { overflow: visible; padding: 0; display: block; }
-  body.ap-printing-layout .ap-sheet { width: auto !important; box-shadow: none; padding: 0; }
+
+  /* The sheet keeps a real inset on paper. Zeroing it and trusting @page was the same mistake the
+     invoice made: a browser dialog set to "Margins: None" overrides @page, and the result was a
+     document printed hard against all four edges. 10mm of its own means the page is readable
+     whatever the dialog is set to.
+
+     And it prints light. Everything on the sheet reads its colours from the theme tokens, so a
+     dashboard in dark mode printed dark cards on a white page -- rgb(26,29,43) was sitting in the
+     PDF. Redefining the tokens here fixes every descendant at once rather than rule by rule. */
+  body.ap-printing-layout .ap-sheet {
+    width: auto !important; box-shadow: none; padding: 10mm !important;
+    --ap-surface: #ffffff; --ap-bg: #ffffff; --ap-bg-soft: #f5f6f8;
+    --ap-text: #11141c; --ap-text-soft: #3d4552; --ap-text-mute: #6b7484;
+    --ap-border: #d5d9e0;
+    background: #ffffff !important; color: #11141c !important;
+  }
+  body.ap-printing-layout .ap-layout { background: #ffffff !important; }
+  /* Cards on the sheet lose the shadow and the tinted ground; a border is enough on paper. */
+  body.ap-printing-layout .ap-sheet .ap-card {
+    background: #ffffff !important; color: #11141c !important;
+    box-shadow: none !important; border: 1px solid #d5d9e0 !important;
+  }
+  body.ap-printing-layout .ap-sheet__opts { display: none !important; }
   /* The site header repeats on every sheet, the way a letterhead does. */
   body.ap-printing-layout .ap-sheet__header { break-after: avoid; page-break-after: avoid; }
 
@@ -842,7 +864,16 @@
 /* One continuous sheet at true paper width, with the printable area inset by the real margin. */
 .ap-sheet { background: #fff; box-shadow: 0 10px 40px -12px rgba(0,0,0,.4); padding: 12mm;
   align-self: flex-start; color: #11141c; }
-.ap-sheet__body { display: flex; flex-direction: column; gap: 14px; }
+/* The same 12-column grid the page uses, so a printout is arranged in the vocabulary people
+   already know from the dashboard. The header and footer span the full width; everything else
+   takes the width it was given. */
+.ap-sheet__body { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; align-items: start; }
+.ap-sheet__header, .ap-sheet__footer, .ap-sheet__break, .ap-sheet__body > .ap-empty { grid-column: 1 / -1; }
+.ap-sheet__item { grid-column: span 12; }
+.ap-sheet__item[data-span="3"] { grid-column: span 3; }
+.ap-sheet__item[data-span="4"] { grid-column: span 4; }
+.ap-sheet__item[data-span="6"] { grid-column: span 6; }
+.ap-sheet__item[data-span="8"] { grid-column: span 8; }
 .ap-sheet__header { display: flex; align-items: center; gap: 12px; padding-bottom: 10px;
   border-bottom: 2px solid var(--ap-primary); }
 .ap-sheet__logo img, .ap-sheet__logo svg { max-height: 34px; max-width: 150px; width: auto; }
@@ -858,7 +889,9 @@
 .ap-sheet__item:hover .ap-sheet__tools, .ap-sheet__tools:focus-within { opacity: 1; }
 /* Inside the sheet a block is always full width — a quarter-width KPI on a 703px column is a
    postage stamp, and the point of the sheet is legibility on paper. */
-.ap-sheet__item .ap-block { grid-column: auto !important; }
+/* The block fills whatever slot its item was given; the item owns the width now. */
+.ap-sheet__item .ap-block { grid-column: auto !important; width: 100%; }
+.ap-sheet__item .ap-block .ap-card { height: 100%; }
 
 /* Where the printer will really break, drawn where it will really happen. */
 .ap-sheet__break { position: relative; height: 0; margin: 8px 0; border-top: 1px dashed #b8bec9; }

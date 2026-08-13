@@ -40,9 +40,19 @@ const MARGIN_MM = 12;
 // The selection. Session-scoped on purpose: it is a working set, not a document. Losing it on
 // reload is the same as losing a cart, and the alternative — persisting it — would mean a stale
 // selection surprising someone days later.
+// The same widths the page builder offers, so a printout is arranged the way the dashboard is
+// rather than in a second vocabulary nobody asked to learn.
+export const SPANS = [
+  { value: 3, label: 'XS' }, { value: 4, label: 'S' }, { value: 6, label: 'M' },
+  { value: 8, label: 'L' }, { value: 12, label: 'Full' },
+];
+
 const state = {
   ids: [],              // block ids, in the order they were added
   paper: 'a4',
+  // blockId -> { span, columns, maxRows }. Overrides live here rather than on the block itself:
+  // narrowing a table for one printout must not narrow it on the page it came from.
+  opts: {},
   listeners: new Set(),
 };
 
@@ -62,6 +72,33 @@ export function toggle(id) {
 export function remove(id) { const i = state.ids.indexOf(id); if (i >= 0) { state.ids.splice(i, 1); notify(); } }
 export function clear() { state.ids = []; notify(); }
 export function reorder(ids) { state.ids = ids.filter((x) => state.ids.includes(x)); notify(); }
+
+export const optsFor = (id) => state.opts[id] || {};
+export function setOpt(id, patch) { state.opts[id] = { ...optsFor(id), ...patch }; notify(); }
+
+/**
+ * The block as it should appear on the sheet: a clone with this printout's overrides applied.
+ *
+ * A clone, always. Narrowing a table or capping its rows for one printed page must never change
+ * the block on the page it was collected from — the selection is a view of the design, not an
+ * edit to it.
+ */
+export function blockForSheet(config, id) {
+  const found = findBlock(config, id);
+  if (!found) return null;
+  const b = clone(found.block);
+  const o = optsFor(id);
+  if (o.span) b.span = o.span;
+  if (b.type === 'livetable') {
+    if (Array.isArray(o.columns) && o.columns.length) b.config.columns = [...o.columns];
+    if (o.maxRows) b.config.maxRows = o.maxRows;
+    // A pager is a control, and a printed page has none. Showing every kept row on the sheet is
+    // also the only honest preview, since printing expands the table anyway.
+    b.config.pageSize = Math.max(1, o.maxRows || 9999);
+    b.config.searchable = false;
+  }
+  return { block: b, tab: found.tab };
+}
 
 // Find a block by id anywhere in the config, so a printout can gather from several pages — which
 // is the whole point of collecting as you browse rather than printing one page at a time.
@@ -210,18 +247,22 @@ export function openLayout(opts) {
 
     const ctx = { provider, config, edit: null };
     for (const id of selection()) {
-      const found = findBlock(config, id);
+      const found = blockForSheet(config, id);
       if (!found) continue;
-      const wrap = el('div', { class: 'ap-sheet__item', dataset: { blockId: id } });
+      const span = found.block.span || 12;
+      const wrap = el('div', { class: 'ap-sheet__item', dataset: { blockId: id, span: String(span) } });
       wrap.append(
         el('div', { class: 'ap-sheet__tools' }, [
           el('button', { class: 'ap-btn ap-btn--icon ap-btn--sm ap-drag-handle', type: 'button',
             title: 'Drag to reorder', 'aria-label': 'Drag to reorder' }, [icon('grip')]),
+          el('button', { class: 'ap-btn ap-btn--icon ap-btn--sm', type: 'button',
+            title: 'Size and contents on the page', 'aria-label': 'Options for this block',
+            onClick: (e) => { e.stopPropagation(); toggleOptions(wrap, id, found.block); } }, [icon('sliders')]),
           el('button', { class: 'ap-btn ap-btn--icon ap-btn--sm ap-btn--danger', type: 'button',
             title: 'Take out of the printout', 'aria-label': 'Take out of the printout',
             onClick: () => { remove(id); draw(); } }, [icon('trash')]),
         ]),
-        renderBlock(clone(found.block), ctx),
+        renderBlock(found.block, ctx),
       );
       sheet.append(wrap);
     }
@@ -245,6 +286,65 @@ export function openLayout(opts) {
     }, 0);
 
     makeBlocksSortableOnSheet();
+  }
+
+  /**
+   * Per-block options, opened from the item itself rather than a side panel, because the thing
+   * being changed is right there and the effect is immediate.
+   *
+   * Width is offered for every block, using the same XS/S/M/L/Full the page builder uses — the
+   * printout should be arranged the way the dashboard is, not in a second vocabulary. A table also
+   * gets its columns and a row cap, since "the top twenty, without the four columns nobody needs"
+   * is the difference between a document and a phone book.
+   */
+  function toggleOptions(wrap, id, blockOnSheet) {
+    const open = wrap.querySelector('.ap-sheet__opts');
+    if (open) { open.remove(); return; }
+    sheet.querySelectorAll('.ap-sheet__opts').forEach((n) => n.remove());
+
+    const o = optsFor(id);
+    const body = [
+      el('div', { class: 'ap-sheet__optlabel', text: 'Width on the page' }),
+      el('div', { class: 'ap-row' }, SPANS.map((s) => el('button', {
+        class: 'ap-chip' + ((o.span || blockOnSheet.span || 12) === s.value ? ' is-active' : ''),
+        type: 'button', text: s.label,
+        onClick: () => { setOpt(id, { span: s.value }); draw(); },
+      }))),
+    ];
+
+    if (blockOnSheet.type === 'livetable') {
+      const table = blockOnSheet.config.table;
+      const all = provider.columns(table) || [];
+      const chosen = new Set(o.columns && o.columns.length ? o.columns : (blockOnSheet.config.columns || all.map((x) => x.id)));
+      body.push(
+        el('div', { class: 'ap-sheet__optlabel', text: 'Columns' }),
+        el('div', { class: 'ap-sheet__optcols' }, all.map((col) => {
+          const on = chosen.has(col.id);
+          return el('button', {
+            class: 'ap-chip' + (on ? ' is-active' : ''), type: 'button', text: col.label,
+            onClick: () => {
+              const next = new Set(chosen);
+              if (next.has(col.id)) next.delete(col.id); else next.add(col.id);
+              // Never let the last column go: a table with no columns is not a smaller table,
+              // it is a blank rectangle.
+              if (!next.size) return;
+              setOpt(id, { columns: all.map((x) => x.id).filter((cid) => next.has(cid)) });
+              draw();
+            },
+          });
+        })),
+        el('div', { class: 'ap-sheet__optlabel', text: 'Rows' }),
+        el('div', { class: 'ap-row' }, [10, 20, 50, 0].map((n) => el('button', {
+          class: 'ap-chip' + ((o.maxRows || 0) === n ? ' is-active' : ''), type: 'button',
+          text: n ? `First ${n}` : 'All rows',
+          onClick: () => { setOpt(id, { maxRows: n }); draw(); },
+        }))),
+      );
+    }
+
+    const panel = el('div', { class: 'ap-sheet__opts' }, body);
+    panel.addEventListener('click', (e) => e.stopPropagation());
+    wrap.append(panel);
   }
 
   function makeBlocksSortableOnSheet() {
