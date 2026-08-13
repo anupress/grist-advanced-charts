@@ -533,7 +533,9 @@
   /* The chooser strip is a screen control; the document is what prints. */
   .ap-invoice__bar { display: none !important; }
   .ap-invoice { border: none !important; }
-  .ap-invoice__doc { padding: 0 !important; }
+  /* A fixed page inset, not zero: the bands bleed by exactly this much, so removing it pushed
+     them off the sheet. mm rather than vw, since a viewport width means nothing on paper. */
+  .ap-invoice__doc { --ap-inv-pad: 10mm; padding: var(--ap-inv-pad) !important; }
 
   /* An invoice is a printed artefact and prints on paper, so it takes a light palette regardless
      of what the screen was showing. Printing a dark dashboard produced near-white text on a dark
@@ -553,7 +555,22 @@
   .ap-invoice__partylabel, .ap-invoice__metalabel, .ap-invoice__partyline--meta,
   .ap-invoice__table th { color: #5a6270 !important; }
   .ap-invoice__word, .ap-invoice__meta.is-total .ap-invoice__metavalue { color: var(--ap-inv-accent) !important; }
-  .ap-invoice__brandband { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* Browsers drop background colours when printing unless told otherwise, and for most of a page
+     that is the right default -- it saves ink on things that carry no meaning. Here the colour IS
+     the meaning: the band is what makes Banded banded, the tint is what makes Letterhead a
+     letterhead, and a status pill without its fill is just a word in a box. So each surface whose
+     colour is load-bearing asks for it explicitly. */
+  .ap-invoice__brandband, .ap-invoice__strip, .ap-invoice__brandfoot, .ap-invoice__status,
+  .ap-invoice__table thead th {
+    -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+  }
+  /* The band is white-on-colour and has to stay that way; the blanket light-palette rule above
+     would otherwise repaint its text near-black on a saturated ground. */
+  .ap-invoice__brandband, .ap-invoice__brandband * { color: #fff !important; }
+  /* Zebra striping in a printed ledger is the same argument. */
+  .ap-livetable__table tbody tr:nth-child(even) td {
+    -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+  }
   .ap-invoice__table { break-inside: auto; }
   .ap-invoice__table tr { break-inside: avoid; page-break-inside: avoid; }
   .ap-invoice__table thead { display: table-header-group; }
@@ -602,7 +619,10 @@
 .ap-invoice__print { flex: none; }
 .ap-invoice__print svg { width: 14px; height: 14px; }
 
-.ap-invoice__doc { padding: clamp(20px, 4vw, 40px); background: var(--ap-surface); }
+/* One variable drives the document padding AND the negative margins the full-width bands use
+   to bleed into it. They were separate before, so print zeroing the padding left the bands
+   hanging outside the page. */
+.ap-invoice__doc { --ap-inv-pad: clamp(20px, 4vw, 40px); padding: var(--ap-inv-pad); background: var(--ap-surface); }
 
 .ap-invoice__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px;
   padding-bottom: 20px; border-bottom: 2px solid var(--ap-inv-accent); }
@@ -670,7 +690,7 @@
    totals and terms below are shared. */
 
 /* BANDED: a full-width colour band with the mark centred in it. */
-.ap-invoice__brandband { margin: calc(-1 * clamp(20px, 4vw, 40px)) calc(-1 * clamp(20px, 4vw, 40px)) 0;
+.ap-invoice__brandband { margin: calc(-1 * var(--ap-inv-pad)) calc(-1 * var(--ap-inv-pad)) 0;
   padding: 28px 24px 22px; background: var(--ap-inv-accent); color: #fff; text-align: center; }
 .ap-invoice__logo--band { max-height: 54px; max-width: 240px; margin: 0 auto 10px; display: block; }
 .ap-invoice__bandname { font-family: var(--ap-font-head); font-weight: 800; font-size: var(--ap-fs-xl);
@@ -681,8 +701,8 @@
 .ap-invoice__doc.is-banded .ap-invoice__parties { padding-top: 28px; }
 
 /* LETTERHEAD: a tinted strip, business left, mark right — printed stationery. */
-.ap-invoice__strip { margin: calc(-1 * clamp(20px, 4vw, 40px)) calc(-1 * clamp(20px, 4vw, 40px)) 0;
-  padding: 22px clamp(20px, 4vw, 40px); display: flex; align-items: center; justify-content: space-between;
+.ap-invoice__strip { margin: calc(-1 * var(--ap-inv-pad)) calc(-1 * var(--ap-inv-pad)) 0;
+  padding: 22px var(--ap-inv-pad); display: flex; align-items: center; justify-content: space-between;
   gap: 20px; background: color-mix(in srgb, var(--ap-inv-accent) 10%, transparent);
   border-bottom: 3px solid var(--ap-inv-accent); }
 .ap-invoice__stripleft .ap-invoice__fromname { font-size: var(--ap-fs-xl); }
@@ -703,8 +723,8 @@
 .ap-invoice__statusrow { padding-top: 18px; }
 
 /* Closing band, echoing the site footer. */
-.ap-invoice__brandfoot { display: flex; align-items: center; gap: 12px; margin: 26px calc(-1 * clamp(20px, 4vw, 40px)) calc(-1 * clamp(20px, 4vw, 40px));
-  padding: 16px clamp(20px, 4vw, 40px); border-top: 1px solid var(--ap-border);
+.ap-invoice__brandfoot { display: flex; align-items: center; gap: 12px; margin: 26px calc(-1 * var(--ap-inv-pad)) calc(-1 * var(--ap-inv-pad));
+  padding: 16px var(--ap-inv-pad); border-top: 1px solid var(--ap-border);
   background: var(--ap-bg-soft); font-size: var(--ap-fs-xs); color: var(--ap-text-mute); }
 .ap-invoice__logo--foot { max-height: 24px; max-width: 90px; flex: none; opacity: .8; }
 .ap-invoice__brandfoottext { flex: 1; }
