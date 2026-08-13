@@ -79,6 +79,8 @@ export function buildOption(block, ctx) {
   if (type === 'scatter') return scatterOption(cfg, rows, colors);
   if (type === 'gauge') return gaugeOption(cfg, rows, colors);
   if (type === 'radar') return radarOption(cfg, rows, colors);
+  // Checked before groupAggregate, which needs a dimension to group by and has none here.
+  if (isMeasureFunnel(cfg)) return funnelOption(measureFunnelData(cfg, rows, ctx.columns), colors, { staged: true });
 
   const g = groupAggregate(rows, {
     dims: cfg.dims || [], measures: cfg.measures || [], agg: cfg.agg || 'sum',
@@ -153,13 +155,73 @@ function treemapOption(data, colors) {
       itemStyle: { borderColor: readVar('--ap-surface') || '#fff', borderWidth: 2, gapWidth: 2, borderRadius: 4 },
       label: { color: '#fff', fontSize: 12, fontWeight: 600 }, data: data.map((d, i) => ({ ...d, itemStyle: { color: colors[i % colors.length] } })) }] };
 }
-function funnelOption(data, colors) {
-  const sorted = [...data].sort((a, b) => b.value - a.value);
-  return { color: colors, tooltip: tooltipCfg('item'), legend: legendCfg(true),
-    series: [{ type: 'funnel', left: '8%', right: '8%', top: 40, bottom: 8, minSize: '14%', gap: 2,
-      label: { color: '#fff', fontSize: 12, fontWeight: 600 }, labelLine: { show: false },
-      itemStyle: { borderColor: readVar('--ap-surface') || '#fff', borderWidth: 1 }, data: sorted }] };
+/**
+ * A funnel, in one of two modes.
+ *
+ * `staged` means the caller declared the order — the stages came from the measures the author
+ * listed, in the sequence they listed them. That order is the whole meaning of the chart, so it is
+ * neither re-sorted here nor by ECharts (`sort: 'none'`), and each stage is labelled with what
+ * survived from the first one. Drop-off between stages is the only reason to draw a funnel rather
+ * than a bar chart, so it should not take arithmetic to read it.
+ *
+ * Otherwise the stages came from a category column, where nothing guarantees an order at all, so
+ * the widths are sorted largest-first and no percentage is claimed.
+ */
+// A conversion rate, printed so it never rounds away. A real funnel spans orders of magnitude —
+// six million impressions to under a thousand customers — and at that range a percentage of the
+// first stage renders every later stage as "0%", which is worse than showing nothing.
+function ratePct(value, base) {
+  if (!(base > 0)) return null;
+  const p = (value / base) * 100;
+  return (p >= 10 ? Math.round(p) : p >= 1 ? p.toFixed(1) : p.toFixed(2)) + '%';
 }
+
+function funnelOption(data, colors, { staged = false } = {}) {
+  const rows = staged ? [...data] : [...data].sort((a, b) => b.value - a.value);
+  const first = rows[0]?.value || 0;
+  // Stage labels carry conversion from the PREVIOUS stage, not from the first. "Of the leads we
+  // got, 16% became customers" is the number anyone acts on; "0% of impressions" is arithmetic
+  // nobody can use. The tooltip still gives the run from the top, for the overall picture.
+  const label = staged
+    ? { color: '#fff', fontSize: 12, fontWeight: 600,
+        formatter: (p) => {
+          const prev = rows[p.dataIndex - 1];
+          const r = p.dataIndex > 0 ? ratePct(p.value, prev?.value) : null;
+          return r ? `${p.name} · ${r}` : p.name;
+        } }
+    : { color: '#fff', fontSize: 12, fontWeight: 600 };
+  return { color: colors, tooltip: { ...tooltipCfg('item'),
+      formatter: (p) => {
+        const head = `${p.name}<br/><b>${fmtNumber(p.value, {})}</b>`;
+        if (!staged || p.dataIndex === 0) return head;
+        const step = ratePct(p.value, rows[p.dataIndex - 1]?.value);
+        const all = ratePct(p.value, first);
+        return `${head}<br/>${step} of ${rows[p.dataIndex - 1].name}<br/>${all} of ${rows[0].name}`;
+      } },
+    legend: legendCfg(true),
+    series: [{ type: 'funnel', left: '8%', right: '8%', top: 40, bottom: 8, minSize: '14%', gap: 2,
+      sort: staged ? 'none' : 'descending',
+      label, labelLine: { show: false },
+      itemStyle: { borderColor: readVar('--ap-surface') || '#fff', borderWidth: 1 }, data: rows }] };
+}
+
+/**
+ * Stages built from the measures themselves: impressions, then the clicks among them, then the
+ * leads among those. This is what a funnel actually means, and until now it could not be expressed
+ * — the chart could only take one measure across a category column, which required a table to
+ * happen to carry a cumulative stage column. Almost none do: a "Stage" field records where each
+ * record is NOW, so its groups partition the total rather than containing one another, and drawing
+ * that as a funnel puts the largest group at the widest point whatever the sequence really is.
+ */
+export function measureFunnelData(cfg, rows, columns) {
+  const labelOf = (id) => columns?.find((c) => c.id === id)?.label || id;
+  return (cfg.measures || []).map((m) => ({
+    name: labelOf(m), value: aggregate(rows.map((r) => r[m]), cfg.agg || 'sum') || 0 }));
+}
+
+// A funnel whose stages are its measures: no category dimension, two or more values in order.
+export const isMeasureFunnel = (cfg) =>
+  (cfg?.chartType === 'funnel') && !(cfg.dims || []).length && (cfg.measures || []).length >= 2;
 function radarOption(cfg, rows, colors) {
   const g = groupAggregate(rows, { dims: [cfg.dims?.[0]].filter(Boolean), measures: cfg.measures || [], agg: cfg.agg || 'sum' });
   const max = Math.max(1, ...g.series.flatMap((s) => s.data));

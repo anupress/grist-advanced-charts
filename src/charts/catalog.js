@@ -19,8 +19,15 @@ export const CHART_TYPES = [
     fits: (s) => s.dims >= 1 && s.measures >= 1, score: (s) => (s.dims === 1 && s.measures === 1 ? 8 : 3) },
   { id: 'treemap',  label: 'Treemap',  icon: 'treemap',  group: 'Composition',
     fits: (s) => s.dims >= 1 && s.measures >= 1, score: (s) => (s.dims >= 1 ? 6 : 2) },
+  // Two ways to build a funnel, and they are not equally good. Stages as MEASURES — impressions,
+  // then the clicks among them, then the leads among those — is what the shape means, so it scores
+  // high enough to be recommended the moment someone picks two or more values and no category.
+  // Stages from a category column only works where that column is genuinely cumulative, which is
+  // rare (a status field partitions the total rather than nesting), so it stays selectable but
+  // never recommended.
   { id: 'funnel',   label: 'Funnel',   icon: 'funnel',   group: 'Composition',
-    fits: (s) => s.dims >= 1 && s.measures >= 1, score: (s) => 4 },
+    fits: (s) => (s.dims === 0 && s.measures >= 2) || (s.dims >= 1 && s.measures >= 1),
+    score: (s) => (s.dims === 0 && s.measures >= 2 ? 8 : 4) },
   { id: 'radar',    label: 'Radar',    icon: 'radar',    group: 'Distribution',
     fits: (s) => s.dims >= 1 && s.measures >= 1, score: (s) => (s.measures >= 3 || s.dims >= 3 ? 7 : 3) },
   { id: 'scatter',  label: 'Scatter',  icon: 'scatter',  group: 'Correlation',

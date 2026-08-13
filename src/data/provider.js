@@ -177,6 +177,41 @@ export function tablesInConfig(config) {
 const dimCol = (cols, exclude) => cols.find((x) => x.id !== exclude && /text|choice|date/i.test(x.type)) || cols.find((x) => x.id !== exclude) || null;
 const measureCol = (cols, exclude) => cols.find((x) => x.id !== exclude && /int|numeric|number|currency/i.test(x.type)) || cols.find((x) => x.id !== exclude) || null;
 const dateCol = (cols) => cols.find((x) => /date/i.test(x.type)) || null;
+
+/**
+ * How many values a chart type cannot do without.
+ *
+ * A scatter plots one measure against another, and a funnel whose stages ARE its measures needs at
+ * least two stages to be a funnel at all. Everything else works with one.
+ */
+function minMeasuresFor(cfg) {
+  if (cfg.chartType === 'scatter') return 2;
+  if (cfg.chartType === 'funnel' && !(cfg.dims || []).length) return 2;
+  return 1;
+}
+
+/**
+ * Re-point a chart's values at columns that exist, WITHOUT changing how many it has.
+ *
+ * This used to collapse to a single measure whenever any one of them was missing, which quietly
+ * broke every chart that needs two or more: a scatter lost the column it plots up the y-axis, and
+ * a staged funnel stopped being a funnel and fell through to a one-band shape. Columns that still
+ * exist are kept in their authored order — the order is the meaning, for a funnel — and the list
+ * is topped up from the table's remaining numeric columns only as far as the type requires.
+ */
+function repairMeasures(cfg, cols, has) {
+  const kept = (cfg.measures || []).filter(has);
+  const need = minMeasuresFor(cfg);
+  if (kept.length >= need) return kept;
+  const pool = cols
+    .filter((c) => /int|numeric|number|currency/i.test(c.type))
+    .map((c) => c.id)
+    .filter((id) => !kept.includes(id) && !(cfg.dims || []).includes(id));
+  while (kept.length < need && pool.length) kept.push(pool.shift());
+  if (kept.length) return kept;
+  const fallback = measureCol(cols, (cfg.dims || [])[0]);
+  return fallback ? [fallback.id] : [];
+}
 const geoCol = (cols, pattern) => cols.find((x) => pattern.test(x.id) || pattern.test(x.label || '')) || null;
 
 // Validates + repairs one block's column references against whichever table it's already been
@@ -192,8 +227,10 @@ function repairBlockColumns(b, cols) {
     if (b.config.deltaBy != null && !has(b.config.deltaBy)) delete b.config.deltaBy;
   } else if (b.type === 'chart') {
     const dims = b.config.dims || [], measures = b.config.measures || [];
+    // dims.every(has) is true for an empty list, so a chart that deliberately has no dimension —
+    // a gauge, or a funnel whose stages are its measures — keeps it that way.
     if (!dims.every(has)) { const d = dimCol(cols); b.config.dims = d ? [d.id] : []; }
-    if (!measures.every(has)) { const m = measureCol(cols, b.config.dims?.[0]); b.config.measures = m ? [m.id] : []; }
+    if (!measures.every(has)) b.config.measures = repairMeasures(b.config, cols, has);
   } else if (b.type === 'breakdown') {
     if (!has(b.config.column)) b.config.column = dimCol(cols)?.id ?? null;
   } else if (b.type === 'progress' && b.config.mode === 'data') {

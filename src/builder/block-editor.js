@@ -7,7 +7,7 @@ import { openDrawer, closeDrawer, field, textInput, selectInput, checkboxRow, se
 import { CHART_TYPES, getChartType, CARTESIAN } from '../charts/catalog.js';
 import { evaluateTypes, isMeasure, autoPick } from '../charts/recommend.js';
 import { AGGREGATIONS, autoDeltaColumn } from '../stats/aggregate.js';
-import { renderChart } from '../charts/echarts-adapter.js';
+import { renderChart, isMeasureFunnel } from '../charts/echarts-adapter.js';
 import { renderBlock, mountCharts } from '../render/blocks.js';
 import { mountMaps, detectLatLon } from '../render/map.js';
 import { mountCounters } from '../render/counter.js';
@@ -107,11 +107,21 @@ function openChartEditor(block, ctx) {
 
   function rebuild() {
     const columns = provider.columns(wb.config.table);
+    // A funnel built from measures reads its two pickers differently from every other chart: the
+    // values ARE the stages, in the order they are listed, and there is no category at all. Saying
+    // "Categories" and "Values" there would describe a chart the user is not building.
+    const staged = isMeasureFunnel(wb.config);
+    const funnelSelected = wb.config.chartType === 'funnel';
     dynHost.replaceChildren(
-      subhead('Categories  ·  the groups along the axis'),
+      subhead(staged ? 'Categories  ·  leave empty to use the values below as stages'
+        : 'Categories  ·  the groups along the axis'),
       columnPicker(columns, wb.config.dims || [], (ids) => { wb.config.dims = ids; update(); }),
-      subhead('Values  ·  the numbers to measure'),
+      subhead(staged ? 'Stages  ·  in order, widest first'
+        : 'Values  ·  the numbers to measure'),
       columnPicker(columns, wb.config.measures || [], (ids) => { wb.config.measures = ids; update(); }),
+      funnelSelected ? el('div', { class: 'ap-muted', style: { fontSize: '11.5px', marginTop: '4px', lineHeight: '1.5' }, text: staged
+        ? 'Each value is a stage, in the order listed, labelled with how much of the previous stage survived it. Reorder by unpicking and picking again.'
+        : 'A funnel means stages that each contain the next — pick no category and two or more values (impressions, clicks, leads) to build one. Grouping by a category instead only reads correctly when that column is cumulative.' }) : null,
       field('Summarize values by', selectInput(AGGREGATIONS.map((a) => ({ value: a.id, label: a.label })), wb.config.agg || 'sum', (v) => { wb.config.agg = v; update(); })),
       subhead('Chart type'),
       typeGrid(columns),

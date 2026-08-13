@@ -114,24 +114,27 @@ export const DEFAULT_SITE = {
         chart('g5', 'Pie — share of a whole', 'pie', ['Channel'], ['Revenue'], {}, 4),
         chart('g6', 'Doughnut — the same, with room in the middle', 'doughnut', ['Category'], ['Revenue'], {}, 4),
         chart('g7', 'Treemap — many parts at once', 'treemap', ['Product'], ['Revenue'], {}, 4),
-        // The one chart on this page whose data does not really suit its shape, and it says so.
-        // A funnel means ordered stages that each contain the next — impressions, then the clicks
-        // among them, then the leads among those. Channels are not stages, and no table here has a
-        // column that is, so without the note a reader would reasonably conclude that a funnel is
-        // just a sorted bar chart.
-        //
-        // Nor is this only a demo-data problem: the chart takes ONE measure across a dimension, so
-        // it can only draw a true funnel where a table happens to carry a cumulative stage column.
-        // The natural funnel — four measures as four stages — cannot be expressed at all. Worth
-        // fixing in the chart before any template pretends otherwise.
-        chart('g8', 'Funnel — stages that narrow', 'funnel', ['Channel'], ['Units'],
-          { sortByValue: true, subtitle: 'Wants an ordered pipeline — these channels are only sorted by size' }, 4),
+        // Stages as MEASURES: no category, two or more values in the order they happen. Revenue
+        // then Profit is the only true chain in this demo table — profit is part of revenue, not a
+        // sibling of it — so the second stage's label reads as the margin, which is exactly the
+        // drop-off a funnel exists to show. Marketing's template has the four-stage version.
+        chart('g8', 'Funnel — stages that narrow', 'funnel', [], ['Revenue', 'Profit'],
+          { subtitle: 'Each value is a stage; the label is what survives the one before' }, 4),
+        // The same chart type built the other way, shown next to it on purpose. Grouping by a
+        // category is what most people try first, and it only tells the truth when that column is
+        // cumulative — a status or channel field partitions the total instead, so the widths are
+        // just a sorted bar chart bent into a triangle. Easier to see the difference side by side
+        // than to explain it.
+        chart('g8b', 'Funnel — from a category instead', 'funnel', ['Channel'], ['Units'],
+          { sortByValue: true, subtitle: 'Only honest when the column is cumulative — these are just sorted' }, 4),
         chart('g9', 'Radar — several categories compared', 'radar', ['Category'], ['Satisfaction'], { agg: 'avg' }, 4),
         // A gauge wants one number and no category dimension, so dims:[] is deliberate here —
         // groupAggregate treats an empty dims list as "aggregate the whole table to a single value".
         chart('g10', 'Gauge — one number against a scale', 'gauge', [], ['Satisfaction'], { agg: 'avg' }, 4),
-        chart('g11', 'Scatter — is one thing driving another?', 'scatter', ['Category'], ['Units', 'Revenue'], {}, 6),
-        chart('g12', 'Stacked column — parts within a whole', 'column', ['Category', 'Region'], ['Revenue'], { stacked: true }, 6),
+        // Widened from 6 to make the thirteen charts tile the 12-column grid cleanly again after
+        // the second funnel joined the row above: 4+4+4, 4+8, 12.
+        chart('g11', 'Scatter — is one thing driving another?', 'scatter', ['Category'], ['Units', 'Revenue'], {}, 8),
+        chart('g12', 'Stacked column — parts within a whole', 'column', ['Category', 'Region'], ['Revenue'], { stacked: true }, 12),
         text('g13', 'Every chart is configurable',
           'Chart type, columns, how values are grouped (sum, average, count, distinct count, minimum, maximum, median, standard deviation), sort order, series limits, smoothing, stacking and colours are all editable from the panel — no formulas required.'),
       ],

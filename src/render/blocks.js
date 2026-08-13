@@ -7,7 +7,7 @@ import { sanitizeToFragment } from '../security/sanitize.js';
 import { renderInvoice } from './invoice.js';
 import { icon, chartIcon, EMPTY_ART } from '../assets/icons.js';
 import { computeKpi, sparkSeries, aggregate, AGGREGATIONS, resolveDeltaBy } from '../stats/aggregate.js';
-import { renderChart } from '../charts/echarts-adapter.js';
+import { renderChart, isMeasureFunnel } from '../charts/echarts-adapter.js';
 import { getChartType } from '../charts/catalog.js';
 import { readVar } from '../theme/apply.js';
 import { renderBreakdown } from './breakdown.js';
@@ -183,8 +183,13 @@ function renderChartCard(block, ctx) {
   // produced "Count rows of — by Status" on every counting chart, where the dash is a placeholder
   // standing in for a measure that correctly does not exist.
   const measurePart = meaNames ? ` of ${meaNames}` : '';
-  const auto = c.chartType === 'scatter'
-    ? `${meaNames}` : `${aggLabel(c.agg)}${measurePart}${dimNames ? ' by ' + dimNames : ''}`;
+  // A staged funnel is a sequence, so it says so. "Sum of Impressions, Clicks, Leads, Customers"
+  // is technically what happened and tells the reader nothing about the order that gives the chart
+  // its meaning; an arrow between the stages does.
+  const auto = isMeasureFunnel(c)
+    ? (c.measures || []).map((m) => colLabel(columns, m)).join(' → ')
+    : c.chartType === 'scatter'
+      ? `${meaNames}` : `${aggLabel(c.agg)}${measurePart}${dimNames ? ' by ' + dimNames : ''}`;
   const dim0 = (c.dims || [])[0];
   const groups = dim0 ? new Set(rows.map((r) => (r[dim0] == null ? '' : String(r[dim0])))).size : 0;
   const m0 = (c.measures || [])[0];

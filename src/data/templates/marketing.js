@@ -98,6 +98,11 @@ export const TEMPLATE = {
               highlights: [{ ranges: 'H1:H12', color: '#ffe3e3' }],
             },
           },
+          // The genuine article: impressions, then the clicks among them, then the leads among
+          // those, then the customers. Each stage is a strict subset of the one before, which is
+          // the only arrangement where a funnel's widths mean anything — and every label carries
+          // what survived from the first stage, so the drop-off is read rather than calculated.
+          { id: 'mk15f', type: 'chart', span: 12, config: { table: 'Campaigns', title: 'From impression to customer', chartType: 'funnel', dims: [], measures: ['Impressions', 'Clicks', 'Leads', 'Customers'], agg: 'sum' } },
           { id: 'mk16', type: 'chart', span: 8, config: { table: 'Campaigns', title: 'Return on ad spend by campaign', chartType: 'bar', dims: ['Name'], measures: ['ROAS'], agg: 'avg', sortByValue: true } },
           { id: 'mk17', type: 'breakdown', span: 4, config: { table: 'Campaigns', title: 'Campaigns by status', column: 'Status', limit: 5, display: 'chart', chartType: 'doughnut' } },
           // The one chart that answers "is spending more actually returning more". Every other
