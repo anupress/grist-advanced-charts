@@ -3,7 +3,7 @@
 // tablesInConfig), so — unlike Counter/Image/Testimonials — this needs no lazy-mount pass; all
 // its interactivity (search/sort/page) is self-contained DOM event wiring set up once here.
 
-import { el, debounce } from '../util.js';
+import { el, debounce, formatCellValue } from '../util.js';
 import { icon, brandLogo } from '../assets/icons.js';
 import { isDateColumn } from '../grist/dates.js';
 
@@ -101,7 +101,15 @@ export function renderLiveTable(block, ctx) {
     let rows = allRows;
     if (state.query) {
       const q = state.query.toLowerCase();
-      rows = rows.filter((r) => cols.some((col) => String(r[col.id] ?? '').toLowerCase().includes(q)));
+      // Match what the reader can see, not the value underneath it. Searching the raw value meant
+      // typing "Yes" found nothing in a column showing Yes/No, and typing the "204,972" printed on
+      // screen found nothing either. Both are the same bug: a search box that does not agree with
+      // the table above it. The raw value is still matched too, so a stored code stays findable.
+      rows = rows.filter((r) => cols.some((col) => {
+        const raw = String(r[col.id] ?? '').toLowerCase();
+        if (raw.includes(q)) return true;
+        return formatCellValue(r[col.id], col).toLowerCase().includes(q);
+      }));
     }
     if (state.sortCol) {
       const dir = state.sortDir === 'desc' ? -1 : 1;
@@ -202,8 +210,9 @@ export function renderLiveTable(block, ctx) {
               const fg = readableOn(hl);
               if (fg) style.color = fg; // keeps the text legible against the swatch in either mode
             }
+            const shown = formatCellValue(r[col.id], col);
             return el('td', { class: numCols.has(col.id) ? 'is-num' : null,
-              text: String(r[col.id] ?? ''), title: String(r[col.id] ?? ''), style });
+              text: shown, title: shown, style });
           }));
         })
       : [el('tr', {}, [el('td', { class: 'ap-muted', colspan: String(cols.length || 1), text: 'No matching rows.' })])]));

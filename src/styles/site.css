@@ -615,38 +615,60 @@
   body.ap-printing-layout .ap-tray { display: none !important; }
   body.ap-printing-layout .ap-layout__scroll { overflow: visible; padding: 0; display: block; }
 
-  /* The sheet keeps a real inset on paper. Zeroing it and trusting @page was the same mistake the
-     invoice made: a browser dialog set to "Margins: None" overrides @page, and the result was a
-     document printed hard against all four edges. 10mm of its own means the page is readable
-     whatever the dialog is set to.
+  /* The sheet carries no padding on paper: @page owns the margin, because only @page applies to
+     every sheet rather than once at the top and bottom of the element. printout.js injects this
+     same rule at a higher specificity alongside the @page it belongs with, so the MARGIN_MM
+     constant that paginates the sheet is also the one that indents it -- a margin disagreeing with
+     that constant would draw page breaks where the printer does not make them. See printout.js for
+     why splitting the inset across both a page margin and element padding emptied every map.
 
-     And it prints light. Everything on the sheet reads its colours from the theme tokens, so a
-     dashboard in dark mode printed dark cards on a white page -- rgb(26,29,43) was sitting in the
-     PDF. Redefining the tokens here fixes every descendant at once rather than rule by rule. */
+     The paper palette is NOT set here -- it lives on .ap-sheet in the main stylesheet, so the
+     preview shows the same light page the printer will produce. */
   body.ap-printing-layout .ap-sheet {
-    width: auto !important; box-shadow: none; padding: 10mm !important;
-    --ap-surface: #ffffff; --ap-bg: #ffffff; --ap-bg-soft: #f5f6f8;
-    --ap-text: #11141c; --ap-text-soft: #3d4552; --ap-text-mute: #6b7484;
-    --ap-border: #d5d9e0;
-    background: #ffffff !important; color: #11141c !important;
+    width: auto !important; box-shadow: none; padding: 0 !important;
   }
   body.ap-printing-layout .ap-layout { background: #ffffff !important; }
-  /* Cards on the sheet lose the shadow and the tinted ground; a border is enough on paper. */
-  body.ap-printing-layout .ap-sheet .ap-card {
-    background: #ffffff !important; color: #11141c !important;
-    box-shadow: none !important; border: 1px solid #d5d9e0 !important;
-  }
   body.ap-printing-layout .ap-sheet__opts { display: none !important; }
   /* The site header repeats on every sheet, the way a letterhead does. */
   body.ap-printing-layout .ap-sheet__header { break-after: avoid; page-break-after: avoid; }
+
+  /* A table prints its own masthead -- logo, firm name, title, date -- because a lone table
+     leaving the building has to say what it is. On a printable layout the sheet has already said
+     it, so three collected tables stamped the same logo and name three more times down the page.
+     The title and row count still earn their place; the branding does not repeat. */
+  body.ap-printing-layout .ap-sheet .ap-livetable__reportbrand { display: none !important; }
+  body.ap-printing-layout .ap-sheet .ap-livetable__report {
+    border-bottom-width: 1px; margin-bottom: 10px; padding-bottom: 6px;
+  }
+  body.ap-printing-layout .ap-sheet .ap-livetable__reportmeta { text-align: left; }
+
+  /* The chart-type chip ("Doughnut", "Bar") tells an editor what they are looking at while they
+     build. On a finished page it is a label for the tool, not for the reader. */
+  body.ap-printing-layout .ap-sheet .ap-chip { display: none !important; }
 
   /* Printing ONE invoice: its own Print button marks the block and hides the rest of the page,
      so a client receives an invoice rather than a dashboard with an invoice on it. */
   [data-print-only] .ap-block:not(.is-printtarget) { display: none !important; }
   [data-print-only] .ap-hero, [data-print-only] .ap-section-title { display: none !important; }
   [data-print-only] .ap-block.is-printtarget { grid-column: span 12 !important; }
-  /* Charts and maps are canvas/tiles; keep them from spilling across a page break. */
-  .ap-chart, .ap-map__canvas { break-inside: avoid; page-break-inside: avoid; }
+  /* Charts and maps are canvas/tiles; keep them from spilling across a page break.
+     This named .ap-map__canvas, which is not a class this widget has ever rendered, so the rule
+     matched nothing and maps broke across pages unchecked. The element is .ap-map. */
+  .ap-chart, .ap-map { break-inside: avoid; page-break-inside: avoid; }
+
+  .ap-mapcard { break-inside: avoid; page-break-inside: avoid; }
+  /* Deliberately NOT resizing the map for print. Leaflet lays its tiles out absolutely from the
+     size it last measured, so any print-only height or width strands them outside the clip --
+     which is what emptied the map in the first place. The printable layout keeps the sheet at the
+     same geometry on paper as on screen precisely so this rule has nothing to do. */
+
+  /* Zoom buttons and the layer switcher are things to click. Paper has nothing to click with,
+     and a printed "+ / −" reads as a defect rather than a control. */
+  .leaflet-control-zoom, .leaflet-control-layers { display: none !important; }
+  /* The attribution stays: it is the licence condition the tiles are served under, not chrome. */
+  .leaflet-control-attribution {
+    background: transparent !important; color: #5a6270 !important; font-size: 8px !important;
+  }
 
   /* Blocks go full width on paper — a 3-column KPI row is unreadable at print scale. */
   .ap-block[data-span] { grid-column: span 12; }
@@ -861,9 +883,21 @@
 .ap-layout__x { margin-left: auto; }
 .ap-layout__scroll { flex: 1; overflow: auto; padding: 26px 18px 40px; display: flex; justify-content: center; }
 
-/* One continuous sheet at true paper width, with the printable area inset by the real margin. */
+/* One continuous sheet at true paper width, with the printable area inset by the real margin.
+
+   The sheet is paper, so it carries paper's palette rather than the site's. Every block reads its
+   colours from these tokens, so redefining them here turns the whole sheet light in one place --
+   and, more to the point, it does so ON SCREEN as well as on paper. Scoping this to @media print
+   meant someone arranging a printout looked at dark cards, clicked Print, and got light ones; the
+   preview has to be the thing that prints, or it is not a preview. */
 .ap-sheet { background: #fff; box-shadow: 0 10px 40px -12px rgba(0,0,0,.4); padding: 12mm;
-  align-self: flex-start; color: #11141c; }
+  align-self: flex-start; color: #11141c;
+  --ap-surface: #ffffff; --ap-bg: #ffffff; --ap-bg-soft: #f5f6f8;
+  --ap-text: #11141c; --ap-text-soft: #3d4552; --ap-text-mute: #6b7484;
+  --ap-border: #d5d9e0; }
+/* Cards on the sheet lose the shadow and the tinted ground; a border is enough on paper. */
+.ap-sheet .ap-card { background: #fff; color: #11141c; box-shadow: none;
+  border: 1px solid #d5d9e0; }
 /* The same 12-column grid the page uses, so a printout is arranged in the vocabulary people
    already know from the dashboard. The header and footer span the full width; everything else
    takes the width it was given. */

@@ -179,8 +179,12 @@ function renderChartCard(block, ctx) {
   const { columns, rows, table } = blockData(block, ctx);
   const dimNames = (c.dims || []).map((d) => colLabel(columns, d)).join(' · ');
   const meaNames = (c.measures || []).map((m) => colLabel(columns, m)).join(', ');
+  // "Count rows" already names what it counts, so it takes no "of" clause. Pasting one on anyway
+  // produced "Count rows of — by Status" on every counting chart, where the dash is a placeholder
+  // standing in for a measure that correctly does not exist.
+  const measurePart = meaNames ? ` of ${meaNames}` : '';
   const auto = c.chartType === 'scatter'
-    ? `${meaNames}` : `${aggLabel(c.agg)} of ${meaNames || '—'}${dimNames ? ' by ' + dimNames : ''}`;
+    ? `${meaNames}` : `${aggLabel(c.agg)}${measurePart}${dimNames ? ' by ' + dimNames : ''}`;
   const dim0 = (c.dims || [])[0];
   const groups = dim0 ? new Set(rows.map((r) => (r[dim0] == null ? '' : String(r[dim0])))).size : 0;
   const m0 = (c.measures || [])[0];

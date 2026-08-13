@@ -22,7 +22,7 @@
 import { el, clone, uid, toast } from '../util.js';
 import { icon, brandLogo } from '../assets/icons.js';
 import { renderBlock, mountCharts } from '../render/blocks.js';
-import { mountMaps } from '../render/map.js';
+import { mountMaps, settleMapsForPrint } from '../render/map.js';
 import { mountCounters } from '../render/counter.js';
 import { mountCountdowns } from '../render/countdown.js';
 // Sortable is used directly rather than through builder/dnd.js: the sheet's items are
@@ -364,9 +364,31 @@ export function openLayout(opts) {
 
   // @page cannot be set from an inline style, so the chosen paper is written into a real stylesheet
   // that is swapped whenever the size changes.
+  //
+  // The margin belongs to @page and to nothing else. Setting it in both places gave every printout
+  // a 12mm page margin AND a 10mm sheet padding: 22mm of white before any content, and a printable
+  // area 20mm narrower on paper than the identical sheet on screen.
+  //
+  // That second part is why maps came out blank. The sheet is drawn at true paper width on screen,
+  // so a block inside it already has its final printed geometry; changing the width at print time
+  // reflowed everything, and Leaflet -- which positions tiles absolutely from the size it last
+  // measured -- had no idea. Its tiles ended up outside the clip: eight of them sat in the PDF
+  // with not one painted. Keep the content box the same width and nothing needs re-projecting.
+  //
+  // It has to be @page rather than padding on the sheet, because padding is applied once at the
+  // start and end of an element while @page applies to every sheet of paper. Carrying the inset as
+  // padding gave page one a margin and left pages two and three hard against the top edge.
+  //
+  // The widths still agree: on screen the sheet is one paper width wide with MARGIN_MM of padding,
+  // and on paper the page box is that width less two margins. Both leave the same content box.
   const pageStyle = el('style');
   const applyPaper = () => {
-    pageStyle.textContent = `@media print { @page { size: ${paperOf().css}; margin: ${MARGIN_MM}mm; } }`;
+    pageStyle.textContent =
+      `@media print {\n` +
+      `  @page { size: ${paperOf().css}; margin: ${MARGIN_MM}mm; }\n` +
+      // Specificity beats site.css's fallback rule, so cascade order does not have to be trusted.
+      `  body.ap-printing-layout .ap-layout .ap-sheet { padding: 0 !important; }\n` +
+      `}`;
   };
   applyPaper();
 
@@ -391,7 +413,19 @@ export function openLayout(opts) {
 
   // Print: the overlay is already the only thing that should appear, so it marks itself and the
   // print stylesheet drops the site behind it.
-  footerBtns[footerBtns.length - 1].addEventListener('click', () => {
+  const printBtn = footerBtns[footerBtns.length - 1];
+  printBtn.addEventListener('click', async () => {
+    // Maps get a moment to settle before the dialog opens. window.print() captures the document as
+    // it stands, so a tile still in flight is a tile that never reaches the paper. The button says
+    // so while it waits, because a button that looks ignored gets clicked again.
+    const label = printBtn.querySelector('span');
+    const wasLabel = label?.textContent;
+    printBtn.disabled = true;
+    if (label) label.textContent = 'Preparing…';
+    try { await settleMapsForPrint(sheet); } catch { /* print anyway; a grey tile beats no print */ }
+    printBtn.disabled = false;
+    if (label && wasLabel) label.textContent = wasLabel;
+
     document.body.classList.add('ap-printing-layout');
     const clean = () => { document.body.classList.remove('ap-printing-layout'); window.removeEventListener('afterprint', clean); };
     window.addEventListener('afterprint', clean);

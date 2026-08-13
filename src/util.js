@@ -66,6 +66,48 @@ function trimZero(n) { return String(Number(n.toFixed(2))); }
 
 export function isFiniteNum(v) { return typeof v === 'number' ? isFinite(v) : (v !== '' && v != null && isFinite(Number(v))); }
 
+// How a raw cell value should read to a person.
+//
+// Every table cell used to be String(value), which is fine for text and wrong for the two types
+// that do not stringify into anything a reader recognises: a Bool became the word "true", and a
+// number lost whatever format the document had given it. On screen that is untidy; on a printed
+// page sent to a client it is a defect -- a fee column reading "204972" and a billing column
+// reading "true" are programming artefacts, not data.
+//
+// Order of authority: the column's own Grist format first, then its type. We never invent a
+// format the document did not ask for, except for thousands separators on Numeric, where the
+// alternative is an unreadable run of digits. Int is deliberately left bare, because that is
+// where years, invoice numbers and postcodes live and "2,026" would be actively wrong.
+export function formatCellValue(value, col) {
+  if (value == null || value === '') return '';
+  const type = String(col?.type || '');
+
+  if (/^Bool/i.test(type) || typeof value === 'boolean') {
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+    if (value === 'true' || value === 1 || value === '1') return 'Yes';
+    if (value === 'false' || value === 0 || value === '0') return 'No';
+  }
+
+  if (/^(Numeric|Int|Currency)/i.test(type) && isFiniteNum(value)) {
+    const n = Number(value);
+    const o = col?.widgetOptions || {};
+    const mode = o.numMode;
+    const min = o.decimals, max = o.maxDecimals;
+    if (mode || min != null || max != null) {
+      const fmt = { minimumFractionDigits: min ?? 0, maximumFractionDigits: max ?? Math.max(min ?? 0, 2) };
+      if (mode === 'currency') { fmt.style = 'currency'; fmt.currency = o.currency || 'USD'; }
+      else if (mode === 'percent') fmt.style = 'percent';
+      else if (mode === 'scientific') return n.toExponential(max ?? min ?? 2);
+      if (mode === 'decimal' || !mode) fmt.useGrouping = true;
+      try { return n.toLocaleString(undefined, fmt); } catch { return String(n); }
+    }
+    if (/^Int/i.test(type)) return String(n);
+    return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
+
+  return String(value);
+}
+
 // Replace %placeholders in a template with values (numbers are locale-formatted).
 export function interpolate(template, vars) {
   return String(template == null ? '' : template).replace(/%(\w+)/g, (m, k) => {

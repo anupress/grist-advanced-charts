@@ -149,6 +149,41 @@ export function resizeMapsIn(scope) {
   });
 }
 
+/**
+ * Get every map in `scope` ready to be captured by a print, and resolve once it is safe to call
+ * window.print().
+ *
+ * Two things can leave a map blank on paper. The size Leaflet last measured may not be the size it
+ * now occupies — invalidateSize settles that. And tiles arrive over the network, so a viewer who
+ * opens a printable layout and clicks Print straight away can reach the dialog while the images
+ * are still in flight; whatever has not landed by then is simply absent from the PDF. Waiting on
+ * the tile <img> elements themselves, rather than a Leaflet event, covers both the initial load
+ * and any tile the re-projection asks for.
+ *
+ * Capped, because a map that will never finish loading must not stop someone printing the rest of
+ * their document. A missing tile costs a grey square; a hang costs them the page.
+ */
+export function settleMapsForPrint(scope, timeoutMs = 3000) {
+  const containers = [...(scope || document).querySelectorAll('.ap-map')].filter((c) => registry.has(c));
+  if (!containers.length) return Promise.resolve(0);
+
+  for (const container of containers) {
+    try { registry.get(container).map.invalidateSize({ animate: false, pan: false }); } catch {}
+  }
+
+  const started = Date.now();
+  return new Promise((resolve) => {
+    const check = () => {
+      const imgs = containers.flatMap((c) => [...c.querySelectorAll('img.leaflet-tile')]);
+      const pending = imgs.filter((im) => !im.complete).length;
+      if ((imgs.length && !pending) || Date.now() - started > timeoutMs) return resolve(containers.length);
+      setTimeout(check, 90);
+    };
+    // One tick first, so tiles requested by invalidateSize exist as elements before they are counted.
+    setTimeout(check, 90);
+  });
+}
+
 // Heuristic: find likely lat/lon columns by name.
 export function detectLatLon(columns) {
   const lat = columns.find((c) => /^(lat|latitude|.*_lat|.*latitude)$/i.test(c.id) || /latitude/i.test(c.label || ''));

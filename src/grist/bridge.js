@@ -150,9 +150,19 @@ export async function getColumns(tableId) {
       // rejects the action — so the data editor has to render those read-only rather than offer
       // an input that silently fails on save. Older documents may not report it; absent means
       // "not a formula", which is the safe default (a normal column stays editable).
+      // widgetOptions carries the format the document's owner already chose for this column —
+      // currency, decimal places, percent. Dropping it meant a column displayed as "$204,972.00"
+      // in Grist printed as "204972" here, which reads like a different number. Mirroring what
+      // Grist shows is always righter than inventing our own formatting on top of it.
+      let widgetOptions = null;
+      try {
+        const raw = metaC.widgetOptions && metaC.widgetOptions[i];
+        if (raw) widgetOptions = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      } catch { /* a malformed option blob is not worth failing a column over */ }
       cols.push({
         id: colId, label: metaC.label[i] || colId, type: String(metaC.type[i] || 'Text'),
         isFormula: !!(metaC.isFormula && metaC.isFormula[i]) && !!(metaC.formula && metaC.formula[i]),
+        widgetOptions,
       });
     }
     if (cols.length) return cols;
