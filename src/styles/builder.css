@@ -248,3 +248,55 @@
 .ap-addtile--blank { border-style: dashed; background: transparent; }
 .ap-addtile--blank .ap-addtile__icon { background: var(--ap-bg-soft); color: var(--ap-text-soft); box-shadow: none; }
 .ap-addtile--blank:hover .ap-addtile__icon { background: var(--ap-primary); color: #fff; }
+
+/* ---- Edit this data ----
+   The entry point sits under the table picker in every data-bound block editor; the grid itself
+   opens in a wide drawer, because a settings-width panel shows about four cells. */
+.ap-drawer--wide { width: min(980px, 96vw); max-width: 96vw; }
+
+.ap-dataedit__openrow { margin: -4px 0 14px; }
+.ap-dataedit__open { display: inline-flex; align-items: center; gap: 7px; }
+.ap-dataedit__open svg { width: 15px; height: 15px; }
+
+/* One grid, one column per field, so headers and cells stay locked together as it scrolls. */
+.ap-dataedit__grid {
+  margin: 12px 0; border: 1px solid var(--ap-border); border-radius: var(--ap-radius);
+  overflow: auto; max-height: 52vh; background: var(--ap-surface);
+}
+.ap-dataedit__row {
+  display: grid; grid-template-columns: 52px repeat(var(--ap-de-cols, 3), minmax(120px, 1fr));
+  border-bottom: 1px solid var(--ap-border);
+}
+.ap-dataedit__row:last-child { border-bottom: 0; }
+.ap-dataedit__row--head {
+  position: sticky; top: 0; z-index: 2; background: var(--ap-bg-soft);
+  font-size: var(--ap-fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--ap-text-soft);
+}
+.ap-dataedit__th { display: flex; align-items: center; gap: 5px; padding: 8px 10px; }
+.ap-dataedit__lockicon { width: 11px; height: 11px; opacity: .6; flex: none; }
+
+.ap-dataedit__rowno {
+  display: grid; place-items: center; padding: 6px; font-size: 11px;
+  color: var(--ap-text-mute); background: var(--ap-bg-soft); border-right: 1px solid var(--ap-border);
+  font-variant-numeric: tabular-nums;
+}
+.ap-dataedit__rowno svg { width: 13px; height: 13px; }
+
+.ap-dataedit__input {
+  width: 100%; border: 0; background: none; padding: 8px 10px; font: inherit;
+  font-size: var(--ap-fs-sm); color: var(--ap-text); border-right: 1px solid var(--ap-border);
+}
+.ap-dataedit__input:focus { outline: 2px solid var(--ap-primary); outline-offset: -2px; background: var(--ap-bg-soft); }
+/* An edited cell is marked until it is saved, so you can see what you changed before committing. */
+.ap-dataedit__input.is-changed { background: color-mix(in srgb, var(--ap-primary) 10%, transparent); font-weight: 600; }
+
+.ap-dataedit__cell { padding: 8px 10px; font-size: var(--ap-fs-sm); border-right: 1px solid var(--ap-border); }
+/* Calculated columns: visibly not yours to type in. */
+.ap-dataedit__cell.is-locked { color: var(--ap-text-mute); background: var(--ap-bg-soft); font-style: italic; }
+.ap-dataedit__row.is-new .ap-dataedit__input::placeholder { color: var(--ap-text-mute); opacity: .7; }
+.ap-dataedit__row.is-new { background: color-mix(in srgb, var(--ap-primary) 4%, transparent); }
+
+.ap-dataedit__pager { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 8px; }
+.ap-dataedit__status { font-size: var(--ap-fs-xs); text-align: center; }
+.ap-dataedit__status.is-dirty { color: var(--ap-primary); font-weight: 700; }

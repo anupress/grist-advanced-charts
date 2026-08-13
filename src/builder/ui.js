@@ -132,10 +132,12 @@ export function divider() { return el('hr', { class: 'ap-divider' }); }
 
 // ---- Drawer (single instance) ----
 let current = null;
-export function openDrawer({ title, body, footer }) {
+// `wide` widens the panel for content that is a grid rather than a column of fields — the data
+// editor, where a settings-width drawer would put four cells on screen.
+export function openDrawer({ title, body, footer, wide = false }) {
   closeDrawer();
   const bodyEl = el('div', { class: 'ap-drawer__body' }, [].concat(body));
-  const drawer = el('aside', { class: 'ap-drawer', role: 'dialog', 'aria-label': title }, [
+  const drawer = el('aside', { class: 'ap-drawer' + (wide ? ' ap-drawer--wide' : ''), role: 'dialog', 'aria-label': title }, [
     el('div', { class: 'ap-drawer__head' }, [
       el('div', { class: 'ap-drawer__title', text: title }),
       el('button', { class: 'ap-btn ap-btn--icon ap-btn--ghost', 'aria-label': 'Close', onClick: () => closeDrawer() }, [icon('close')]),

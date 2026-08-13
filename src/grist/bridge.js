@@ -146,7 +146,14 @@ export async function getColumns(tableId) {
       if (tRowToId[metaC.parentId[i]] !== tableId) continue;
       const colId = metaC.colId[i];
       if (!colId || colId === 'manualSort' || /^gristHelper_/.test(colId)) continue;
-      cols.push({ id: colId, label: metaC.label[i] || colId, type: String(metaC.type[i] || 'Text') });
+      // isFormula travels with the column because a formula cell cannot be written to — Grist
+      // rejects the action — so the data editor has to render those read-only rather than offer
+      // an input that silently fails on save. Older documents may not report it; absent means
+      // "not a formula", which is the safe default (a normal column stays editable).
+      cols.push({
+        id: colId, label: metaC.label[i] || colId, type: String(metaC.type[i] || 'Text'),
+        isFormula: !!(metaC.isFormula && metaC.isFormula[i]) && !!(metaC.formula && metaC.formula[i]),
+      });
     }
     if (cols.length) return cols;
   } catch (e) { /* fall through to inference */ }
@@ -496,6 +503,39 @@ export async function loadConfig() {
 // into a table the user didn't create for us. Fails closed (returns false) rather than throwing,
 // since the caller only has 'read table' access until someone has gone through our own Edit flow
 // at least once this session — a plain viewer attempting this will hit that, not a crash.
+/**
+ * Write several rows in one action bundle, and append new ones.
+ *
+ * One bundle rather than a request per row: Grist applies a bundle atomically and records it as a
+ * single entry in the document's history, so a user editing eight cells sees one undoable step
+ * rather than eight. Returns {updated, added, ok} instead of throwing — the caller is a UI that
+ * needs to report what happened, not abort.
+ */
+export async function saveRows(table, { updates = [], additions = [] } = {}) {
+  const out = { updated: 0, added: 0, ok: false };
+  if (!hasGrist() || !table) return out;
+  const actions = [];
+  for (const u of updates) {
+    if (!u || u.id == null || !u.fields || !Object.keys(u.fields).length) continue;
+    actions.push(['UpdateRecord', table, u.id, u.fields]);
+    out.updated++;
+  }
+  for (const fields of additions) {
+    if (!fields || !Object.keys(fields).length) continue;
+    actions.push(['AddRecord', table, null, fields]);
+    out.added++;
+  }
+  if (!actions.length) return { ...out, ok: true };
+  try {
+    await g().docApi.applyUserActions(actions);
+    out.ok = true;
+  } catch (e) {
+    console.warn('[ANUPRESS] saveRows failed', e);
+    out.updated = 0; out.added = 0;
+  }
+  return out;
+}
+
 export async function updateRecord(table, rowId, fields) {
   if (!hasGrist() || rowId == null) return false;
   try { await g().docApi.applyUserActions([['UpdateRecord', table, rowId, fields]]); return true; }

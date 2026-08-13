@@ -14,6 +14,7 @@ import { mountCounters } from '../render/counter.js';
 import { mountAttachmentImages } from '../render/media-mount.js';
 import { mountCountdowns } from '../render/countdown.js';
 import { currentSeriesColors } from '../theme/apply.js';
+import { openDataEditor } from './data-editor.js';
 import { pickImage, readFileAsDataURL } from './imageutil.js';
 
 const SPANS = [{ value: 3, label: 'XS' }, { value: 4, label: 'S' }, { value: 6, label: 'M' }, { value: 8, label: 'L' }, { value: 12, label: 'Full' }];
@@ -49,6 +50,34 @@ export function openBlockEditor(block, ctx) {
   if (block.type === 'pricing') return openPricingEditor(block, ctx);
   if (block.type === 'calendar') return openCalendarEditor(block, ctx);
   return openChartEditor(block, ctx);
+}
+
+// "Edit this data" — the bridge from configuring a block to correcting what it shows.
+//
+// Sits directly under the table picker in every data-bound editor, because that is the moment you
+// are looking at the table's name and thinking about its contents. Opening it replaces this
+// drawer; closing it puts this one back, so the trip is a detour rather than a dead end.
+//
+// Only offered on a live document: in demo mode there is no table behind the numbers to write to,
+// and a Save button that cannot save is worse than no button.
+function editDataRow(getTable, ctx, reopen) {
+  const table = getTable();
+  if (!ctx.provider?.isLive || !table) return null;
+  const btn = el('button', { class: 'ap-btn ap-btn--soft ap-btn--sm ap-dataedit__open', type: 'button' },
+    [icon('database'), el('span', { text: `Edit the data in ${table}` })]);
+  btn.addEventListener('click', () => {
+    openDataEditor({
+      provider: ctx.provider,
+      table: getTable(),
+      onSaved: reopen,   // re-render the editor so its live preview shows the new numbers
+      onCancel: reopen,
+    });
+  });
+  return el('div', { class: 'ap-dataedit__openrow' }, [
+    btn,
+    el('div', { class: 'ap-muted', style: { fontSize: '11.5px', marginTop: '4px' },
+      text: 'Correct a value or add a row without leaving the page. Writes to your Grist table.' }),
+  ]);
 }
 
 async function ensureRows(provider, table) {
@@ -141,6 +170,7 @@ function openChartEditor(block, ctx) {
     subtitleField(wb, 'chart', () => {}, 'Auto, or e.g. %count rows across %groups groups'),
     field('Data table', selectInput(provider.tables().map((t) => ({ value: t.id, label: t.label })), wb.config.table,
       (v) => { wb.config.table = v; const cols = provider.columns(v); Object.assign(wb.config, autoPick(cols)); ensureRows(provider, v).then(update); })),
+    editDataRow(() => wb.config.table, ctx, () => openChartEditor(block, ctx)),
     dynHost,
     field('Block width', segmented(SPANS, wb.span || 6, (v) => { wb.span = v; })),
     subhead('Live preview'),
@@ -228,6 +258,7 @@ function openStatEditor(block, ctx) {
     field('Label', textInput(wb.config.label || '', (v) => { wb.config.label = v; refreshPreview(); }, { placeholder: 'e.g. Total samples' })),
     field('Data table', selectInput(provider.tables().map((t) => ({ value: t.id, label: t.label })), wb.config.table,
       async (v) => { wb.config.table = v; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
+    editDataRow(() => wb.config.table, ctx, () => openStatEditor(block, ctx)),
     dynHost,
     subhead('Icon'), iconPickerField(ctx.site || {}, wb.config, refreshPreview),
     subhead('Number format'),
@@ -286,6 +317,7 @@ function openBreakdownEditor(block, ctx) {
     ], showAs(), (v) => { if (v === 'list') wb.config.display = 'list'; else { wb.config.display = 'chart'; wb.config.chartType = v; } refreshPreview(); })),
     field('Data table', selectInput(provider.tables().map((t) => ({ value: t.id, label: t.label })), wb.config.table,
       async (v) => { wb.config.table = v; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
+    editDataRow(() => wb.config.table, ctx, () => openBreakdownEditor(block, ctx)),
     dynHost,
     field('Block width', segmented(SPANS, wb.span || 4, (v) => { wb.span = v; })),
     subhead('Live preview'), previewHost,
@@ -337,6 +369,7 @@ function openMapEditor(block, ctx) {
     subtitleField(wb, 'map', refreshPreview, 'e.g. %count mapped · %missing without coordinates'),
     field('Data table', selectInput(provider.tables().map((t) => ({ value: t.id, label: t.label })), wb.config.table,
       async (v) => { wb.config.table = v; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
+    editDataRow(() => wb.config.table, ctx, () => openMapEditor(block, ctx)),
     dynHost,
     // Street and Terrain ship built in. A satellite layer does not, because no free global aerial
     // imagery permits redistribution without an account — so instead of hotlinking someone else's
@@ -456,6 +489,7 @@ function openProgressEditor(block, ctx) {
       dynHost.replaceChildren(
         field('Data table', selectInput(provider.tables().map((t) => ({ value: t.id, label: t.label })), wb.config.table,
           async (v) => { wb.config.table = v; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
+        editDataRow(() => wb.config.table, ctx, () => openProgressEditor(block, ctx)),
         field('Value column', selectInput(cols.map((c) => ({ value: c.id, label: c.label })), wb.config.valueColumn, (v) => { wb.config.valueColumn = v; refreshPreview(); })),
         field('Summarize by', selectInput(AGGREGATIONS.map((a) => ({ value: a.id, label: a.label })), wb.config.agg || 'sum', (v) => { wb.config.agg = v; refreshPreview(); })),
       );
@@ -594,6 +628,7 @@ function openImageEditor(block, ctx) {
     dynHost.replaceChildren(
       field('Data table', selectInput(tables.map((t) => ({ value: t.id, label: t.label })), wb.config.ref.table,
         async (v) => { wb.config.ref.table = v; wb.config.ref.column = null; wb.config.ref.row = null; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
+      editDataRow(() => wb.config.ref.table, ctx, () => openImageEditor(block, ctx)),
       !cols.length
         ? el('div', { class: 'ap-muted', style: { fontSize: '12px' }, text: 'This table has no Attachments column. Add one in Grist, or switch to "Upload my own image".' })
         : el('div', {}, [
@@ -656,6 +691,7 @@ function openTestimonialsEditor(block, ctx) {
     dynHost.replaceChildren(
       field('Data table', selectInput(tables.map((t) => ({ value: t.id, label: t.label })), wb.config.table,
         async (v) => { wb.config.table = v; wb.config.nameColumn = null; wb.config.quoteColumn = null; wb.config.ratingColumn = null; wb.config.photoColumn = null; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
+      editDataRow(() => wb.config.table, ctx, () => openTestimonialsEditor(block, ctx)),
       field('Name column', selectInput(cols.map((c) => ({ value: c.id, label: c.label })), wb.config.nameColumn, (v) => { wb.config.nameColumn = v; refreshPreview(); })),
       field('Quote column', selectInput(optional('— none —'), wb.config.quoteColumn || '', (v) => { wb.config.quoteColumn = v || null; refreshPreview(); })),
       field('Rating column (optional, 1–5)', selectInput(optional('— none —'), wb.config.ratingColumn || '', (v) => { wb.config.ratingColumn = v || null; refreshPreview(); })),
@@ -783,6 +819,7 @@ function openLiveTableEditor(block, ctx) {
     field('Title (optional)', textInput(wb.config.title || '', (v) => { wb.config.title = v; refreshPreview(); }, { placeholder: 'e.g. All submissions' })),
     field('Data table', selectInput(provider.tables().map((t) => ({ value: t.id, label: t.label })), wb.config.table,
       async (v) => { wb.config.table = v; wb.config.columns = null; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
+    editDataRow(() => wb.config.table, ctx, () => openLiveTableEditor(block, ctx)),
     dynHost,
     divider(),
     highlightsEditor(wb, refreshPreview),
@@ -1050,6 +1087,7 @@ function openCalendarEditor(block, ctx) {
     field('Title', textInput(wb.config.title || '', (v) => { wb.config.title = v; refreshPreview(); }, { placeholder: 'e.g. Task calendar' })),
     field('Data table', selectInput(provider.tables().map((t) => ({ value: t.id, label: t.label })), wb.config.table,
       async (v) => { wb.config.table = v; wb.config.dateColumn = null; wb.config.titleColumn = null; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
+    editDataRow(() => wb.config.table, ctx, () => openCalendarEditor(block, ctx)),
     dynHost,
     checkboxRow('Let viewers drag events to reschedule', wb.config.draggable !== false, (v) => { wb.config.draggable = v; refreshPreview(); }),
     field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
