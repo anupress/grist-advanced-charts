@@ -323,7 +323,17 @@ export function openTemplatePicker(opts) {
     // meaningful once this content is actually attached — openDrawer() just appended it above,
     // so only now, not from inside confirmBody() itself (a detached tree measures as 0x0 and
     // the map's mount code gives up silently after a few zero-size retries).
-    if (previewHost) { mountCharts(previewHost); mountMaps(previewHost); mountCounters(previewHost); mountAttachmentImages(previewHost); mountCountdowns(previewHost); mountCalendars(previewHost); }
+    // Guarded, and the guard is load-bearing rather than tidy. doApply() calls render() to put the
+    // footer into its "Setting up tables…" state, so anything thrown while mounting the preview
+    // propagated out of doApply and the install stopped there — no tables created, no error shown,
+    // the button stuck on "Setting up tables…" for good. A preview is decoration; it cannot be
+    // allowed to cancel the thing it is previewing.
+    if (previewHost) {
+      for (const [fn, what] of [[mountCharts, 'charts'], [mountMaps, 'maps'], [mountCounters, 'counters'],
+        [mountAttachmentImages, 'images'], [mountCountdowns, 'countdowns'], [mountCalendars, 'calendars']]) {
+        try { fn(previewHost); } catch (e) { console.warn(`[ANUPRESS] preview ${what} failed to mount`, e); }
+      }
+    }
   }
 
   function pickBody() {

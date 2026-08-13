@@ -101,7 +101,17 @@ export function renderSite(opts) {
   function mountTab(id) {
     const panel = panels.get(id);
     if (!panel) return;
-    const go = () => { mountCharts(panel); resizeChartsIn(panel); mountMaps(panel); resizeMapsIn(panel); mountCounters(panel); mountAttachmentImages(panel); mountCountdowns(panel); mountCalendars(panel); };
+    // Each mount is isolated. These are decorations on top of markup that is already on the page,
+    // and they run in a fixed order, so one throwing used to take every later one with it — a
+    // page whose map library had not loaded lost its charts, its counters and its calendar too,
+    // for a reason none of them had anything to do with.
+    const step = (fn, what) => { try { fn(panel); } catch (e) { console.warn(`[ANUPRESS] ${what} failed to mount`, e); } };
+    const go = () => {
+      step(mountCharts, 'charts'); step(resizeChartsIn, 'chart resize');
+      step(mountMaps, 'maps'); step(resizeMapsIn, 'map resize');
+      step(mountCounters, 'counters'); step(mountAttachmentImages, 'images');
+      step(mountCountdowns, 'countdowns'); step(mountCalendars, 'calendars');
+    };
     go();
     setTimeout(go, 120);
     // Tell blocks that pause work while off-screen that they are back. A calendar stops polling

@@ -68,11 +68,30 @@ export class GristProvider extends BaseProvider {
     this._cols.set(tableId, cols);
     return cols;
   }
+  // Load rows for the tables a design names. Two kinds of tolerance, both learned from a real
+  // session log: a design frequently names tables the document no longer has — someone removed
+  // them, or a template was replaced — and Grist answers a fetch for a missing table with a
+  // sandbox KeyError. Asking anyway produced a wall of red in the console, twice per table, and
+  // one Promise.all rejection took the whole prime down with it, so the tables that DID exist
+  // never loaded either.
   async prime(tableIds = []) {
-    const ids = [...new Set(tableIds.filter(Boolean))];
+    const known = new Set(this._tables.map((t) => t.id));
+    const wanted = [...new Set(tableIds.filter(Boolean))];
+    // Only filter when the table list is actually known; an empty list means init() has not run
+    // or failed, and silently priming nothing would be worse than trying.
+    const ids = known.size ? wanted.filter((id) => known.has(id)) : wanted;
+    const missing = wanted.filter((id) => !ids.includes(id));
+    if (missing.length) {
+      console.warn('[ANUPRESS] design references tables not in this document:', missing.join(', '));
+    }
     await Promise.all(ids.map(async (id) => {
-      const cols = await this._loadColumns(id);
-      if (!this._rows.has(id)) this._rows.set(id, await grist.getRecords(id, cols));
+      try {
+        const cols = await this._loadColumns(id);
+        if (!this._rows.has(id)) this._rows.set(id, await grist.getRecords(id, cols));
+      } catch (e) {
+        // One unreadable table must not cost the others their rows.
+        console.warn(`[ANUPRESS] could not load ${id}`, e);
+      }
     }));
   }
   // Re-fetch the table list from Grist and load BOTH schema and rows for any table that wasn't
