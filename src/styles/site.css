@@ -579,6 +579,28 @@
   /* Status pills and the accent rule are the only colour worth spending ink on. */
   .ap-invoice__status { border: 1px solid #999; }
 
+  /* ---- A printed table is a report, not a screenshot of a card ---- */
+  .ap-livetable__report {
+    display: flex !important; align-items: flex-start; justify-content: space-between; gap: 20px;
+    padding-bottom: 10px; margin-bottom: 14px; border-bottom: 2px solid #333;
+  }
+  .ap-livetable__reportbrand { display: flex; align-items: center; gap: 10px; }
+  .ap-livetable__reportlogo img, .ap-livetable__reportlogo svg { max-height: 30px; max-width: 130px; width: auto; }
+  .ap-livetable__reportname { font-weight: 800; font-size: 13px; }
+  .ap-livetable__reportmeta { text-align: right; }
+  .ap-livetable__reporttitle { font-weight: 700; font-size: 14px; }
+  .ap-livetable__reportdate { font-size: 10px; color: #5a6270; margin-top: 3px; }
+  /* The screen header duplicates the report one, and the search box cannot be used on paper. */
+  .ap-livetable__head, .ap-livetable__print { display: none !important; }
+
+  /* Like the invoice, a ledger prints on white whatever the screen was showing. */
+  .ap-livetable {
+    --ap-surface: #ffffff; --ap-bg-soft: #f5f6f8; --ap-text: #11141c;
+    --ap-text-soft: #3d4552; --ap-text-mute: #6b7484; --ap-border: #d5d9e0;
+    background: #ffffff !important; color: #11141c !important;
+  }
+  .ap-livetable__table td { color: #11141c !important; }
+
   /* Printing ONE invoice: its own Print button marks the block and hides the rest of the page,
      so a client receives an invoice rather than a dashboard with an invoice on it. */
   [data-print-only] .ap-block:not(.is-printtarget) { display: none !important; }
@@ -752,3 +774,11 @@
 .ap-invoice__closing { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--ap-border);
   text-align: center; font-size: var(--ap-fs-sm); color: var(--ap-text-soft); }
 .ap-invoice__closing p { margin: 0; }
+
+/* ---- Printed-table report header ----
+   Exists only on paper. On screen the card already sits under a page that says what it is; a
+   printed sheet has no such context, so it carries its own. */
+.ap-livetable__report { display: none; }
+.ap-livetable__print { flex: none; }
+.ap-livetable__print svg { width: 14px; height: 14px; }
+.ap-livetable__head { gap: 10px; }

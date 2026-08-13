@@ -4,7 +4,7 @@
 // its interactivity (search/sort/page) is self-contained DOM event wiring set up once here.
 
 import { el, debounce } from '../util.js';
-import { icon } from '../assets/icons.js';
+import { icon, brandLogo } from '../assets/icons.js';
 import { isDateColumn } from '../grist/dates.js';
 
 // Tolerates the separators people actually have in their data — "1,200", "$1,200", "45%", "(300)"
@@ -233,15 +233,74 @@ export function renderLiveTable(block, ctx) {
 
   redraw();
 
+  const isLivePage = ctx.edit === null;
+
+  // A masthead that exists only on paper.
+  //
+  // Printing the page around this table produced three sheets of dashboard — hero, charts and all,
+  // with the chart canvases rasterised in — when what was wanted was the ledger. Isolating the
+  // table fixes that but leaves a bare grid with no indication of what it is, so the printed sheet
+  // gets a header of its own: the same mark and name the site header shows, the table's title, and
+  // when it was run. A ledger that leaves the building has to say what it is and when it was true.
+  const brand = ctx.config?.header || {};
+  const reportHead = el('div', { class: 'ap-livetable__report' }, [
+    el('div', { class: 'ap-livetable__reportbrand' }, [
+      el('span', { class: 'ap-livetable__reportlogo' },
+        [brand.logoData ? el('img', { src: brand.logoData, alt: '' }) : brandLogo(34)]),
+      el('span', { class: 'ap-livetable__reportname', text: brand.title || '' }),
+    ]),
+    el('div', { class: 'ap-livetable__reportmeta' }, [
+      el('div', { class: 'ap-livetable__reporttitle', text: c.title || c.table || 'Report' }),
+      el('div', { class: 'ap-livetable__reportdate' }),
+    ]),
+  ]);
+  const stampReport = () => {
+    const d = new Date();
+    const when = `${d.getDate()} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()]} ${d.getFullYear()}`;
+    const shown = visibleRows().length;
+    const filtered = state.query ? ` · filtered on “${state.query}”` : '';
+    reportHead.querySelector('.ap-livetable__reportdate').textContent =
+      `${shown} row${shown === 1 ? '' : 's'}${filtered} · ${when}`;
+  };
+
+  const printBtn = isLivePage
+    ? el('button', {
+        class: 'ap-btn ap-btn--soft ap-btn--sm ap-livetable__print', type: 'button',
+        title: 'Prints this table on its own — every row, without the rest of the page',
+      }, [icon('download'), el('span', { text: 'Print table' })])
+    : null;
+
   const table = el('table', { class: 'ap-livetable__table' }, [el('thead', {}, [theadRow]), tbody]);
   const card = el('div', { class: 'ap-card ap-livetable', dataset: { blockId: block.id } }, [
-    (c.title || searchInput) ? el('div', { class: 'ap-livetable__head' }, [
+    reportHead,
+    (c.title || searchInput || printBtn) ? el('div', { class: 'ap-livetable__head' }, [
       c.title ? el('div', { class: 'ap-livetable__title', text: c.title }) : el('span'),
       searchInput,
+      printBtn,
     ]) : null,
     el('div', { class: 'ap-livetable__scroll' }, [table]),
     pager,
   ]);
+
+  // Same isolation the Invoice block uses: mark this block, let the print stylesheet hide the
+  // rest, and clear up afterwards — including on a timer, since a cancelled dialog does not
+  // reliably fire afterprint everywhere and a page stuck in print-only mode looks broken.
+  if (printBtn) {
+    printBtn.addEventListener('click', () => {
+      const root = document.getElementById('anupress-root') || document.body;
+      const wrapper = card.closest('.ap-block') || card;
+      wrapper.classList.add('is-printtarget');
+      root.setAttribute('data-print-only', '1');
+      const clear = () => {
+        root.removeAttribute('data-print-only');
+        wrapper.classList.remove('is-printtarget');
+        window.removeEventListener('afterprint', clear);
+      };
+      window.addEventListener('afterprint', clear);
+      setTimeout(clear, 60000);
+      window.print();
+    });
+  }
 
   // Expand to every row for the duration of the print, then put the pager back.
   //
@@ -251,6 +310,7 @@ export function renderLiveTable(block, ctx) {
   const onBefore = () => {
     if (!card.isConnected) { window.removeEventListener('beforeprint', onBefore); window.removeEventListener('afterprint', onAfter); return; }
     state.printing = true; redraw();
+    stampReport(); // the row count and the timestamp are only true at the moment of printing
   };
   const onAfter = () => {
     if (!card.isConnected) { window.removeEventListener('beforeprint', onBefore); window.removeEventListener('afterprint', onAfter); return; }

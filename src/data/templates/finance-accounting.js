@@ -68,8 +68,7 @@ export const TEMPLATE = {
             },
           },
           text('fa11n', 'Sending this to a client',
-            'An invoice ledger is something you send, not only something you read. Use <b>Print the whole ledger</b> below and this page becomes a document: navigation, editor chrome and card shadows drop away, and the table prints in full — every row, not just the page you happen to be viewing — with its header repeated across page breaks. Any desktop browser saves that straight to PDF from its own print dialog. The <b>Status</b> column keeps its highlighting, so unpaid and overdue rows still stand out on paper.'),
-          button('fa11p', 'Print the whole ledger', 'soft', 'left', printTarget(), 4),
+            'An invoice ledger is something you send, not only something you read. The table above has its own <b>Print table</b> button: it prints that table alone — every row, not just the page you are viewing, with the column headers repeated across page breaks — under a header carrying your logo, the table name and the moment it was run. The rest of the page stays out of it. The <b>Status</b> column keeps its highlighting, so unpaid and overdue rows still stand out on paper, and any desktop browser saves the result straight to PDF.'),
         {
           id: 'fa11i', type: 'invoice', span: 12,
           config: {
