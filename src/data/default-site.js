@@ -11,7 +11,7 @@
 //   Get started   — "how do I do this with my data?"      (the five steps, privacy, FAQ)
 //
 // It also doubles as the sensible starting point once a real user begins editing, and as the
-// coverage net for the block library: every one of the 21 block types and all 11 chart types
+// coverage net for the block library: every one of the 22 block types and all 11 chart types
 // appear here, each in a place where it makes sense rather than dumped on one "showcase" page.
 
 import {
@@ -238,7 +238,7 @@ export const DEFAULT_SITE = {
           { name: 'A second reviewer', quote: 'Add as many as you like. They wrap onto their own row on a narrow screen.', rating: 4, photoData: null },
         ], 6),
         { id: 'e13', type: 'pricing', span: 8, config: { title: 'Pricing tables, if you need one', plans: [
-          { name: 'Advanced Charts', price: '$0', period: 'forever', features: ['All 21 block types', 'All 11 chart types', '9 starter templates', 'Open source and self-hostable'], highlighted: true, buttonLabel: 'Read the guide', buttonTarget: urlTarget(GUIDE) },
+          { name: 'Advanced Charts', price: '$0', period: 'forever', features: ['All 22 block types', 'All 11 chart types', '9 starter templates', 'Open source and self-hostable'], highlighted: true, buttonLabel: 'Read the guide', buttonTarget: urlTarget(GUIDE) },
           { name: 'Your dashboard', price: 'Yours', period: 'to keep', features: ['Lives in your own document', 'No account, no sign-up', 'No analytics, no tracking', 'Works on self-hosted Grist'], highlighted: false, buttonLabel: 'Get started', buttonTarget: tabTarget('tab-start') },
         ] } },
         { id: 'e14', type: 'countdown', span: 4, config: { title: 'Countdowns for launches & deadlines', targetDate: new Date(Date.now() + 21 * 86400000).toISOString(), expiredText: 'The date has passed — this message replaces the timer.', color: VIOLET } },

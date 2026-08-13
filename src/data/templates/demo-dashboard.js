@@ -5,7 +5,7 @@
 // industry template or started from scratch, the design they had just spent five minutes learning
 // was gone, with no way back short of clearing the config by hand.
 //
-// It earns a place on the list on its own merits. It is the widest design shipped here — all 21
+// It earns a place on the list on its own merits. It is the widest design shipped here — all 22
 // block types and all 11 chart types, each on a page where it makes sense — so as a starting point
 // it is the "everything, then delete what you don't need" option, which is how a lot of people
 // prefer to work. It is also the only template whose sample tables cover several shapes at once

@@ -3,6 +3,86 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.0.0] — 2026-08-13
+
+The release that turns the widget from a chart tool into a page builder. v2 could
+draw your data; v3 can publish it — 22 block types, nine industry starter designs
+that install their own tables, printable layouts, and a demo site that teaches
+the whole thing before you connect a document.
+
+### Added
+
+- **Seventeen new block types**, bringing the library to 22.
+  *Live Data Table* (search, sort, paginate, cell highlighting), *Calendar* with
+  two-way Grist sync, *Invoice* (turns one row into a document you can send, in
+  four styles), *Image* (upload or Grist attachment column), *Testimonials*,
+  *Progress bar*, *Counter*, *Accordion*, *Timeline*, *Pricing table*,
+  *Countdown*, *QR code*, *Button*, *Icon*, *Divider*, *Spacer*, and a sandboxed
+  *HTML/CSS/JS Embed* that is deliberately given no access to your document.
+- **Nine industry starter templates** — Research Labs, Nonprofits, Legal, Higher
+  Education, Marketing, Finance & Accounting, Developers, Small Business, Sports
+  Facility. Each is a complete multi-page design, not a layout sketch: it ships
+  realistic sample data, and applying it to a live document **creates the tables
+  it needs** and maps its blocks onto tables you already have where the names
+  match. Two carry explicit privacy rules — student rows are anonymised for
+  FERPA, donor rows are shown as initials — because publishing is the point.
+- **The demo dashboard is itself a template.** The design the widget opens with is
+  on the list, so you can get back to it, and it is the one that covers every
+  block type and all 11 chart types on a page where each makes sense.
+- **Start from scratch.** A genuinely blank design, which never touches your own
+  tables or data — only the demo tables the widget created.
+- **A 509-icon library** across 28 categories, with search, 227 aliases, and a
+  full-window grid browser for when you would rather look than type.
+- **Printable layouts.** Collect blocks while browsing, arrange them by span,
+  and print — on white, with real page margins, tables unpaginated so a 200-row
+  ledger prints as 200 rows rather than one screenful.
+- **Editing data from the block**, not just its settings, with a full-screen mode,
+  search, multi-select filters and sorting for large tables.
+- **A Settings menu** gathering theme, design, pages, header and templates behind
+  one button, and warning before a template overwrites work you have done.
+- **Six more palettes and two more font pairings** (16 and 7), every one of them
+  checked to 4.5:1 contrast in both light and dark.
+- **A Refresh button** that is a real re-read of the document.
+
+### Changed
+
+- **The demo site was rebuilt to teach.** Six pages that explain each capability
+  where it is used, rather than showing off in the abstract.
+- **Every control is keyboard-operable**, decorative markup is no longer announced
+  to screen readers, sortable table headers are real buttons carrying `aria-sort`.
+- **Dates are read and written in the column's own timezone**, not the browser's.
+- Charts pick the shape the question needs: funnels can be built from staged
+  measures, categories are never silently dropped, and axis labels rotate rather
+  than overlap.
+
+### Fixed
+
+- **Critical: the built widget overwrote Leaflet.** The obfuscator hoists its
+  string-array helpers to the top level of the program, outside esbuild's IIFE,
+  and named one of them `L` — Leaflet's global. Maps then threw from inside a
+  forEach, which aborted the whole render and could leave a template install
+  frozen partway through. The output is wrapped, generated names are prefixed,
+  and Leaflet is captured before anything can take it.
+- **One failing block no longer takes the page with it.** Mount steps and
+  individual maps are isolated, and a design naming tables this document does not
+  have is skipped with one warning instead of a stream of sandbox errors.
+- **Security: the Text block no longer executes markup from the config table.**
+- **Highlighted cells addressed the wrong columns** in four shipped templates —
+  spreadsheet letters index the table's column order, not the block's.
+- Saving no longer blanks the page; applying a template no longer flips your
+  theme or hijacks the data table; the same template installed twice says so.
+- Config is resolved from whichever of the two stores is newer, so a design no
+  longer appears to revert.
+- The Edit button silently failed on GitHub Pages until `.nojekyll` was added.
+- Print output: margins on every page, maps and numbers where a reader expects
+  them, invoices on white with branding inherited from the site.
+
+### Performance
+
+- The calendar only polls while it is actually on screen.
+- Bookkeeping writes read the config table once instead of twice, and opening the
+  editor no longer refetches every table in the document.
+
 ## [2.0.0] — 2026
 
 ### Fixed
