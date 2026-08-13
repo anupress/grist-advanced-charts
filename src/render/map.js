@@ -4,7 +4,11 @@
 import { el, escapeHtml, interpolate } from '../util.js';
 import { currentSeriesColors } from '../theme/apply.js';
 
-const L = () => window.L;
+// `__apLeaflet` is captured in index.html the instant after leaflet.js and its cluster plugin have
+// run, so it is the reference we trust. `window.L` is the fallback, and it is a fallback rather
+// than the source because a single-letter global is the easiest name on a page to lose: the
+// obfuscated build once emitted its own top-level `function L(){…}` and silently took it.
+const L = () => window.__apLeaflet || window.L;
 const registry = new WeakMap(); // container -> { map, layer }
 const _pinCache = {};
 
@@ -40,10 +44,27 @@ export function buildMapCard(block, ctx) {
   return card;
 }
 
+// `window.L` being present is not the same as Leaflet being usable. It is a vendored script loaded
+// from the page, so it can be blocked, half-fetched, or shadowed by something else that happens to
+// be called L — and then every call below is a "not a function" thrown from inside a forEach. The
+// methods this file actually depends on are checked once, by name, instead of assumed.
+const LEAFLET_NEEDS = ['map', 'tileLayer', 'marker', 'divIcon', 'layerGroup', 'control'];
+function leaflet() {
+  const Lf = L();
+  if (!Lf) return null;
+  return LEAFLET_NEEDS.every((m) => typeof Lf[m] === 'function' || (m === 'control' && Lf[m])) ? Lf : null;
+}
+
 export function mountMaps(scope) {
-  if (!L()) return;
+  if (!leaflet()) {
+    // Say so once rather than per map, and leave the card's own empty state showing.
+    if (!mountMaps._warned) { mountMaps._warned = true; console.warn('[ANUPRESS] map library unavailable — map blocks will stay empty'); }
+    return;
+  }
   (scope || document).querySelectorAll('.ap-map').forEach((container) => {
-    if (container._apMap) mountOne(container);
+    // Per map, so one bad dataset or one container mid-transition cannot stop the rest mounting.
+    try { if (container._apMap) mountOne(container); }
+    catch (e) { console.warn('[ANUPRESS] a map failed to mount', e); }
   });
 }
 
@@ -90,9 +111,18 @@ function mountOne(container) {
       });
     }
     Lf.control.layers(layers, null, { position: 'bottomright', collapsed: true }).addTo(map);
-    const layer = (typeof Lf.markerClusterGroup === 'function')
-      ? Lf.markerClusterGroup({ disableClusteringAtZoom: 17, maxClusterRadius: 45, chunkedLoading: true })
-      : Lf.layerGroup();
+    // Clustering is an optional plugin, and testing for the factory is not enough: the plugin
+    // closes over the global L to reach its own constructor, so it can be present and still throw
+    // if that global has been taken. Plain markers on a working map beat no map at all.
+    let layer = null;
+    if (typeof Lf.markerClusterGroup === 'function') {
+      try {
+        layer = Lf.markerClusterGroup({ disableClusteringAtZoom: 17, maxClusterRadius: 45, chunkedLoading: true });
+      } catch (e) {
+        console.warn('[ANUPRESS] marker clustering unavailable — showing individual pins', e);
+      }
+    }
+    if (!layer) layer = Lf.layerGroup();
     map.addLayer(layer);
     entry = { map, layer };
     registry.set(container, entry);

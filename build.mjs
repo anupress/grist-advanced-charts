@@ -46,9 +46,14 @@ const result = await build({
 //   - transformObjectKeys: mangles our { class:'…', onClick:fn } props objects
 //   - controlFlowFlattening + deadCodeInjection: added a lot of noise for little gain
 // Identifier mangling + string-array + base64 still makes the code hard to casually read.
+//
+// identifiersPrefix is not cosmetic. The mangled generator hands out single letters, and it once
+// handed out `L` — which is Leaflet's global. Every generated name now starts with `ap`, so it
+// cannot collide with a vendored library's global no matter what the shuffle produces.
 const obfOpts = {
   compact: true,
   identifierNamesGenerator: 'mangled-shuffled',
+  identifiersPrefix: 'ap',
   numbersToExpressions: true,
   simplify: true,
   splitStrings: true,
@@ -63,7 +68,13 @@ for (const file of result.outputFiles) {
   fs.mkdirSync(path.dirname(file.path), { recursive: true });
   if (file.path.endsWith('.js')) {
     const obf = JsObfuscator.obfuscate(file.text, obfOpts).getObfuscatedCode();
-    fs.writeFileSync(file.path, obf);
+    // esbuild's IIFE keeps OUR code off the global object, but the obfuscator runs afterwards and
+    // hoists its own string-array and decoder to the top level of the program — outside that IIFE.
+    // In a classic <script> a top-level `function L(){…}` IS `window.L`, and that is precisely what
+    // shipped: the decoder was named `L`, it overwrote Leaflet, and every map block died on
+    // `L.tileLayer is not a function`. Wrapping the finished file puts those helpers in a function
+    // scope where they belong. Nothing here is meant to be reachable from outside.
+    fs.writeFileSync(file.path, ';(function(){\n' + obf + '\n})();\n');
     console.log('obfuscated', rel);
   } else {
     fs.writeFileSync(file.path, file.contents);
@@ -101,6 +112,7 @@ const indexHtml = `<!DOCTYPE html>
 <script src="vendor/Sortable.min.js"></script>
 <script src="vendor/leaflet.js"></script>
 <script src="vendor/leaflet.markercluster.js"></script>
+<script>window.__apLeaflet = window.L;</script>
 </head><body><div id="anupress-root" class="ap-root" aria-live="polite"></div>
 <script src="assets/app.js"></script></body></html>`;
 fs.writeFileSync(path.join(OUT, 'index.html'), indexHtml);

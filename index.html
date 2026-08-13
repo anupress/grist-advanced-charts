@@ -19,6 +19,9 @@
   <script src="vendor/Sortable.min.js"></script>
   <script src="vendor/leaflet.js"></script>
   <script src="vendor/leaflet.markercluster.js"></script>
+  <!-- Leaflet claims the single-letter global `L`, which is the easiest name on the page to lose
+       to something else. Hold our own reference the moment it is definitely correct. -->
+  <script>window.__apLeaflet = window.L;</script>
 </head>
 <body>
   <div id="anupress-root" class="ap-root" aria-live="polite"></div>
