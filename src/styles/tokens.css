@@ -24,7 +24,13 @@
   --ap-text:      #1f2233;
   --ap-text-soft: #5b6076;
   --ap-text-mute: #8a90a6;
+  /* Starting values only. theme/apply.js recomputes all three from whichever primary/accent is in
+     force — palette or hand-picked — because nothing static can know whether that colour is pale
+     coral or deep navy. --ap-on-primary is the label ON a filled button; --ap-link is the same
+     colour used AS text on the page, nudged until it is readable against the current surface. */
   --ap-on-primary:#ffffff;
+  --ap-on-accent: #ffffff;
+  --ap-link:      var(--ap-primary);
   /* Fixed dark "chrome" (edit bar, toasts) — stays dark in BOTH themes so white
      text on it is always legible. Not overridden in dark mode. */
   --ap-chrome:    #1b1e2c;

@@ -40,6 +40,69 @@ function watchSystemMode(getTheme, root) {
   else if (mq.addListener) mq.addListener(onChange);
 }
 
+// ---- Contrast ----
+//
+// Two colours have to be DERIVED from the brand primary rather than fixed, because the primary is
+// whatever a palette or a user chose and nothing else can know whether it is pale coral or deep
+// navy:
+//
+//   --ap-on-primary : the label printed ON a primary-filled button. It was hard-coded #ffffff, so
+//                     five shipped palettes had white text on a light fill — Candy measured 3.0:1
+//                     and Sunset 2.78:1, both under the 4.5:1 that normal text needs.
+//   --ap-link       : the primary used AS text, on the page surface. Same colour, opposite
+//                     problem: Graphite's slate primary on the dark surface measured 2.05:1, which
+//                     is very nearly invisible. This walks the primary toward the readable end
+//                     until it clears, so the hue survives and the text can be read.
+//
+// Deriving both also means a palette added later, or a custom colour picked in the editor, is
+// legible without anyone having to remember to check.
+
+const _rgb = (h) => {
+  const s = String(h || '').trim().replace(/^#/, '');
+  const f = s.length === 3 ? s.split('').map((c) => c + c).join('') : s;
+  if (!/^[0-9a-f]{6}$/i.test(f)) return null;
+  return [0, 2, 4].map((i) => parseInt(f.slice(i, i + 2), 16));
+};
+const _hex = (rgb) => '#' + rgb.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+const _lum = (rgb) => {
+  const [r, g, b] = rgb.map((v) => v / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+const _ratio = (a, b) => { const x = _lum(a), y = _lum(b); const [hi, lo] = x > y ? [x, y] : [y, x]; return (hi + 0.05) / (lo + 0.05); };
+const _mix = (rgb, towards, amount) => rgb.map((v, i) => v + (towards[i] - v) * amount);
+
+/**
+ * Black or white, whichever the fill can actually carry.
+ *
+ * Best effort, not a guarantee: a mid-tone fill reaches 4.5:1 with neither. #1c7ed6 — Ocean's
+ * primary until this was measured — managed 4.20 against white and 4.36 against black, so the
+ * button label failed whichever way it went. There is no label colour that fixes that; the fill
+ * has to move, which is why Ocean's did. Every palette shipped here now clears 4.5, and a custom
+ * colour picked in the editor gets the better of the two.
+ */
+export function onColor(fill) {
+  const rgb = _rgb(fill);
+  if (!rgb) return '#ffffff';
+  return _ratio(rgb, [255, 255, 255]) >= _ratio(rgb, [17, 20, 34]) ? '#ffffff' : '#111422';
+}
+
+// The same hue, nudged toward white or black in small steps until it is readable on `surface`.
+// Gives up at the extreme rather than looping, so a pathological colour still yields something.
+export function readableInk(color, surface, target = 4.5) {
+  const rgb = _rgb(color), bg = _rgb(surface);
+  if (!rgb || !bg) return color;
+  if (_ratio(rgb, bg) >= target) return color;
+  const towards = _lum(bg) > 0.5 ? [0, 0, 0] : [255, 255, 255];
+  for (let step = 1; step <= 40; step++) {
+    // Measure what will actually be emitted. Checking the un-rounded mix and rounding afterwards
+    // let a colour through that missed the target by a hundredth once its channels were squared
+    // off to integers — passing by calculation and failing when drawn.
+    const candidate = _hex(_mix(rgb, towards, step / 40));
+    if (_ratio(_rgb(candidate), bg) >= target) return candidate;
+  }
+  return _hex(towards);
+}
+
 export function applyTheme(theme = {}, rootEl) {
   const root = rootEl || document.getElementById('anupress-root') || document.documentElement;
   const style = document.documentElement.style;
@@ -49,8 +112,16 @@ export function applyTheme(theme = {}, rootEl) {
   const mode = resolveMode(theme, pal);
   watchSystemMode(() => theme, root);
 
-  set(style, '--ap-primary', theme.primary || pal.primary);
-  set(style, '--ap-accent', theme.accent || pal.accent);
+  const primary = theme.primary || pal.primary;
+  const accent = theme.accent || pal.accent;
+  set(style, '--ap-primary', primary);
+  set(style, '--ap-accent', accent);
+  // Derived from whatever primary is in force, palette or custom. The surfaces match tokens.css:
+  // #ffffff in light, #1a1d2b in dark.
+  const surface = mode === 'dark' ? '#1a1d2b' : '#ffffff';
+  set(style, '--ap-on-primary', onColor(primary));
+  set(style, '--ap-on-accent', onColor(accent));
+  set(style, '--ap-link', readableInk(primary, surface));
   (pal.series || []).forEach((c, i) => set(style, `--ap-series-${i + 1}`, c));
   if (theme.primary) set(style, '--ap-series-1', theme.primary);
   if (theme.accent) set(style, '--ap-series-2', theme.accent);

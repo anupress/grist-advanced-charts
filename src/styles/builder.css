@@ -27,7 +27,7 @@
 .ap-trust strong { display: block; margin-bottom: 2px; }
 .ap-consent-list { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .ap-consent-list li { display: flex; gap: 10px; font-size: var(--ap-fs-sm); color: var(--ap-text-soft); }
-.ap-consent-list svg { width: 18px; height: 18px; flex: none; color: var(--ap-primary); margin-top: 1px; }
+.ap-consent-list svg { width: 18px; height: 18px; flex: none; color: var(--ap-link); margin-top: 1px; }
 .ap-fineprint { font-size: var(--ap-fs-xs); color: var(--ap-text-mute); margin-top: 14px; }
 
 /* ---- Template table setup / column mapping (template-picker confirm step) ---- */
@@ -87,7 +87,7 @@
 .ap-typecell span { font-size: 10px; font-weight: 700; color: var(--ap-text-soft); text-align: center; line-height: 1.1; }
 .ap-typecell:hover { border-color: var(--ap-primary); transform: translateY(-2px); }
 .ap-typecell.is-active { border-color: var(--ap-primary); background: color-mix(in srgb, var(--ap-primary) 12%, var(--ap-surface)); }
-.ap-typecell.is-active svg, .ap-typecell.is-active span { color: var(--ap-primary); }
+.ap-typecell.is-active svg, .ap-typecell.is-active span { color: var(--ap-link); }
 .ap-typecell.is-recommended::after { content: "★"; position: absolute; }
 .ap-typecell[disabled] { opacity: .32; pointer-events: none; }
 .ap-typecell { position: relative; }
@@ -97,7 +97,7 @@
 .ap-collist { display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow: auto; padding: 2px; }
 .ap-colpill { appearance: none; -webkit-appearance: none; background: var(--ap-surface); color: var(--ap-text); font: inherit; font-size: var(--ap-fs-sm); display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--ap-border); cursor: pointer; transition: all .12s; }
 .ap-colpill:hover { border-color: var(--ap-primary); }
-.ap-colpill.is-on { background: color-mix(in srgb, var(--ap-primary) 12%, var(--ap-surface)); border-color: var(--ap-primary); color: var(--ap-primary); font-weight: 600; }
+.ap-colpill.is-on { background: color-mix(in srgb, var(--ap-primary) 12%, var(--ap-surface)); border-color: var(--ap-primary); color: var(--ap-link); font-weight: 600; }
 .ap-coltype { margin-left: auto; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; padding: 2px 6px; border-radius: 5px; background: var(--ap-bg-soft); color: var(--ap-text-mute); }
 
 /* live preview box inside drawer */
@@ -115,7 +115,7 @@
 /* Reset <button> defaults so transparent shows in dark mode. */
 .ap-addblock { appearance: none; -webkit-appearance: none; background: transparent; font: inherit; font-weight: 700;
   display: grid; place-items: center; min-height: 120px; border: 2px dashed var(--ap-border); border-radius: var(--ap-radius); color: var(--ap-text-mute); cursor: pointer; gap: 6px; transition: all .15s; text-align: left; }
-.ap-addblock:hover { border-color: var(--ap-primary); color: var(--ap-primary); background: color-mix(in srgb, var(--ap-primary) 8%, transparent); }
+.ap-addblock:hover { border-color: var(--ap-primary); color: var(--ap-link); background: color-mix(in srgb, var(--ap-primary) 8%, transparent); }
 .ap-addblock:focus-visible { outline: none; box-shadow: var(--ap-ring); }
 
 /* "Add a block" chooser: a menu row with a gradient icon badge + title/description. */
@@ -139,7 +139,7 @@
 .ap-tilebadge { font-size: 10.5px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase;
   padding: 2px 7px; border-radius: 999px; white-space: nowrap;
   background: color-mix(in srgb, var(--ap-primary) 16%, transparent);
-  color: var(--ap-primary); border: 1px solid color-mix(in srgb, var(--ap-primary) 35%, transparent); }
+  color: var(--ap-link); border: 1px solid color-mix(in srgb, var(--ap-primary) 35%, transparent); }
 /* Active but edited: the same fact, in the colour that means "there is something to lose here". */
 .ap-tilebadge--warn { background: color-mix(in srgb, #e8590c 16%, transparent); color: #e8590c;
   border-color: color-mix(in srgb, #e8590c 40%, transparent); }
@@ -158,7 +158,7 @@
 .ap-el-templink { appearance: none; -webkit-appearance: none; background: none; border: none; font: inherit;
   display: flex; align-items: center; gap: 8px; padding: 4px 2px; color: var(--ap-text-mute); font-size: var(--ap-fs-sm); font-weight: 600; cursor: pointer; }
 .ap-el-templink svg { width: 15px; height: 15px; flex: none; }
-.ap-el-templink:hover { color: var(--ap-primary); }
+.ap-el-templink:hover { color: var(--ap-link); }
 
 /* "Add Element" chooser: search box + collapsible categories + a 2-col icon-tile grid. */
 .ap-el-search { width: 100%; }
@@ -214,7 +214,7 @@
 .ap-wiz-item.is-selected { border-color: var(--ap-primary); background: color-mix(in srgb, var(--ap-primary) 14%, var(--ap-surface)); }
 .ap-wiz-item__title { font-weight: 600; }
 .ap-wiz-item__meta, .ap-wiz-item__type { font-size: var(--ap-fs-xs); color: var(--ap-text-mute); text-transform: uppercase; letter-spacing: .05em; }
-.ap-wiz-item.is-selected .ap-wiz-item__type { color: var(--ap-primary); }
+.ap-wiz-item.is-selected .ap-wiz-item__type { color: var(--ap-link); }
 .ap-wiz-summary { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
 .ap-wiz-chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; background: var(--ap-bg-soft); font-size: var(--ap-fs-sm); color: var(--ap-text-soft); }
 .ap-wiz-chip svg { width: 15px; height: 15px; }
@@ -236,7 +236,7 @@
 .ap-info-btn:hover { background: var(--ap-primary); }
 .ap-info-pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 90; display: none; min-width: 230px; max-width: 290px; background: var(--ap-surface); border: 1px solid var(--ap-border); border-radius: 10px; box-shadow: var(--ap-shadow-lg); padding: 10px 12px; font: 400 12px/1.5 var(--ap-font-body); color: var(--ap-text-soft); text-transform: none; letter-spacing: 0; }
 .ap-info-pop.is-open { display: block; }
-.ap-info-pop code { background: var(--ap-bg-soft); padding: 1px 5px; border-radius: 4px; font-size: 11px; color: var(--ap-primary); }
+.ap-info-pop code { background: var(--ap-bg-soft); padding: 1px 5px; border-radius: 4px; font-size: 11px; color: var(--ap-link); }
 
 /* toast — purely informational (no buttons/links inside), so it never captures clicks,
    even while visible; without this, the always-present fixed-position element keeps
@@ -315,4 +315,4 @@
 
 .ap-dataedit__pager { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 8px; }
 .ap-dataedit__status { font-size: var(--ap-fs-xs); text-align: center; }
-.ap-dataedit__status.is-dirty { color: var(--ap-primary); font-weight: 700; }
+.ap-dataedit__status.is-dirty { color: var(--ap-link); font-weight: 700; }

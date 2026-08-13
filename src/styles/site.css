@@ -22,7 +22,7 @@
   cursor: pointer; transition: color .15s, background .15s; background: none; border: none; font-family: inherit;
 }
 .ap-nav__link:hover { color: var(--ap-text); background: var(--ap-bg-soft); }
-.ap-nav__link.is-active { color: var(--ap-primary); }
+.ap-nav__link.is-active { color: var(--ap-link); }
 .ap-nav__link.is-active::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: 2px; height: 2px; border-radius: 2px; background: var(--ap-primary); }
 .ap-header__actions { display: flex; align-items: center; gap: 8px; }
 
@@ -139,7 +139,7 @@
 .ap-footer__inner { max-width: var(--ap-maxw); margin: 0 auto; padding: 24px clamp(16px,4vw,40px); display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; }
 .ap-footer__links { display: flex; flex-wrap: wrap; gap: 8px 18px; }
 .ap-footer__links a { color: var(--ap-text-soft); font-size: var(--ap-fs-sm); font-weight: 600; }
-.ap-footer__links a:hover { color: var(--ap-primary); }
+.ap-footer__links a:hover { color: var(--ap-link); }
 .ap-footer__meta { font-size: var(--ap-fs-xs); color: var(--ap-text-mute); }
 .ap-footer__meta a { color: var(--ap-text-soft); font-weight: 700; }
 .ap-footer__left { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
@@ -147,7 +147,7 @@
 .ap-footer__credit { display: inline-flex; align-items: center; gap: 8px; font-size: var(--ap-fs-sm); color: var(--ap-text-soft); white-space: nowrap; }
 .ap-footer__credit img { border-radius: 50%; }
 .ap-footer__credit b { color: var(--ap-text); }
-.ap-footer__credit:hover { color: var(--ap-primary); }
+.ap-footer__credit:hover { color: var(--ap-link); }
 
 /* ---- Hero image slider (full-width by default, capped at 340px) ---- */
 .ap-hero-slider { position: relative; width: 100%; height: clamp(190px, 40vw, 340px); overflow: hidden; background: var(--ap-bg-soft); }
@@ -204,7 +204,7 @@
 .leaflet-container { font-family: var(--ap-font-body) !important; }
 .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--ap-surface) !important; color: var(--ap-text) !important; }
 .leaflet-popup-content { font-size: 12px !important; line-height: 1.5 !important; }
-.leaflet-popup-content strong { color: var(--ap-primary); }
+.leaflet-popup-content strong { color: var(--ap-link); }
 
 /* ---- Spacer block (deliberately invisible — no card chrome) ---- */
 .ap-spacer { width: 100%; }
@@ -285,10 +285,10 @@
 .ap-livetable__sortbtn { display: flex; align-items: center; gap: 4px; width: 100%; padding: 9px 12px;
   background: none; border: 0; font: inherit; color: inherit; text-transform: inherit;
   letter-spacing: inherit; text-align: left; cursor: pointer; user-select: none; }
-.ap-livetable__sortbtn:hover { color: var(--ap-primary); }
+.ap-livetable__sortbtn:hover { color: var(--ap-link); }
 .ap-livetable__sortbtn:focus-visible { outline: 2px solid var(--ap-primary); outline-offset: -2px; }
 .ap-livetable__sorticon { width: 11px; height: 11px; margin-left: 4px; opacity: .3; vertical-align: -1px; transition: transform .15s var(--ap-ease), opacity .15s; }
-.ap-livetable__table th.is-sorted .ap-livetable__sorticon { opacity: 1; color: var(--ap-primary); }
+.ap-livetable__table th.is-sorted .ap-livetable__sorticon { opacity: 1; color: var(--ap-link); }
 .ap-livetable__table th.is-sorted[data-dir="desc"] .ap-livetable__sorticon { transform: rotate(180deg); }
 /* Numeric columns right-align so digits line up down the column. */
 .ap-livetable__table .is-num { text-align: right; font-variant-numeric: tabular-nums; }
@@ -315,7 +315,7 @@
 .ap-calendar__cell { border: 1px solid var(--ap-border); border-radius: 8px; padding: 5px 5px 4px; display: flex; flex-direction: column; gap: 3px; min-width: 0; background: var(--ap-surface); transition: background .12s, border-color .12s; }
 .ap-calendar__cell.is-outside { background: var(--ap-bg-soft); opacity: .55; }
 .ap-calendar__cell.is-today { border-color: var(--ap-primary); }
-.ap-calendar__cell.is-today .ap-calendar__daynum { color: var(--ap-primary); font-weight: 800; }
+.ap-calendar__cell.is-today .ap-calendar__daynum { color: var(--ap-link); font-weight: 800; }
 .ap-calendar__cell.is-droptarget { background: color-mix(in srgb, var(--ap-primary) 10%, transparent); border-color: var(--ap-primary); }
 .ap-calendar__daynum { font-size: var(--ap-fs-xs); font-weight: 600; color: var(--ap-text-mute); }
 .ap-calendar__events { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -375,7 +375,7 @@
 .ap-timeline__list::before { content: ''; position: absolute; left: 5px; top: 6px; bottom: 6px; width: 2px; background: var(--ap-border); }
 .ap-timeline__item { position: relative; }
 .ap-timeline__dot { position: absolute; left: -26px; top: 3px; width: 12px; height: 12px; border-radius: 50%; background: var(--ap-primary); border: 3px solid var(--ap-surface); box-shadow: 0 0 0 2px var(--ap-primary); }
-.ap-timeline__date { font-size: var(--ap-fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--ap-primary); margin-bottom: 2px; }
+.ap-timeline__date { font-size: var(--ap-fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--ap-link); margin-bottom: 2px; }
 .ap-timeline__itemtitle { font-weight: 700; font-size: var(--ap-fs-md); color: var(--ap-text); }
 .ap-timeline__desc { font-size: var(--ap-fs-sm); color: var(--ap-text-soft); margin-top: 3px; line-height: 1.5; }
 
@@ -396,7 +396,7 @@
 .ap-pricing__period { font-size: var(--ap-fs-sm); color: var(--ap-text-mute); }
 .ap-pricing__features { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; flex: 1; }
 .ap-pricing__features li { display: flex; align-items: flex-start; gap: 8px; font-size: var(--ap-fs-sm); color: var(--ap-text-soft); }
-.ap-pricing__features svg { flex: none; width: 16px; height: 16px; color: var(--ap-primary); margin-top: 2px; }
+.ap-pricing__features svg { flex: none; width: 16px; height: 16px; color: var(--ap-link); margin-top: 2px; }
 .ap-pricing__btn { justify-content: center; text-align: center; }
 
 /* ---- Mobile nav ---- */
