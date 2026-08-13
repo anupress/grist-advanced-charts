@@ -79,12 +79,58 @@ export function detectTemplateTables(provider) {
  * afternoon of edits is not, and the old flow discarded both without distinguishing them.
  */
 export function templateStatus(config, templateId) {
-  if (!config || !templateId || config.templateId !== templateId) return 'fresh';
-  // A design stamped by an older version has an id but no signature. Treating that as untouched
-  // would offer to skip a reinstall someone may genuinely want, so assume it has been worked on —
-  // the cautious direction, since it only ever adds a confirmation.
-  if (!config.templateSig) return 'modified';
-  return designSignature(config) === config.templateSig ? 'active' : 'modified';
+  if (!config || !templateId) return 'fresh';
+
+  if (config.templateId === templateId) {
+    // A design stamped by an older version has an id but no signature. Treating that as untouched
+    // would offer to skip a reinstall someone may genuinely want, so assume it has been worked on
+    // — the cautious direction, since it only ever adds a confirmation.
+    if (!config.templateSig) return 'modified';
+    return designSignature(config) === config.templateSig ? 'active' : 'modified';
+  }
+  if (config.templateId) return 'fresh'; // stamped, and stamped as something else
+
+  // Nothing stamped at all, which is every document where a template was installed before stamping
+  // existed — precisely the documents whose owners are most likely to reinstall by accident, since
+  // the picker would otherwise show what they are already using as a fresh choice. Recognise the
+  // design by its blocks instead. 'modified' rather than 'active', because the ids identify the
+  // template but say nothing about whether its contents have been edited since.
+  return inferTemplateId(config) === templateId ? 'modified' : 'fresh';
+}
+
+/**
+ * Which template a design came from, judged only by the block ids it carries.
+ *
+ * Every block a template ships has a hand-written id ('rl11', 'lg22t'), all 634 of them unique
+ * across the ten templates, and installing one never rewrites them — adaptation repoints tables and
+ * columns, not identities. So the ids that survive in a design name the template it grew from, even
+ * after pages have been deleted and blocks added.
+ *
+ * Both directions have to agree, which is what keeps it honest. Coverage — how much of this design
+ * belongs to that template — stops a design with two leftover blocks from being claimed. Presence —
+ * how much of the template is still here — stops a heavily gutted design from being confidently
+ * labelled. Fail either and the answer is "no idea", which costs one unnecessary confirmation.
+ */
+export function inferTemplateId(config) {
+  const here = new Set();
+  for (const tab of config?.tabs || []) for (const b of tab.blocks || []) if (b?.id) here.add(b.id);
+  if (!here.size) return null;
+
+  let best = null;
+  for (const t of TEMPLATES) {
+    const own = new Set();
+    for (const tab of t.config.tabs || []) for (const b of tab.blocks || []) if (b?.id) own.add(b.id);
+    if (!own.size) continue;
+    let hits = 0;
+    for (const id of here) if (own.has(id)) hits++;
+    if (!hits) continue;
+    const coverage = hits / here.size;
+    const presence = hits / own.size;
+    if (coverage < 0.6 || presence < 0.4) continue;
+    const score = coverage + presence;
+    if (!best || score > best.score) best = { id: t.id, score };
+  }
+  return best?.id || null;
 }
 
 /**
@@ -499,19 +545,41 @@ export function openTemplatePicker(opts) {
       candidates, wanted: state.cleanupWanted, touched: state.cleanupTouched });
     if (!candidates.length) return [];
 
-    return [
-      subhead('Tidy up the previous template'),
-      el('div', { class: 'ap-muted', style: { fontSize: '12px', lineHeight: '1.5', marginBottom: '10px' }, text:
-        'These tables were created by a template in this document, and the one you are applying does not use them. '
-        + 'They are removed along with their sample data. Only tables this widget created are listed — your own are never touched, '
-        + 'and untick anything you would rather keep.' }),
-      el('div', { class: 'ap-scratch-list' }, candidates.map((id) =>
-        checkboxRow(id, state.cleanupWanted.has(id), (v) => {
-          state.cleanupTouched.add(id); // an explicit choice, to be honoured across re-renders
-          if (v) state.cleanupWanted.add(id); else state.cleanupWanted.delete(id);
-        }))),
-      divider(),
-    ];
+    // Two different things happen to these tables, and calling both "no longer needed" was wrong.
+    // A table the incoming template also builds is removed and immediately rebuilt from its sample
+    // data — which is the point, since that is how it gets the right columns rather than the last
+    // template's — but anything added to it in the meantime goes with it. Reinstalling the SAME
+    // template puts every one of its tables in that group, and telling someone their data is being
+    // discarded because "this template does not use them" would be false on both counts.
+    const choices = state.tableChoices || {};
+    const incoming = new Set(templateTables(state.picked)
+      .filter((name) => (choices[name]?.target ?? OWN) === OWN));
+    const rebuilt = candidates.filter((id) => incoming.has(id));
+    const dropped = candidates.filter((id) => !incoming.has(id));
+
+    const rows = (names) => el('div', { class: 'ap-scratch-list' }, names.map((id) =>
+      checkboxRow(id, state.cleanupWanted.has(id), (v) => {
+        state.cleanupTouched.add(id); // an explicit choice, to be honoured across re-renders
+        if (v) state.cleanupWanted.add(id); else state.cleanupWanted.delete(id);
+      })));
+
+    const out = [subhead('Tables from the template already installed')];
+    if (rebuilt.length) {
+      out.push(el('div', { class: 'ap-muted', style: { fontSize: '12px', lineHeight: '1.5', marginBottom: '8px' }, text:
+        'This template builds these too. Ticked, they are removed and recreated with fresh sample data, which is how '
+        + 'they end up with the columns it expects — but any rows you have added to them are lost. Untick to keep them as they are.' }));
+      out.push(rows(rebuilt));
+    }
+    if (dropped.length) {
+      if (rebuilt.length) out.push(el('div', { style: { height: '10px' } }));
+      out.push(el('div', { class: 'ap-muted', style: { fontSize: '12px', lineHeight: '1.5', marginBottom: '8px' }, text:
+        'These are not used by the template you are applying, and are removed along with their sample data.' }));
+      out.push(rows(dropped));
+    }
+    out.push(el('div', { class: 'ap-muted', style: { fontSize: '11.5px', marginTop: '8px' }, text:
+      'Only tables this widget created are listed. Your own tables are never touched.' }));
+    out.push(divider());
+    return out;
   }
 
   function confirmBody() {
