@@ -3,6 +3,7 @@
 
 import { fromHTML } from '../util.js';
 import { ANUPRESS_LOGO } from './brand-logo.js';
+import { ICON_LIBRARY, ICON_ALIASES, ICON_GROUPS } from './icon-library.js';
 
 const S = (body, opts = '') =>
   `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" ${opts}>${body}</svg>`;
@@ -62,6 +63,47 @@ export const ICONS = {
   refresh: S('<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>'),
   target: S('<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/>'),
 };
+
+// The content library (assets/icon-library.js) folded in, so icon(name) resolves anything.
+//
+// The UI set above WINS every collision, and that direction is not a style preference: those names
+// are wired into buttons and into the chart-type picker, while the library's are stored in saved
+// designs. A library glyph quietly taking over 'check' would change the tick on every confirm
+// button in the product. Library names that clash are dropped and reported by the test instead.
+export const ICON_CATEGORIES = ICON_GROUPS.filter((g) => ICON_LIBRARY[g.id]).map((g) => ({
+  ...g,
+  icons: Object.keys(ICON_LIBRARY[g.id]).filter((n) => !(n in ICONS)),
+}));
+
+for (const group of Object.values(ICON_LIBRARY)) {
+  for (const [name, body] of Object.entries(group)) {
+    if (name in ICONS) continue;
+    ICONS[name] = S(body);
+  }
+}
+
+// name -> the words someone might type to find it. The name itself is always searchable; this adds
+// the synonyms, so "money" reaches coins and "customer" reaches person.
+export const ICON_SEARCH_TERMS = ICON_ALIASES;
+
+/** Every pickable content icon, in category order. */
+export function allIconNames() {
+  return ICON_CATEGORIES.flatMap((c) => c.icons);
+}
+
+/**
+ * Icons matching a search, or everything when the box is empty. Matches the name and its synonyms,
+ * so a picker over 500 glyphs is usable without knowing what any of them were called.
+ */
+export function searchIcons(query) {
+  const q = String(query || '').trim().toLowerCase();
+  if (!q) return ICON_CATEGORIES;
+  const hit = (name) => name.toLowerCase().includes(q)
+    || (ICON_ALIASES[name] || '').toLowerCase().includes(q);
+  return ICON_CATEGORIES
+    .map((c) => ({ ...c, icons: c.icons.filter(hit) }))
+    .filter((c) => c.icons.length);
+}
 
 // Chart-type glyphs for the picker (filled, distinct silhouettes).
 const CS = (body) => `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;

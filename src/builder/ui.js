@@ -1,7 +1,7 @@
 // Small form-control helpers + the shared slide-in drawer used by every editor panel.
 
-import { el, uid } from '../util.js';
-import { icon } from '../assets/icons.js';
+import { el, uid, debounce } from '../util.js';
+import { icon, allIconNames, searchIcons } from '../assets/icons.js';
 import { pickImage, readFileAsDataURL } from './imageutil.js';
 import { getMediaLibrary, addMediaAsset } from './media.js';
 
@@ -172,38 +172,81 @@ export function closeDrawer() {
 
 // ---- Shared block-editor controls ----
 
-// Icons offered by iconPickerField — a small curated set (not the whole ICONS library, which
-// includes UI-only glyphs like "close"/"grip" that don't make sense as decorative content icons).
-const PICKABLE_ICONS = ['coins', 'cart', 'trending', 'users', 'pulse', 'target', 'star', 'database', 'globe', 'sparkles'];
+// The handful shown before anyone types. A grid of 500 opens as a wall of glyphs nobody reads, so
+// the picker starts with the ones most designs actually reach for and lets the search box do the
+// rest. These are all in the UI set, which is why they need no category.
+const STARTER_ICONS = ['coins', 'cart', 'trending', 'users', 'pulse', 'target', 'star', 'database', 'globe', 'sparkles'];
 
-// "Choose an icon" control shared by any block config with {icon, iconData} fields (Stat,
-// Icon block, Counter). Reads/writes `config` in place; `site` is the whole working site config,
-// used to read/add to its shared media library (see media.js) for uploaded custom icons.
+/**
+ * "Choose an icon" — shared by every block config with {icon, iconData} (Stat, Icon, Counter).
+ * Reads/writes `config` in place; `site` is the whole working config, used for the shared media
+ * library of uploaded icons.
+ *
+ * Five hundred glyphs need finding, not scrolling, so the control is a search box over a grouped
+ * grid. Empty search shows the starter row plus your own uploads — the state someone opening a
+ * stat card wants — and typing switches to results across every category, matched on the name and
+ * on synonyms ("money" finds coins, "customer" finds person).
+ */
 export function iconPickerField(site, config, onChange) {
-  const wrap = el('div', { class: 'ap-row', style: { flexWrap: 'wrap', gap: '6px' } });
-  const rebuild = () => {
-    wrap.replaceChildren();
-    PICKABLE_ICONS.forEach((name) => {
-      const active = !config.iconData && config.icon === name;
-      const chip = el('button', { class: 'ap-chip' + (active ? ' is-active' : ''), title: name }, [icon(name)]);
-      chip.addEventListener('click', () => { config.icon = name; config.iconData = null; rebuild(); onChange(); });
-      wrap.append(chip);
-    });
-    getMediaLibrary(site).forEach(({ dataUrl }) => {
-      const chip = el('button', { class: 'ap-chip' + (config.iconData === dataUrl ? ' is-active' : ''), title: 'Custom icon' },
-        [el('img', { src: dataUrl, alt: '', style: { width: '16px', height: '16px', objectFit: 'contain' } })]);
-      chip.addEventListener('click', () => { config.iconData = dataUrl; rebuild(); onChange(); });
-      wrap.append(chip);
-    });
-    const up = el('button', { class: 'ap-chip', title: 'Upload your own icon' }, [icon('plus'), 'Upload']);
-    up.addEventListener('click', () => pickImage(async (f) => {
-      const data = await readFileAsDataURL(f, 128);
-      addMediaAsset(site, data);
-      config.iconData = data; rebuild(); onChange();
-    }));
-    wrap.append(up);
+  const wrap = el('div', { style: { display: 'grid', gap: '8px' } });
+  const results = el('div', { class: 'ap-iconpick' });
+  const count = el('div', { class: 'ap-muted', style: { fontSize: '11px' } });
+  const search = el('input', { class: 'ap-input', type: 'search',
+    placeholder: `Search ${allIconNames().length} icons — try "money", "lab", "delivery"…` });
+
+  const chipFor = (name) => {
+    const active = !config.iconData && config.icon === name;
+    const chip = el('button', { class: 'ap-iconchip' + (active ? ' is-active' : ''), type: 'button', title: name }, [icon(name)]);
+    chip.addEventListener('click', () => { config.icon = name; config.iconData = null; draw(); onChange(); });
+    return chip;
   };
-  rebuild();
+
+  function draw() {
+    const q = search.value.trim();
+    results.replaceChildren();
+
+    if (!q) {
+      results.append(el('div', { class: 'ap-iconpick__grid' }, STARTER_ICONS.map(chipFor)));
+      // Uploads sit with the starters: they are the other thing already chosen for this site.
+      const mine = getMediaLibrary(site);
+      if (mine.length) {
+        results.append(el('div', { class: 'ap-iconpick__head', text: 'Your uploads' }));
+        results.append(el('div', { class: 'ap-iconpick__grid' }, mine.map(({ dataUrl }) => {
+          const chip = el('button', { class: 'ap-iconchip' + (config.iconData === dataUrl ? ' is-active' : ''), type: 'button', title: 'Custom icon' },
+            [el('img', { src: dataUrl, alt: '', style: { width: '17px', height: '17px', objectFit: 'contain' } })]);
+          chip.addEventListener('click', () => { config.iconData = dataUrl; draw(); onChange(); });
+          return chip;
+        })));
+      }
+      count.textContent = `${allIconNames().length} icons — start typing to search them all`;
+      return;
+    }
+
+    const groups = searchIcons(q);
+    const total = groups.reduce((n, g) => n + g.icons.length, 0);
+    if (!total) {
+      results.append(el('div', { class: 'ap-muted', style: { fontSize: '13px', padding: '10px 2px' },
+        text: `Nothing matches “${q}”. Try a broader word, or upload your own below.` }));
+    }
+    for (const g of groups) {
+      results.append(el('div', { class: 'ap-iconpick__head', text: g.name }));
+      results.append(el('div', { class: 'ap-iconpick__grid' }, g.icons.map(chipFor)));
+    }
+    count.textContent = total ? `${total} match${total === 1 ? '' : 'es'}` : '';
+  }
+
+  // Debounced: filtering 500 names and rebuilding the grid on every keystroke is felt.
+  search.addEventListener('input', debounce(draw, 100));
+
+  const up = el('button', { class: 'ap-btn ap-btn--soft ap-btn--sm', type: 'button' }, [icon('plus'), 'Upload your own']);
+  up.addEventListener('click', () => pickImage(async (f) => {
+    const data = await readFileAsDataURL(f, 128);
+    addMediaAsset(site, data);
+    config.iconData = data; search.value = ''; draw(); onChange();
+  }));
+
+  draw();
+  wrap.append(search, count, results, up);
   return wrap;
 }
 

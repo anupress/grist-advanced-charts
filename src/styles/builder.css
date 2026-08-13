@@ -147,6 +147,26 @@
   border-color: color-mix(in srgb, #e8590c 34%, transparent); }
 .ap-trust--warn svg { color: #e8590c; }
 
+/* Icon picker: a searchable grid over the whole library. Capped in height and scrolled, because
+   a search for "a" legitimately returns a hundred glyphs and the drawer still has fields under it. */
+.ap-iconpick { max-height: 260px; overflow-y: auto; padding-right: 4px;
+  border: 1px solid var(--ap-border); border-radius: var(--ap-radius-sm); padding: 8px; }
+.ap-iconpick__head { font-size: 10.5px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .04em; color: var(--ap-text-mute); margin: 10px 0 6px; }
+.ap-iconpick__head:first-child { margin-top: 0; }
+/* auto-fill, not fixed columns: the drawer is one width on a laptop and another on a phone. */
+.ap-iconpick__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 5px; }
+.ap-iconchip { appearance: none; -webkit-appearance: none; font: inherit; cursor: pointer;
+  aspect-ratio: 1; display: grid; place-items: center; border-radius: 9px;
+  border: 1px solid var(--ap-border); background: var(--ap-surface); color: var(--ap-text-soft);
+  transition: border-color .12s var(--ap-ease), background .12s var(--ap-ease), color .12s var(--ap-ease); }
+.ap-iconchip:hover { border-color: var(--ap-primary); color: var(--ap-link);
+  background: color-mix(in srgb, var(--ap-primary) 8%, var(--ap-surface)); }
+.ap-iconchip:focus-visible { outline: none; box-shadow: var(--ap-ring); }
+.ap-iconchip.is-active { border-color: var(--ap-primary); color: var(--ap-link);
+  background: color-mix(in srgb, var(--ap-primary) 15%, var(--ap-surface)); }
+.ap-iconchip svg { width: 17px; height: 17px; }
+
 /* "Not sure? Let me help" tile — highlighted top item in the chooser. */
 .ap-addtile--wizard { background: color-mix(in srgb, var(--ap-primary) 10%, var(--ap-surface)); border-color: color-mix(in srgb, var(--ap-primary) 30%, var(--ap-border)); }
 .ap-addtile--wizard:hover { background: color-mix(in srgb, var(--ap-primary) 16%, var(--ap-surface)); }
