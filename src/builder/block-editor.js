@@ -1146,6 +1146,11 @@ function openInvoiceEditor(block, ctx) {
         field('Status', selectInput(colOpts(c.table), c.statusColumn || '', set('statusColumn'))),
       ),
       field('Note on the invoice', selectInput(colOpts(c.table), c.noteColumn || '', set('noteColumn'))),
+      twoUp(
+        field('Their reference / PO', selectInput(colOpts(c.table), c.referenceColumn || '', set('referenceColumn'))),
+        field('Reference label', textInput(c.referenceLabel || '', (v) => { c.referenceLabel = v; refreshPreview(); }, { placeholder: 'Your reference' })),
+      ),
+      hint('Accounts payable match on their own reference, not on your number. An invoice without it can sit unpaid with nobody doing anything wrong.'),
     );
   }
 
@@ -1238,6 +1243,20 @@ function openInvoiceEditor(block, ctx) {
       { placeholder: 'From your site footer' })),
     hint('Printed in a band at the foot of the document. Left blank it uses your site footer text; type a single space to leave it off entirely.'),
     field('Payment terms', textInput(c.terms || '', (v) => { c.terms = v; refreshPreview(); }, { textarea: true, rows: 2, placeholder: 'Payment due within 30 days.' })),
+
+    subhead('Supporting text'),
+    hint('Every one of these is optional and prints only when filled in. Basic formatting is allowed, so an account number can be bold or a payment link can be a link.'),
+    twoUp(
+      field('Payment details label', textInput(c.paymentDetailsLabel || '', (v) => { c.paymentDetailsLabel = v; refreshPreview(); }, { placeholder: 'Payment details' })),
+      field('Total label', textInput(c.totalLabel || '', (v) => { c.totalLabel = v; refreshPreview(); }, { placeholder: 'Amount due' })),
+    ),
+    field('Payment details', textInput(c.paymentDetails || '', (v) => { c.paymentDetails = v; refreshPreview(); },
+      { textarea: true, rows: 3, placeholder: 'Bank: Example Bank
+Account: 12345678  Sort code: 00-00-00' })),
+    field('Prepared by', textInput(c.preparedBy || '', (v) => { c.preparedBy = v; refreshPreview(); },
+      { textarea: true, rows: 2, placeholder: 'A. Name, Accounts' })),
+    field('Closing message', textInput(c.thanksText || '', (v) => { c.thanksText = v; refreshPreview(); },
+      { textarea: true, rows: 2, placeholder: 'Thank you for your business.' })),
 
     field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
     subhead('Live preview'), previewHost,

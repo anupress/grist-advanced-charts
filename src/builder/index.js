@@ -141,6 +141,8 @@ function defaultBlock(type, tabId) {
       singleLineLabel: 'Services rendered',
       from: { name: '', address: '', email: '', phone: '', taxId: '', logoData: null },
       terms: 'Payment due within 30 days of the issue date.',
+      referenceColumn: null, referenceLabel: 'Your reference', totalLabel: 'Amount due',
+      paymentDetails: '', paymentDetailsLabel: 'Payment details', preparedBy: '', thanksText: '',
       currency: '$', taxRate: 0, taxLabel: 'Tax', taxIdLabel: 'Tax ID', accent: null, rowId: null,
     } };
   }

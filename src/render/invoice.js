@@ -212,7 +212,11 @@ function buildDocument(row, c, ctx) {
     el('div', { class: 'ap-invoice__metas' }, [
       metaField('Issued', docDate(row[c.dateColumn])),
       c.dueColumn ? metaField('Due', docDate(row[c.dueColumn]), 'is-due') : null,
-      metaField('Amount due', money(t.total, cur), 'is-total'),
+      // The client's own reference. Accounts payable departments match on this, not on our
+      // number, so an invoice without it can sit unpaid while nobody is doing anything wrong.
+      c.referenceColumn && row[c.referenceColumn]
+        ? metaField(c.referenceLabel || 'Your reference', String(row[c.referenceColumn])) : null,
+      metaField(c.totalLabel || 'Amount due', money(t.total, cur), 'is-total'),
     ]),
   ]);
 
@@ -240,17 +244,31 @@ function buildDocument(row, c, ctx) {
     totalRow('Total', money(t.total, cur), 'is-grand'),
   ]);
 
+  // A labelled block of prose. Used for the four optional sections below, all of which are just
+  // "some words under a heading" — the difference is what they say, not how they are built.
+  // Sanitized rather than set as text: these are author-written and may legitimately want a bold
+  // account number or a link to a payment page. See security/sanitize.js.
+  const richBlock = (label, html, cls) => el('div', { class: 'ap-invoice__foot-item' + (cls ? ' ' + cls : '') }, [
+    label ? el('div', { class: 'ap-invoice__partylabel', text: label }) : null,
+    (() => { const d = el('div'); d.appendChild(sanitizeToFragment(html)); return d; })(),
+  ]);
+
   const noteText = c.noteColumn ? String(row[c.noteColumn] ?? '').trim() : '';
-  const foot = (noteText || c.terms) ? el('div', { class: 'ap-invoice__foot' }, [
-    noteText ? el('div', { class: 'ap-invoice__note' }, [
-      el('div', { class: 'ap-invoice__partylabel', text: 'Note' }),
-      el('div', { text: noteText }),
-    ]) : null,
-    c.terms ? el('div', { class: 'ap-invoice__terms' }, [
-      el('div', { class: 'ap-invoice__partylabel', text: 'Payment terms' }),
-      (() => { const d = el('div'); d.appendChild(sanitizeToFragment(c.terms)); return d; })(),
-    ]) : null,
-  ]) : null;
+  // How to actually pay. The single most common reason an invoice comes back with a question
+  // attached, and the one thing the table itself never holds — it is the same on every invoice.
+  const footItems = [
+    noteText ? richBlock('Note', noteText) : null,
+    c.terms ? richBlock('Payment terms', c.terms) : null,
+    c.paymentDetails ? richBlock(c.paymentDetailsLabel || 'Payment details', c.paymentDetails, 'is-payment') : null,
+    c.preparedBy ? richBlock('Prepared by', c.preparedBy) : null,
+  ].filter(Boolean);
+  const foot = footItems.length ? el('div', { class: 'ap-invoice__foot' }, footItems) : null;
+
+  // A closing line that sits on its own, centred, under everything else — a thank-you, or the
+  // late-payment notice some jurisdictions require you to state.
+  const closing = c.thanksText
+    ? el('div', { class: 'ap-invoice__closing' }, [sanitizeToFragment(c.thanksText)])
+    : null;
 
   // The closing band, carrying the same line the site footer shows. A business that has put its
   // legal name and registration number in the footer wants them on the invoice too.
@@ -265,7 +283,7 @@ function buildDocument(row, c, ctx) {
     class: `ap-invoice__doc is-${style}`,
     style: c.accent ? { '--ap-inv-accent': c.accent } : null,
   }, [
-    head, statusRow, parties, el('div', { class: 'ap-invoice__linesbox' }, [table]), totals, foot, footBand,
+    head, statusRow, parties, el('div', { class: 'ap-invoice__linesbox' }, [table]), totals, foot, closing, footBand,
   ]);
 }
 

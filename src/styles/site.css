@@ -561,7 +561,7 @@
      letterhead, and a status pill without its fill is just a word in a box. So each surface whose
      colour is load-bearing asks for it explicitly. */
   .ap-invoice__brandband, .ap-invoice__strip, .ap-invoice__brandfoot, .ap-invoice__status,
-  .ap-invoice__table thead th {
+  .ap-invoice__foot-item.is-payment, .ap-invoice__table thead th {
     -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
   }
   /* The band is white-on-colour and has to stay that way; the blanket light-palette rule above
@@ -732,3 +732,17 @@
 @media (max-width: 720px) {
   .ap-invoice__strip { flex-direction: column; align-items: flex-start; }
 }
+
+/* Supporting text sections. The footer grid was two columns for note + terms; with payment
+   details and a signature line it needs to flow, so it wraps instead of fixing a count. */
+.ap-invoice__foot { display: flex; flex-wrap: wrap; gap: 24px 36px; }
+.ap-invoice__foot-item { flex: 1 1 220px; min-width: 0; }
+/* Payment details are the thing a payer actually hunts for, so they get a tinted panel rather
+   than being one more paragraph among several. */
+.ap-invoice__foot-item.is-payment { flex-basis: 260px; padding: 12px 14px; border-radius: var(--ap-radius-sm, 6px);
+  background: var(--ap-bg-soft); border: 1px solid var(--ap-border); }
+.ap-invoice__foot-item p { margin: 0 0 6px; }
+.ap-invoice__foot-item p:last-child { margin-bottom: 0; }
+.ap-invoice__closing { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--ap-border);
+  text-align: center; font-size: var(--ap-fs-sm); color: var(--ap-text-soft); }
+.ap-invoice__closing p { margin: 0; }
