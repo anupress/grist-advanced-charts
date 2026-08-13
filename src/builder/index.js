@@ -1,7 +1,7 @@
 // Edit-mode controller. Holds a working copy of the site config, re-renders the site in edit
 // mode after every change, and exposes panels for theme, header, footer, tabs and blocks.
 
-import { el, clone, uid, toast } from '../util.js';
+import { el, clone, uid, toast, designSignature } from '../util.js';
 import { icon, brandLogo } from '../assets/icons.js';
 import { renderSite } from '../render/site.js';
 import { applyTheme, applyDesign } from '../theme/apply.js';
@@ -221,6 +221,14 @@ function openTemplatesPanel() {
       mark();
       rerender();
     },
+    // Applying a template writes the design itself, so once that lands there is nothing left
+    // unsaved. Without this the editor stayed dirty and Done saved the same config again.
+    //
+    // Only if it is still the design that was saved. saveConfig takes a moment, and anything
+    // edited while it was in flight is genuinely unsaved — clearing the flag regardless would let
+    // Done discard it. templateSig is the fingerprint taken at the instant it was written, so any
+    // change since shows up here.
+    onSaved: () => { if (designSignature(working) === working.templateSig) dirty = false; },
   });
 }
 

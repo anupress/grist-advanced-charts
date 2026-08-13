@@ -764,7 +764,13 @@ export function openTemplatePicker(opts) {
     if (!provider?.isLive) return;
     try {
       const ok = await bridge.saveConfig(cfg);
-      if (!ok) toast('Template applied, but saving the design failed — press Save to try again.', 'err');
+      // Tell the editor the design is on disk. It marks itself dirty when onApply hands it the new
+      // config — correctly, since at that moment it is — but the save below settles it moments
+      // later, and nothing said so. Pressing Done then wrote the identical config a second time:
+      // in a real session that was two more full reads and a write of a 21KB design, for nothing.
+      // Only on success, so a failed save still leaves Done something to retry.
+      if (ok) opts.onSaved?.();
+      else toast('Template applied, but saving the design failed — press Save to try again.', 'err');
     } catch (e) {
       console.warn('[ANUPRESS] could not save the applied template', e);
       toast('Template applied, but saving the design failed — press Save to try again.', 'err');
