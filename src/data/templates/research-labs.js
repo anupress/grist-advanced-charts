@@ -69,6 +69,10 @@ export const TEMPLATE = {
             },
           },
           text('rl11n', '', 'The highlighted column above is <b>Turnaround (hrs)</b> — the same cell-highlighting available on any Data Table block, here flagging the samples worth a second look.'),
+          // The SLA card above says whether the lab is inside 48 hours today. This says whether it
+          // is getting faster or slower, which is the question that follows and the one a total
+          // cannot answer — nothing else in this template plotted anything against time.
+          { id: 'rl11t', type: 'chart', span: 12, config: { table: 'Samples', title: 'Turnaround over time', subtitle: 'Average hours from receipt to result, by date received', chartType: 'line', dims: ['ReceivedAt'], measures: ['TurnaroundHours'], agg: 'avg', smooth: true } },
           { id: 'rl12', type: 'map', span: 12, config: { table: 'Samples', title: 'Where samples are collected', subtitle: '%count mapped · %missing without coordinates', latColumn: 'Latitude', lonColumn: 'Longitude', labelColumn: 'Source', colorBy: 'SampleType' } },
           spacer('rl12s', 10),
           image('rl13', placeholderImage('#1c7ed6', '#22b8cf'), 'Lab bench with sample tubes and equipment', 'Our main wet-lab intake bench', 6),

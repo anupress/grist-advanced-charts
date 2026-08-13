@@ -47,6 +47,13 @@ export const TEMPLATE = {
           { id: 'sb2', type: 'stat', span: 3, config: { table: 'Deals', label: 'Won', column: 'WonAmount', agg: 'sum', icon: 'coins', format: { compact: true, currency: '$' } } },
           { id: 'sb3', type: 'stat', span: 3, config: { table: 'Team', label: 'Team cost', column: 'Payment', agg: 'sum', icon: 'users', format: { compact: true, currency: '$' } } },
           { id: 'sb4', type: 'stat', span: 3, config: { table: 'Expenses', label: 'Running costs', column: 'Amount', agg: 'sum', icon: 'cart', format: { compact: true, currency: '$' } } },
+          // Stays a column chart, after a funnel was tried here and did not survive being looked at.
+          //
+          // Stage is a SNAPSHOT — each deal sits in exactly one stage right now — not a cumulative
+          // progression where every stage contains the one after it. Drawn as a funnel it sorted by
+          // value, which put Won at the widest point and Lost at the narrow end, reading as a
+          // pipeline that flows into losing. There is no filter to drop Lost and no way to impose
+          // stage order, so the shape could not be made to tell the truth about this data.
           { id: 'sb5', type: 'chart', span: 8, config: { table: 'Deals', title: 'Pipeline value by stage', chartType: 'column', dims: ['Stage'], measures: ['Amount'], agg: 'sum', sortByValue: true } },
           { id: 'sb6', type: 'breakdown', span: 4, config: { table: 'Deals', title: 'Deals by stage', column: 'Stage', limit: 8, display: 'chart', chartType: 'doughnut' } },
           { id: 'sb7', type: 'progress', span: 8, config: { title: 'Won against this year’s target', mode: 'data', table: 'Deals', valueColumn: 'WonAmount', agg: 'sum', target: 320000, prefix: '$', color: CLAY } },

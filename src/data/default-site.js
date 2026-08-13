@@ -114,7 +114,18 @@ export const DEFAULT_SITE = {
         chart('g5', 'Pie — share of a whole', 'pie', ['Channel'], ['Revenue'], {}, 4),
         chart('g6', 'Doughnut — the same, with room in the middle', 'doughnut', ['Category'], ['Revenue'], {}, 4),
         chart('g7', 'Treemap — many parts at once', 'treemap', ['Product'], ['Revenue'], {}, 4),
-        chart('g8', 'Funnel — stages that narrow', 'funnel', ['Channel'], ['Units'], { sortByValue: true }, 4),
+        // The one chart on this page whose data does not really suit its shape, and it says so.
+        // A funnel means ordered stages that each contain the next — impressions, then the clicks
+        // among them, then the leads among those. Channels are not stages, and no table here has a
+        // column that is, so without the note a reader would reasonably conclude that a funnel is
+        // just a sorted bar chart.
+        //
+        // Nor is this only a demo-data problem: the chart takes ONE measure across a dimension, so
+        // it can only draw a true funnel where a table happens to carry a cumulative stage column.
+        // The natural funnel — four measures as four stages — cannot be expressed at all. Worth
+        // fixing in the chart before any template pretends otherwise.
+        chart('g8', 'Funnel — stages that narrow', 'funnel', ['Channel'], ['Units'],
+          { sortByValue: true, subtitle: 'Wants an ordered pipeline — these channels are only sorted by size' }, 4),
         chart('g9', 'Radar — several categories compared', 'radar', ['Category'], ['Satisfaction'], { agg: 'avg' }, 4),
         // A gauge wants one number and no category dimension, so dims:[] is deliberate here —
         // groupAggregate treats an empty dims list as "aggregate the whole table to a single value".

@@ -111,6 +111,14 @@ export const TEMPLATE = {
           },
           text('lg26', '', 'Non-billable time is recorded too — writing it off silently is how firms lose track of realization. In your own document, time entries can price themselves from each client\'s rate, exactly as Grist\'s time-tracking template does.'),
           spacer('lg26s', 10),
+          // The only chart in this template plotted against time. Everything else totals or ranks,
+          // and a practice that sees only totals cannot tell a strong month from a weak one.
+          //
+          // Billed off Invoices rather than TimeEntries deliberately: time entries land on 47
+          // separate days across two months, most carrying a single entry, which draws a sawtooth
+          // that falls to zero on every non-billable day and reads as a fault rather than a
+          // pattern. Eighteen invoice dates over the same period give the same answer legibly.
+          { id: 'lg26t', type: 'chart', span: 12, config: { table: 'Invoices', title: 'Fees invoiced over time', subtitle: 'What went out the door, by invoice date', chartType: 'line', dims: ['InvoiceDate'], measures: ['Amount'], agg: 'sum', smooth: true } },
           { id: 'lg27', type: 'breakdown', span: 4, config: { table: 'Invoices', title: 'Invoices by status', column: 'Status', limit: 6, display: 'chart', chartType: 'doughnut' } },
           {
             id: 'lg28', type: 'livetable', span: 8,

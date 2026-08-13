@@ -151,7 +151,13 @@ export const TEMPLATE = {
           { id: 'dv35', type: 'stat', span: 3, config: { table: 'TestRuns', label: 'Avg. coverage', column: 'Coverage', agg: 'avg', icon: 'shield', format: { decimals: 1 } } },
           { id: 'dv36', type: 'stat', span: 3, config: { table: 'TestRuns', label: 'Tests run', column: 'Total', agg: 'sum', icon: 'database', format: { compact: true } } },
           { id: 'dv37', type: 'stat', span: 3, config: { table: 'TestRuns', label: 'Failures', column: 'Failed', agg: 'sum', icon: 'target', format: {} } },
-          { id: 'dv38', type: 'progress', span: 8, config: { title: 'Test pass rate', mode: 'data', table: 'TestRuns', valueColumn: 'PassRate', agg: 'avg', target: 100, suffix: '%', color: CYAN } },
+          { id: 'dv38', type: 'progress', span: 4, config: { title: 'Test pass rate', mode: 'data', table: 'TestRuns', valueColumn: 'PassRate', agg: 'avg', target: 100, suffix: '%', color: CYAN } },
+          // Coverage on a dial, because it is the one quality number with real spread here (73-93%)
+          // and the one an engineering lead is asked for by a figure rather than a trend. Uptime
+          // would have been the obvious gauge and is the wrong one: it sits between 99.5 and 99.9,
+          // so every service pins the arc at the top and the chart says nothing. A gauge needs a
+          // metric that actually moves across its scale.
+          { id: 'dv38g', type: 'chart', span: 4, config: { table: 'TestRuns', title: 'Coverage against target', chartType: 'gauge', dims: [], measures: ['Coverage'], agg: 'avg', gaugeMax: 100 } },
           { id: 'dv39', type: 'breakdown', span: 4, config: { table: 'TestRuns', title: 'Runs by platform', column: 'Platform', limit: 4 } },
           { id: 'dv40', type: 'chart', span: 6, config: { table: 'TestRuns', title: 'Pass rate over time', chartType: 'line', dims: ['RunDate'], measures: ['PassRate'], agg: 'avg', smooth: true } },
           { id: 'dv41', type: 'chart', span: 6, config: { table: 'TestRuns', title: 'Passed vs failed by suite', chartType: 'column', dims: ['Suite'], measures: ['Passed', 'Failed'], agg: 'sum', stacked: true } },

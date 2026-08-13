@@ -176,7 +176,11 @@ function scatterOption(cfg, rows, colors) {
   return { color: colors, tooltip: { ...tooltipCfg('item'), formatter: (p) => `${p.seriesName}<br/>${m[0]}: <b>${fmtNumber(p.value[0], {})}</b><br/>${m[1]}: <b>${fmtNumber(p.value[1], {})}</b>` },
     legend: legendCfg(groups.length > 1), grid: baseGrid(groups.length > 1),
     xAxis: { ...valAxis(), name: m[0], nameLocation: 'middle', nameGap: 26, nameTextStyle: { color: axisText() } },
-    yAxis: { ...valAxis(), name: m[1] },
+    // The y-axis name runs ALONG the axis, like the x-axis name below it. Left at its default
+    // ('end'), ECharts draws it above the plot — which is exactly where baseGrid has just reserved
+    // space for the legend, so the two printed on top of each other whenever a scatter was grouped.
+    yAxis: { ...valAxis(), name: m[1], nameLocation: 'middle', nameRotate: 90, nameGap: 46,
+      nameTextStyle: { color: axisText() } },
     series: groups.map((gp) => ({ name: gp.name, type: 'scatter',
       symbolSize: m[2] ? (d) => Math.max(8, Math.sqrt(d[2]) / 3) : 12,
       itemStyle: { opacity: 0.8 }, data: gp.points, emphasis: { focus: 'series' } })) };

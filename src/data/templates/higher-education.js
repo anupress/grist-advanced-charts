@@ -155,6 +155,20 @@ export const TEMPLATE = {
           },
           { id: 'he40', type: 'chart', span: 6, config: { table: 'Departments', title: 'Students by department', chartType: 'bar', dims: ['Name'], measures: ['StudentCount'], agg: 'sum', sortByValue: true } },
           { id: 'he41', type: 'chart', span: 6, config: { table: 'Faculty', title: 'Research funding by faculty member', chartType: 'bar', dims: ['Name'], measures: ['ResearchFunding'], agg: 'sum', sortByValue: true, limit: 10 } },
+          // Teaching load against research income — the trade-off every department argues about,
+          // and one no ranking can show, because the point is whether the two move together at
+          // all. This template has no dated table, so a scatter is the only shape here that
+          // relates two numbers rather than listing one.
+          // Capacity against enrolment: whether the big lecture halls fill as reliably as the small
+          // seminars, which is the question behind every timetabling argument. A point above the
+          // diagonal is oversubscribed, well below it is a room booked twice the size it needed.
+          //
+          // Deliberately on Courses rather than Faculty. Teaching load versus research income is
+          // the more interesting question, but CoursesTaught holds three distinct values across
+          // twelve staff and GrantsHeld holds two — a scatter over that draws three vertical
+          // stripes and answers nothing. Both axes here have genuine spread (24-120 and 15-120).
+          // dims is the colour grouping; each row is already a point.
+          { id: 'he41s', type: 'chart', span: 12, config: { table: 'Courses', title: 'Do the big courses fill as well as the small ones?', subtitle: 'One point per course, coloured by department — capacity across, enrolment up', chartType: 'scatter', dims: ['Department'], measures: ['Capacity', 'Enrolled'], agg: 'sum' } },
           {
             id: 'he42', type: 'livetable', span: 12,
             config: {

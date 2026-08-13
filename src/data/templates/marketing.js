@@ -100,6 +100,14 @@ export const TEMPLATE = {
           },
           { id: 'mk16', type: 'chart', span: 8, config: { table: 'Campaigns', title: 'Return on ad spend by campaign', chartType: 'bar', dims: ['Name'], measures: ['ROAS'], agg: 'avg', sortByValue: true } },
           { id: 'mk17', type: 'breakdown', span: 4, config: { table: 'Campaigns', title: 'Campaigns by status', column: 'Status', limit: 5, display: 'chart', chartType: 'doughnut' } },
+          // The one chart that answers "is spending more actually returning more". Every other
+          // chart here totals a channel or ranks a campaign; a scatter puts each campaign at its
+          // own spend and its own revenue, so a campaign that costs a lot and returns little sits
+          // visibly off the line instead of being averaged away inside its channel.
+          // dims on a scatter is the COLOUR grouping, not the point identity — every row is already
+          // a point. Naming the campaign column here would have produced twelve one-point series
+          // and a twelve-entry legend; channel gives four readable groups over the same points.
+          { id: 'mk17s', type: 'chart', span: 12, config: { table: 'Campaigns', title: 'Does spend drive revenue?', subtitle: 'One point per campaign, coloured by channel — spend across, revenue up', chartType: 'scatter', dims: ['Channel'], measures: ['Spend', 'Revenue'], agg: 'sum' } },
           { id: 'mk18', type: 'divider', span: 12, config: { style: 'solid', thickness: 1, color: null } },
           text('mk19', 'Tag the link, then print it',
             'A tagged campaign URL — <code>utm_source</code>, <code>utm_medium</code>, <code>utm_campaign</code> — is what makes a click traceable back to the campaign that earned it. It is also unusable on anything physical: nobody types ninety characters off a banner. This block turns the tagged link into a QR code you can drop straight into print or a slide, so offline collateral lands in the same attribution report as everything else.'),
@@ -190,7 +198,11 @@ export const TEMPLATE = {
             },
           },
           { id: 'mk46', type: 'chart', span: 8, config: { table: 'Events', title: 'Ticket revenue by event', chartType: 'bar', dims: ['Name'], measures: ['TicketRevenue'], agg: 'sum', sortByValue: true } },
-          { id: 'mk47', type: 'chart', span: 4, config: { table: 'Events', title: 'Capacity vs registered', chartType: 'column', dims: ['Name'], measures: ['Capacity', 'Registered'], agg: 'sum' } },
+          // Marketing was the only template with no countdown, which is odd for the discipline
+          // that runs on dates more than any other here — a launch, a conference, an end of
+          // quarter. A team looking at this page wants to know how long is left before it.
+          { id: 'mk46c', type: 'countdown', span: 4, config: { title: 'Doors open at the next event', targetDate: new Date(Date.now() + 23 * 86400000).toISOString(), expiredText: 'Live now — go and meet people.', color: CORAL } },
+          { id: 'mk47', type: 'chart', span: 12, config: { table: 'Events', title: 'Capacity vs registered', chartType: 'column', dims: ['Name'], measures: ['Capacity', 'Registered'], agg: 'sum' } },
           text('mk48', 'No more reconciling lists',
             'Registrations and ticket revenue come from the registration records themselves — a count of who signed up and the sum of what they paid — rather than being typed into the event row. Because the numbers are computed rather than maintained by hand, the headcount on this page and the list at the door cannot drift apart.'),
         ],

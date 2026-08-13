@@ -123,6 +123,11 @@ export const TEMPLATE = {
           { id: 'fa23', type: 'breakdown', span: 4, config: { table: 'Expenses', title: 'By category', column: 'Category', limit: 12 } },
           { id: 'fa24', type: 'breakdown', span: 4, config: { table: 'Expenses', title: 'By account', column: 'Account', limit: 12, display: 'chart', chartType: 'doughnut' } },
           { id: 'fa25', type: 'breakdown', span: 4, config: { table: 'Expenses', title: 'Approval status', column: 'Status', limit: 6 } },
+          // A treemap, because the question here is proportion across a dozen categories at once
+          // rather than a ranking of them. Area carries "how much of the total" far better than
+          // twelve bar lengths do, and unlike a doughnut it stays readable at that many slices —
+          // which is exactly when a pie stops working.
+          { id: 'fa25t', type: 'chart', span: 12, config: { table: 'Expenses', title: 'Where the money actually goes', subtitle: 'Every category, sized by spend', chartType: 'treemap', dims: ['Category'], measures: ['Amount'], agg: 'sum' } },
           { id: 'fa26', type: 'chart', span: 8, config: { table: 'CashFlow', title: 'Spend by month', chartType: 'column', dims: ['Month'], measures: ['Expenses'], agg: 'sum' } },
           { id: 'fa27', type: 'progress', span: 4, config: { title: 'Quarterly expense budget', mode: 'data', table: 'Expenses', valueColumn: 'Amount', agg: 'sum', target: 60000, prefix: '$', color: BLUE } },
           {

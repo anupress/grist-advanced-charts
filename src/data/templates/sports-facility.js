@@ -104,7 +104,12 @@ export const TEMPLATE = {
             },
           },
           text('sf24', '', '<b>Utilisation</b> is highlighted because it is the number that decides everything else — whether to raise the hourly rate, move a class to a quieter slot, or build another court. It is booked hours against sellable hours, measured per space, so a court that looks busy and a court that actually earns are told apart.'),
-          { id: 'sf25', type: 'chart', span: 12, config: { table: 'Facilities', title: 'Booked vs available hours', chartType: 'column', dims: ['Name'], measures: ['BookedHours', 'AvailableHours'], agg: 'sum', stacked: true } },
+          // Utilisation as a dial, next to the hours it is calculated from. It averages in the
+          // forties across the complex, so the arc sits mid-scale where a gauge is actually
+          // readable — and "how full is the place, out of everything we could sell" is a single
+          // number against a ceiling, which is the one question this shape answers well.
+          { id: 'sf24g', type: 'chart', span: 4, config: { table: 'Facilities', title: 'Utilisation across the complex', chartType: 'gauge', dims: [], measures: ['UtilisationPct'], agg: 'avg', gaugeMax: 100 } },
+          { id: 'sf25', type: 'chart', span: 8, config: { table: 'Facilities', title: 'Booked vs available hours', chartType: 'column', dims: ['Name'], measures: ['BookedHours', 'AvailableHours'], agg: 'sum', stacked: true } },
         ],
       },
       {
