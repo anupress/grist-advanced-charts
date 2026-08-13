@@ -1,5 +1,5 @@
 // Pure-JS statistics engine (no server). Group-by + aggregation, KPI deltas, and the
-// numeric helpers behind the "Excel-like" stats. Operates on plain row objects.
+// numeric helpers behind the spreadsheet-style stats. Operates on plain row objects.
 
 export const AGGREGATIONS = [
   { id: 'sum', label: 'Sum' },

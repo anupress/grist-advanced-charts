@@ -1,9 +1,12 @@
-// Research Labs template — rebuilt against real structure, not a generic placeholder table.
-// Modeled directly on Grist's own three official lab templates (Sample Management, Project
-// Management, Inventory Management) plus a real case study (Jozef Stefan Institute, Advanced
-// Materials Dept): a lab's data genuinely spans four distinct tables — Samples (an intake→
-// analysis→export pipeline), a Reagent inventory (a Purchase/Use transaction ledger, not a
-// static stock count), Tasks (assigned, due-dated, calendar-worthy), and People. Every block
+// Research Labs template — built on real structure, not a generic placeholder table.
+//
+// A working lab does not keep one big list. Its data falls into four shapes that behave
+// differently, so the template is built from four tables: Samples (an intake, analysis and export
+// pipeline, where the interesting number is how long a sample spends between stages), a Reagent
+// inventory (a Purchase/Use transaction ledger rather than a static stock count, because what
+// matters is the running quantity and who drew it down), Tasks (assigned, due-dated, worth putting
+// on a calendar), and People. Flattening those into one table is how a lab ends up unable to
+// answer either "where is this sample" or "are we about to run out". Every block
 // below references one of those four tables by name; data/templates/sample-data.js's
 // research-labs entry provides matching demo rows, and adaptTemplateToTable() (data/provider.js)
 // only ever repoints a block's table when a table by that exact name genuinely exists on the

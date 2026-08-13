@@ -1,17 +1,19 @@
 // Small Business template — running the business, not closing the books.
-// Grounded in three Grist docs: Account-based Sales Team (Companies.Account_Owner cascading into
-// Contacts.Contact_Owner and Deals.Deal_Owner — the ownership chain its access rules depend on,
-// with Deal_Stage running Cold → Responsive → Negotiating → Deal Closed), Payroll (Payment =
-// Hours × a per-person, per-role rate) and Expense Tracking for Teams (Account + Expense_Type +
-// receipt, employee auto-filled from the logged-in user).
 //
-// Deliberately positioned against our Finance & Accounting template: that one CLOSES THE BOOKS
-// (invoices, AR ageing, cash flow). This one RUNS THE BUSINESS — pipeline first, then the people
-// and costs behind it, so an owner can answer "am I selling enough to cover the team?". Payroll
-// and expenses appear in both, which is right for an owner, but the centre of gravity differs.
+// Ownership cascades, and that one rule is what makes per-person access workable. The account owner
+// owns the company, and the contacts and deals hanging off it inherit that owner, so a rep sees
+// their accounts and everything attached without anyone maintaining three separate permission
+// lists. Deals move through named stages; payroll prices itself from hours against a per-person
+// rate; expenses carry an account, a type and an approval state.
 //
-// Past what the sources do: a dated, DRAGGABLE close-date forecast and a win rate — the ABM doc
-// tracks stages but carries no dates and (per its own schema) no weighting or commission fields.
+// Deliberately positioned against our own Finance & Accounting template: that one CLOSES THE BOOKS
+// — invoices, AR ageing, cash flow. This one RUNS THE BUSINESS — pipeline first, then the people and
+// costs behind it, so an owner can answer "am I selling enough to cover the team?". Payroll and
+// expenses appear in both, which is right for an owner, but the centre of gravity differs.
+//
+// Deals carry a close date, which sounds obvious and mostly is not: a stage without a date tells you
+// what you are working on and never when it lands, so the forecast calendar is draggable and the
+// win rate is computed rather than eyeballed.
 
 import {
   text, accordion, counter, iconBlock, button, urlTarget, tabTarget,

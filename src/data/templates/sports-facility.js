@@ -1,18 +1,16 @@
 // Sports Facility Management template — bookings, members, classes and leagues in one place.
-// Grist's own facility page is thin (it shows revenue tracking, a group-sales CRM and event
-// budgets, and names only generic Budget/Payroll/CRM templates), so this is grounded in adjacent
-// real docs instead:
-//   • Sports League Standings — Wins = len(Game_Schedule.lookupRecords(Winner=$id)) and
-//     Win_Rate = Wins/(Wins+Losses): a standings table entirely DERIVED from results, never typed.
-//   • Rental Management — Income_and_Expenses tracked per space with Month = Date.strftime("%Y-%m")
-//     and rolled up per unit, which is exactly revenue-and-utilisation per court.
-//   • Class Enrollment — whose sample classes are literally "Gym Stars" and "Yoga Kids", with
-//     Max_Students / Count / Spots_Left capacity rollups.
 //
-// The gap none of them fills: a facility manager runs bookings AND members AND classes AND leagues,
-// and today that means four spreadsheets. Past the sources: a DRAGGABLE court calendar that writes
-// rescheduled bookings back to Grist, and utilisation per facility — the number that actually
-// decides pricing and whether you need another court.
+// A facility manager runs four things at once, and they are usually four spreadsheets: who booked
+// which court, who is a member and when they renew, which classes are filling, and where the
+// leagues stand. None of them is hard alone. Keeping them apart is what makes the week hard.
+//
+// Two things are derived rather than typed, because typing them is how they go stale. League
+// standings come out of the results — wins counted from the fixtures, win rate from wins against
+// losses — so nobody maintains a table that the scores already determine. And class capacity is a
+// live rollup: places against confirmed enrolments, with spots-left falling out of it.
+//
+// The court calendar is draggable and writes a rescheduled booking straight back. Utilisation is
+// per facility, because that is the number deciding pricing and whether you need another court.
 
 import {
   text, accordion, counter, iconBlock, button, urlTarget, tabTarget,

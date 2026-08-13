@@ -231,9 +231,11 @@ export const DEFAULT_SITE = {
           'Counters animate upward when they scroll into view, and hold still if your system asks for reduced motion. Both take any icon from the built-in set, or an SVG of your own.'),
         { id: 'e10', type: 'divider', span: 12, config: { style: 'solid', thickness: 1, color: null } },
         image('e11', placeholderImage(VIOLET, TEAL), 'A published dashboard on a laptop screen', 'Images can be uploaded, or pulled from a Grist attachment column', 6),
-        testimonials('e12', 'What people say', [
-          { name: 'Priya Patel', quote: 'We had a client-ready dashboard published before our coffee got cold.', rating: 5, photoData: null },
-          { name: 'Diego Costa', quote: 'The only widget where our data genuinely never leaves our own document.', rating: 5, photoData: null },
+        // Sample text, deliberately. These are not real quotes about this widget, and writing
+        // them as if they were would be inventing endorsements — so they say what the block does.
+        testimonials('e12', 'Testimonials — sample text, replace with your own', [
+          { name: 'Your reviewer', quote: 'Each card holds a name, a quote, a star rating and an optional photo.', rating: 5, photoData: null },
+          { name: 'A second reviewer', quote: 'Add as many as you like. They wrap onto their own row on a narrow screen.', rating: 4, photoData: null },
         ], 6),
         { id: 'e13', type: 'pricing', span: 8, config: { title: 'Pricing tables, if you need one', plans: [
           { name: 'Advanced Charts', price: '$0', period: 'forever', features: ['All 21 block types', 'All 11 chart types', '9 starter templates', 'Open source and self-hostable'], highlighted: true, buttonLabel: 'Read the guide', buttonTarget: urlTarget(GUIDE) },

@@ -659,7 +659,7 @@ export const ICON_ALIASES = {
   growth: 'increase trend up', handshake: 'deal agreement partner', contract: 'agreement legal sign',
   dashboard: 'overview home panel', report: 'summary document analysis', analytics: 'statistics data metrics',
   presentation: 'slides deck pitch', forecast: 'prediction projection future', kpi: 'metric measure target',
-  heatmap: 'density matrix grid', pipeline: 'funnel stages flow', spreadsheet: 'table grid excel',
+  heatmap: 'density matrix grid', pipeline: 'funnel stages flow', spreadsheet: 'table grid rows cells',
   beaker: 'lab science chemistry', flask: 'lab science chemistry', testTube: 'lab sample science',
   microscope: 'lab science research', dna: 'genetics biology science', atom: 'physics science molecule',
   petriDish: 'culture lab biology', pipette: 'lab liquid sample', telescope: 'astronomy observe space',

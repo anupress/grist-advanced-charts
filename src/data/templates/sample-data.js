@@ -13,8 +13,8 @@ import { mulberry32, DUMMY_DATA } from '../dummy-data.js';
 // shape keyed to the 'Data' placeholder table — enough since those templates' blocks are all
 // authored against 'Data' too. Research Labs is deliberately different (see
 // data/templates/research-labs.js's file header): it names four *real* tables — Samples,
-// Reagents, Tasks, People — modeled directly on Grist's own three official lab templates plus a
-// real case study, matched here by using those same table names.
+// Reagents, Tasks, People — the four shapes a working lab's data actually falls into, with the
+// table names the template's blocks reference.
 
 const SAMPLE_PROFILES = [
   { type: 'Blood', storage: 'Freezer -20°C', staff: 'John Doe', notes: 'CBC performed, Blood Group done',
@@ -66,7 +66,7 @@ const REAGENT_ITEMS = [
   { category: 'Glassware', item: 'Test Tubes', unit: 'pcs', code: 'TT-001', price: 0.60, supplier: 'Northvale Scientific', storage: 'Shelf A' },
   { category: 'Consumables', item: 'Pipette Tips', unit: 'pcs', code: 'PT-002', price: 0.48, supplier: 'Calder Reagents', storage: 'Shelf B' },
   { category: 'Chemicals', item: 'Tris-HCl Buffer', unit: 'L', code: 'THB-019', price: 30, supplier: 'Halden Biosystems', storage: 'Chemical Shelf' },
-  { category: 'Glassware', item: 'Glass Slides', unit: 'pcs', code: 'GS-009', price: 0.15, supplier: 'Lonza', storage: 'Drawer D' },
+  { category: 'Glassware', item: 'Glass Slides', unit: 'pcs', code: 'GS-009', price: 0.15, supplier: 'Glasswell Scientific', storage: 'Drawer D' },
   { category: 'Plasticware', item: 'Microcentrifuge Tubes', unit: 'pcs', code: 'MT-003', price: 1.50, supplier: 'Glasswell Scientific', storage: 'Freezer' },
   { category: 'Reagents', item: 'Antibodies', unit: 'µg', code: 'AB-012', price: 100, supplier: 'Larkfield Antibodies', storage: 'Fridge' },
   { category: 'Consumables', item: 'Agar Plates', unit: 'pcs', code: 'AP-005', price: 0.30, supplier: 'Corvus Labware', storage: 'Freezer' },
@@ -172,13 +172,13 @@ const INSTRUMENTS = [
   ['Refrigerated Centrifuge', 'Tessaro Labware', 'Prep Room', 'David Lee'],
   ['Microplate Reader', 'Verity Instruments', 'Assay Room', 'Amanda Taylor'],
   ['-80°C Freezer', 'Northvale Scientific', 'Cold Room', 'David Lee'],
-  ['Autoclave', 'Tuttnauer', 'Sterilization', 'John Doe'],
-  ['Fluorescence Microscope', 'Zeiss', 'Imaging Suite', 'Emily Johnson'],
-  ['UV-Vis Spectrophotometer', 'Shimadzu', 'Lab B', 'Michael Brown'],
-  ['CO₂ Incubator', 'Panasonic', 'Cell Culture', 'John Doe'],
+  ['Autoclave', 'Ashgrove Instruments', 'Sterilization', 'John Doe'],
+  ['Fluorescence Microscope', 'Verity Optics', 'Imaging Suite', 'Emily Johnson'],
+  ['UV-Vis Spectrophotometer', 'Meridian Analytical', 'Lab B', 'Michael Brown'],
+  ['CO₂ Incubator', 'Kelmore Scientific', 'Cell Culture', 'John Doe'],
   ['Flow Cytometer', 'Halden Biosystems', 'Imaging Suite', 'Amanda Taylor'],
-  ['Water Purification System', 'Milli-Q', 'Lab B', 'Sarah Wilson'],
-  ['Analytical Balance', 'Mettler Toledo', 'Prep Room', 'Sarah Wilson'],
+  ['Water Purification System', 'Purelin Systems', 'Lab B', 'Sarah Wilson'],
+  ['Analytical Balance', 'Tessaro Precision', 'Prep Room', 'Sarah Wilson'],
   ['Gas Chromatograph', 'Meridian Analytical', 'Lab A', 'Dr. Jane Smith'],
 ];
 const INSTRUMENTS_COLUMNS = [
@@ -227,16 +227,15 @@ function buildResearchLabsData() {
 }
 
 // ---- Finance & Accounting: a unified money-in / money-out cockpit ----
-// Modeled on Grist's own three finance templates (Invoicing, Payroll, Expense Tracking) but
-// unified the way a small business actually runs its books, and extended past what those separate
-// docs track: invoices carry a Status + PaidDate (so AR aging, overdue emphasis and a due-date
-// calendar are possible — the base invoicing template has none of that), expenses have an
-// approval Status, and a CashFlow summary ties money in vs out by month.
+// Invoicing, payroll and expenses, unified the way a small business actually runs its books rather
+// than kept as three separate ledgers. Invoices carry a Status and a PaidDate, which is what makes
+// AR ageing, overdue emphasis and a due-date calendar possible at all; expenses carry an approval
+// Status; and a CashFlow summary ties money in against money out by month.
 
 const FIN_CLIENTS = [
-  ['Physically Fit', 'Dana Cole', 'Austin', 'TX', 30.27, -97.74],
+  ['Westbrook Fitness', 'Dana Cole', 'Austin', 'TX', 30.27, -97.74],
   ['Bluewave Media', 'Marcus Lin', 'San Francisco', 'CA', 37.77, -122.42],
-  ['Northwind Traders', 'Priya Nair', 'Chicago', 'IL', 41.88, -87.63],
+  ['Fairhaven Trading Co.', 'Priya Nair', 'Chicago', 'IL', 41.88, -87.63],
   ['Summit Analytics', 'Erik Olsen', 'Denver', 'CO', 39.74, -104.99],
   ['Harbor & Vale', 'Sofia Rossi', 'Boston', 'MA', 42.36, -71.06],
   ['Cedar Foods Co.', 'Tom Becker', 'Portland', 'OR', 45.52, -122.68],
@@ -260,11 +259,11 @@ const EXPENSE_CATS = [ // [Category, Account]
   ['Contractors', 'Operations'], ['Training', 'Finance'], ['Utilities', 'Administration'], ['Shipping', 'Operations'],
 ];
 const EXPENSE_DESCS = {
-  Software: ['Figma annual seats', 'Grist Team plan', 'Slack subscription', 'AWS usage'],
+  Software: ['Design tool seats', 'Document platform plan', 'Team chat subscription', 'Cloud hosting'],
   Travel: ['Client visit flights', 'Conference hotel', 'Rideshare to airport', 'Rail tickets'],
   'Meals & Entertainment': ['Client dinner', 'Team lunch', 'Coffee with prospect'],
   'Office Supplies': ['Printer paper & toner', 'Desk chairs', 'Whiteboard markers'],
-  Advertising: ['Google Ads', 'LinkedIn campaign', 'Sponsored newsletter'],
+  Advertising: ['Search ads', 'Paid social campaign', 'Sponsored newsletter'],
   Equipment: ['Laptop refresh', 'Monitor', 'Warehouse scanner'],
   Contractors: ['Freelance copywriter', 'Contract QA', 'Design contractor'],
   Training: ['Accounting CPE course', 'Sales workshop', 'Security training'],
@@ -390,16 +389,14 @@ function buildFinanceData() {
 }
 
 // ---- Nonprofit: one published mission dashboard ----
-// Modeled on Grist's four separate nonprofit docs (Grant Application Tracker, Church Management
-// CRM, Donation Tracking, Event Sponsors + Registrations), unified into the view a nonprofit
-// actually needs to SHOW donors, boards and funders. Extends the sources: grant deadlines get a
-// draggable calendar and a win-rate (the tracker has deadlines but no calendar and no ratio),
-// programs get budget-vs-actual (no source does this), events get capacity bars.
+// Donations, grants, volunteers, programmes and events in the one view a nonprofit needs when it
+// has to show donors, boards and funders what happened. Grant deadlines get a draggable calendar
+// and a win rate (requested against awarded), programmes get budget against actual, and event
+// capacity is drawn rather than merely counted.
 //
-// Privacy, deliberately: the source docs are internal and lean on Grist access rules (People even
-// has a List_Visibility flag). This widget PUBLISHES, so donors here are shown as "Maria G." /
-// "Anonymous" — the template copy tells users to keep donor-level rows private and publish the
-// aggregates. Never model a template on publishing donor PII.
+// Privacy, deliberately. This widget PUBLISHES, so donors appear as "Maria G." and "Anonymous", and
+// the template copy tells users to keep donor-level rows behind access rules and publish the
+// aggregates. Never build a template that demonstrates publishing donor PII.
 const NP_DONORS = ['Maria G.', 'James W.', 'Anonymous', 'The Okonkwo Family', 'Priya S.', 'Daniel R.',
   'Anonymous', 'Chen W.', 'Aisha M.', 'Robert & Ellen T.', 'Sofia L.', 'Anonymous', 'Marcus D.', 'Yuki T.'];
 const NP_CAMPAIGNS = ['Annual Fund', 'Winter Appeal', 'Spring Gala', 'Emergency Relief', 'Monthly Giving'];
@@ -565,13 +562,11 @@ function buildNonprofitData() {
 }
 
 // ---- Developers: an engineering cockpit across the delivery lifecycle ----
-// Grist's engineering material lives in separate, internal docs — Requirements Traceability
-// (ARS requirements ↔ Verifications with pass criteria ↔ Validation, plus Risks and
-// Non_compliance), Test Data Logger (Devices/Test_Setups/Test_Runs/Measurements) and Project
-// Management (Projects/All_Tasks). None of them is publishable. This widget publishes, so the win
-// is one live page covering build → test → ship → run → measure: Issues, TestRuns, Releases,
-// Incidents, Services. Beyond the sources: a draggable release calendar, incident MTTR, a
-// pass-rate trend, and a per-region services map.
+// Engineering data usually ends up split across a tracker, a test log and a deploy record, none of
+// which anyone outside the team can read. This widget publishes, so the win here is one live page
+// covering build, test, ship, run and measure: Issues, TestRuns, Releases, Incidents, Services.
+// On top of the raw tables it adds a draggable release calendar, incident MTTR, a pass-rate trend
+// and a per-region services map.
 const DEV_COMPONENTS = ['API Gateway', 'Auth', 'Billing', 'Search', 'Notifications', 'Webhooks', 'Data Export', 'Web App'];
 const DEV_ENGINEERS = ['Mei Tanaka', 'Priya Natarajan', 'Tom Reilly', 'Sofia Alvarez', 'Kwame Boateng', 'Lars Eriksen', 'Hana Kim'];
 const DEV_ISSUE_TITLES = {
@@ -721,20 +716,15 @@ function buildDevelopersData() {
 }
 
 // ---- Legal: a matter-centric firm cockpit ----
-// Grist splits this across separate internal docs: Expert Witness Database (All_Expert_Witnesses
-// with a CV attachment, "Worked for us?" flag and a two-level Primary/Secondary field taxonomy —
-// the primary is a formula derived from the secondary) and Tracking Time + Invoicing (Clients with
-// Rate_per_Hour → Projects rolling up Hours/Amount → Time_Log where Amount = Duration_hrs ×
-// client rate, with Mark_Start/Mark_End checkbox stopwatch → Invoices where Subtotal = Hours ×
-// rate and Due = invoice date + 30 days). Neither is publishable.
+// A practice normally keeps its expert roster in one place and its time and invoicing in another,
+// so nobody can see whether the work is actually profitable. Unified here into Matters,
+// TimeEntries, Clients, ExpertWitnesses and Invoices, with the numbers a firm rarely computes:
+// realisation rate, profitability by practice area, and a calendar of court dates, which are the
+// highest-stakes dates in the whole practice.
 //
-// Unified here into Matters / TimeEntries / Clients / ExpertWitnesses / Invoices, plus the things
-// no source computes: realization rate, profitability by practice area (a named pain point) and a
-// calendar of court dates — the highest-stakes dates in the whole practice.
-//
-// CONFIDENTIALITY: the sources rely on access rules and "ethical walls". This widget publishes, so
-// matters are identified by number + practice area with no party names, and the copy tells firms to
-// keep matter detail and rates behind Grist access rules and publish only the roll-ups.
+// CONFIDENTIALITY. This widget publishes, so matters are identified by number and practice area
+// with no party names, and the copy tells firms to keep matter detail and rates behind Grist
+// access rules and publish only the roll-ups.
 const LG_PRACTICE = ['Corporate', 'Litigation', 'Employment', 'Real Estate', 'Intellectual Property', 'Family', 'Immigration'];
 const LG_ATTORNEYS = ['R. Whitfield', 'S. Okafor', 'M. Delgado', 'A. Lindqvist', 'J. Chen', 'P. Nair', 'T. Brennan'];
 const LG_STATUSES = ['Intake', 'Open', 'In discovery', 'Trial prep', 'Settled', 'Closed'];
@@ -951,8 +941,8 @@ const SB_EXPENSE_CATS = [
 const SB_EXPENSE_DESCS = {
   'Vehicle & fuel': ['Van fuel', 'Vehicle service', 'Parking & tolls'],
   'Tools & equipment': ['Replacement drill set', 'Ladder', 'Safety gear'],
-  Software: ['Grist Team plan', 'Accounting software', 'Scheduling app'],
-  Advertising: ['Local radio spot', 'Google Ads', 'Sponsored newsletter'],
+  Software: ['Document platform plan', 'Accounting software', 'Scheduling app'],
+  Advertising: ['Local radio spot', 'Search ads', 'Sponsored newsletter'],
   'Client entertainment': ['Client lunch', 'Coffee with prospect'],
   Insurance: ['Liability premium', 'Vehicle insurance'],
   Materials: ['Timber order', 'Fixings & fasteners', 'Paint supplies'],
@@ -1097,20 +1087,18 @@ function buildSmallBusinessData() {
 }
 
 // ---- Higher Education: the department, not the bench ----
-// Grounded in Grist's higher-ed positioning (research & lab management, grant & budget tracking,
-// campus operations, student/staff administration) and two real docs: Class Enrollment
-// (Classes.Max_Students with Count = len(lookupRecords(Status="Confirmed")) and
-// Spots_Left = max(Max-Count,0) or "Full" — capacity as a live rollup) and the Grant Application
-// Tracker (a Status pipeline with Proposal_Deadline and requested-vs-granted amounts).
+// The two shapes a department actually runs on. Enrolment capacity is a live rollup: seats taken
+// are counted from confirmed registrations, and seats left fall out of the cap, so nobody types a
+// number that can drift. Grant funding is a status pipeline with a proposal deadline and a
+// requested-against-awarded pair, which is what makes a win rate possible.
 //
-// Positioned apart from two neighbouring templates: Research Labs covers the bench (samples,
-// reagents, instruments) and Nonprofits covers charitable funding; this is the department —
-// course catalogue, enrolment capacity, research funding from sponsors, faculty and campus.
+// Positioned apart from two neighbouring templates. Research Labs covers the bench (samples,
+// reagents, instruments) and Nonprofits covers charitable funding; this is the department: course
+// catalogue, enrolment capacity, research funding from sponsors, faculty and campus.
 //
-// FERPA: the source Students table carries insurance policy numbers, physician contacts, allergies
-// and medical-form attachments. This widget PUBLISHES, and US student records are legally
-// protected, so students here are anonymised cohort rows — an id, programme, year, status, credits
-// — with no names, contacts or health data. Faculty are public-facing and are named.
+// FERPA. Student records are legally protected in the US and this widget PUBLISHES, so students
+// here are anonymised cohort rows — an id, programme, year, status and credits, with no names,
+// contacts or health data. Faculty are public-facing and are named.
 const HE_DEPARTMENTS = [
   ['Computer Science', 'Turing Building', 'Prof. Ada Okonjo', 42.3601, -71.0942],
   ['Biology', 'Franklin Hall', 'Prof. Miguel Santos', 42.3585, -71.0925],
@@ -1144,8 +1132,10 @@ const HE_FACULTY = [
   ['Dr. Claire Beaumont', 'Psychology', 'Lecturer'], ['Prof. Sara Haddad', 'Engineering', 'Professor'],
   ['Dr. Yusuf Demir', 'Engineering', 'Associate Professor'], ['Prof. Tomas Novak', 'History', 'Professor'],
 ];
-const HE_SPONSORS = ['National Science Foundation', 'National Institutes of Health', 'Department of Energy',
-  'European Research Council', 'Wellcome Trust', 'Sloan Foundation', 'State Research Council'];
+// Invented funders, deliberately. Real agencies must not appear beside fabricated award amounts;
+// swap these for the bodies that actually fund you.
+const HE_SPONSORS = ['Marchfield Science Foundation', 'Thornbury Health Trust', 'Fenwick Energy Institute',
+  'Continental Research Council', 'Aldergate Medical Trust', 'Ravensmere Science Fund', 'State Research Council'];
 const HE_GRANT_TITLES = [
   'Federated Learning for Clinical Data', 'Gut Microbiome and Metabolic Health', 'Sustainable Concrete Composites',
   'Adolescent Sleep and Attention', 'Regional Economic Mobility Study', 'Quantum Error Correction Methods',
@@ -1287,14 +1277,12 @@ function buildHigherEdData() {
 }
 
 // ---- Sports Facility: bookings, members, classes and leagues in one place ----
-// Grist's own facility page is thin (generic budget/payroll/CRM templates), so this is grounded in
-// adjacent real docs instead: Sports League Standings (Wins = len(Game_Schedule.lookupRecords(
-// Winner=$id)), Win_Rate = Wins/(Wins+Losses) — a standings table entirely DERIVED from results,
-// never typed), Rental Management (Income_and_Expenses tracked per space with Month =
-// Date.strftime("%Y-%m"), rolled up per unit — the same shape as revenue per court) and Class
-// Enrollment (whose sample classes are literally "Gym Stars" and "Yoga Kids", with Max_Students /
-// Count / Spots_Left). No single source joins bookings, members, classes and leagues, which is
-// exactly the gap: a facility manager runs all four and otherwise keeps four spreadsheets.
+// A facility manager runs bookings, members, classes and leagues at the same time, and normally
+// keeps four separate spreadsheets to do it. Joining them is the whole point of this one.
+//
+// Two shapes matter here. Standings are DERIVED from results, never typed: wins are counted by
+// looking up the games a team won, and win rate falls out of wins and losses. Revenue is tracked
+// per space per month, so utilisation and income can be compared court by court.
 const SF_FACILITIES = [
   ['Court 1 — Indoor', 'Indoor court', 40, 45, 42.3712, -71.0589],
   ['Court 2 — Indoor', 'Indoor court', 40, 45, 42.3714, -71.0592],
@@ -1313,8 +1301,8 @@ const SF_LAST = ['Torres', 'Snyder', 'Kowalski', 'Reyes', 'Adeyemi', 'Farouk', '
   'Murray', 'Shah', 'Fletcher', 'Volkov', 'Bennett', 'Nguyen', 'Alvarez', 'Ito', 'Doyle', 'Marsh'];
 const SF_CLASSES = [
   ['Junior Basketball', 'Mon', '16:00', 24], ['Adult Volleyball', 'Tue', '19:00', 30],
-  ['Yoga Kids', 'Wed', '15:30', 20], ['Aqua Fitness', 'Wed', '18:00', 25],
-  ['Gym Stars Advanced', 'Thu', '17:00', 18], ['Circuit Training', 'Thu', '06:30', 22],
+  ['Junior Yoga', 'Wed', '15:30', 20], ['Aqua Fitness', 'Wed', '18:00', 25],
+  ['Advanced Gymnastics', 'Thu', '17:00', 18], ['Circuit Training', 'Thu', '06:30', 22],
   ['Swim School', 'Fri', '16:30', 20], ['Weekend Football Camp', 'Sat', '09:00', 40],
   ['Senior Pickleball', 'Sat', '11:00', 24], ['Family Open Gym', 'Sun', '10:00', 50],
 ];
@@ -1554,7 +1542,7 @@ const MK_CAMPAIGN_NAMES = [
 ];
 const MK_OWNERS = ['Rina Achebe', 'Tom Delacroix', 'Sana Qureshi', 'Ben Halvorsen'];
 const MK_SECTIONS = ['Blog', 'Guides', 'Product', 'Docs', 'Case studies', 'Landing pages'];
-const MK_PLATFORMS = ['LinkedIn', 'X', 'Instagram', 'YouTube', 'Facebook'];
+const MK_PLATFORMS = ['Professional network', 'Microblog', 'Photo feed', 'Video channel', 'Community page'];
 const MK_CONTENT_TITLES = [
   ['How to build a marketing dashboard without a BI tool', 'Guides'],
   ['Spreadsheet vs database: which do you actually need?', 'Blog'],
@@ -1562,7 +1550,7 @@ const MK_CONTENT_TITLES = [
   ['Internal linking: finding the pages nobody links to', 'Guides'],
   ['What a good NPS actually looks like in B2B', 'Blog'],
   ['Pricing', 'Landing pages'], ['Product tour', 'Product'],
-  ['Migrating from Airtable', 'Docs'], ['API quickstart', 'Docs'],
+  ['Migrating from spreadsheets', 'Docs'], ['API quickstart', 'Docs'],
   ['Access rules, explained', 'Docs'],
   ['How MissionSource cut reporting time by 80%', 'Case studies'],
   ['A nonprofit tracking 4,000 donations a year', 'Case studies'],
@@ -1584,7 +1572,7 @@ const MK_POST_TOPICS = [
 const MK_EVENTS = [
   ['SaaS Growth Summit', 'San Francisco, CA', 37.77, -122.42, 420, 89],
   ['Marketing Ops Meetup', 'Austin, TX', 30.27, -97.74, 120, 25],
-  ['No-Code Conf', 'New York, NY', 40.71, -74.01, 650, 149],
+  ['Builder Tools Conf', 'New York, NY', 40.71, -74.01, 650, 149],
   ['Data & Dashboards Day', 'Chicago, IL', 41.88, -87.63, 200, 59],
   ['Open Source Forum', 'Berlin, DE', 52.52, 13.40, 300, 0],
   ['Product Analytics Workshop', 'London, UK', 51.51, -0.13, 90, 199],

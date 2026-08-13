@@ -1,15 +1,15 @@
 // Developers template — an engineering cockpit across the whole delivery lifecycle.
-// Researched against Grist's developer positioning (REST API, webhooks, custom widgets in
-// HTML/CSS/JS — this widget IS one — Python formulas, self-hosting, data as plain SQLite) and its
-// real engineering templates, which ship as separate INTERNAL docs: Requirements Traceability
-// (ARS requirements ↔ Verifications with pass criteria ↔ Validation, plus Risks and
-// Non_compliance), Test Data Logger (Devices/Test_Setups/Test_Runs/Measurements) and Project
-// Management (Projects/All_Tasks). None of them is publishable.
 //
-// This widget publishes, so the win is one live page a team can actually share with users and
-// stakeholders — build → test → ship → run → measure — over five real tables: Issues, TestRuns,
-// Releases, Incidents, Services. Past what the sources do: a DRAGGABLE release calendar that
-// writes dates back to Grist, incident MTTR, a pass-rate trend, and a per-region services map.
+// Engineering work is usually tracked in pieces: issues here, test results there, releases in a
+// third place, incidents in a channel nobody can search afterwards. Each piece is fine on its own
+// and useless for the question a team actually gets asked, which is some version of "is the thing
+// healthy and when does the next bit land".
+//
+// So the template follows the lifecycle end to end across five tables — Issues, TestRuns, Releases,
+// Incidents, Services — and publishes it, which is the part that matters: a status page a team can
+// share with stakeholders instead of screenshotting a board once a week. The release calendar is
+// draggable and writes dates back, incidents carry MTTR, test runs carry a pass-rate trend, and
+// services are mapped by region.
 
 import {
   text, accordion, counter, iconBlock, button, urlTarget, tabTarget,
@@ -171,7 +171,7 @@ export const TEMPLATE = {
             },
           },
           accordion('dv43', 'How we verify what we build', [
-            { q: 'Do requirements trace to tests?', a: 'Yes — every requirement links to the verifications that prove it and the validation that accepts it, so nothing ships unverified. That traceability model is exactly what Grist\'s own Requirements Traceability template encodes.' },
+            { q: 'Do requirements trace to tests?', a: 'Yes. Every requirement links to the verifications that prove it and the validation that accepts it, so nothing ships unverified. Point this page at your own issue and test tables and the same links come through.' },
             { q: 'What runs on every commit?', a: 'Unit and contract suites on every push; integration, end-to-end and load suites on the release branch. Each run lands in the table above.' },
             { q: 'What happens when a suite fails?', a: 'The release moves to “In QA” and stays there. You can see that on the Releases page — we don\'t quietly ship past a red build.' },
           ]),

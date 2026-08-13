@@ -87,7 +87,6 @@ const CITY_COORDS = {
   London: [51.51, -0.13], Berlin: [52.52, 13.40], Toronto: [43.65, -79.38],
   Austin: [30.27, -97.74], Dhaka: [23.81, 90.41], Singapore: [1.35, 103.82],
 };
-const GENDERS = ['Female', 'Male', 'Non-binary'];
 const FIRST = ['Aria', 'Noah', 'Mia', 'Liam', 'Zoe', 'Ravi', 'Sara', 'Kenji', 'Ines', 'Omar', 'Lena', 'Theo', 'Nadia', 'Yusuf', 'Elsa', 'Diego', 'Priya', 'Hugo', 'Maya', 'Felix'];
 const LAST = ['Khan', 'Smith', 'Müller', 'Tanaka', 'Costa', 'Patel', 'Nguyen', 'Rossi', 'Park', 'Haddad'];
 
@@ -108,7 +107,6 @@ function buildPeople() {
       Name: `${FIRST[Math.floor(rnd() * FIRST.length)]} ${LAST[Math.floor(rnd() * LAST.length)]}`,
       Department: dept,
       Role: role,
-      Gender: GENDERS[Math.floor(rnd() * GENDERS.length)],
       City: city,
       JoinDate: `${year}-${String(month).padStart(2, '0')}-15`,
       Age: age,
@@ -126,7 +124,6 @@ const PEOPLE_COLUMNS = [
   { id: 'Name', label: 'Name', type: 'Text' },
   { id: 'Department', label: 'Department', type: 'Choice' },
   { id: 'Role', label: 'Role', type: 'Choice' },
-  { id: 'Gender', label: 'Gender', type: 'Choice' },
   { id: 'City', label: 'City', type: 'Choice' },
   { id: 'JoinDate', label: 'Join Date', type: 'Date' },
   { id: 'Age', label: 'Age', type: 'Int' },

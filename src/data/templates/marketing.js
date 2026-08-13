@@ -1,27 +1,26 @@
 // Marketing template — campaigns, content/SEO, the social calendar, events and NPS in one place.
 //
-// Grist's Marketing workspace holds eight real docs, and this is built from five of them:
-//   • Net Promoter Score Results — All_Responses buckets each reply with
-//     Type = if $NPS_Score <= 6: "Detractor", if >= 9: "Promoter" else "Passive".
-//   • Internal Links Tracker for SEO — Site_Content.Orphaned_ = len(Links.lookupRecords(To=$id))<1
-//     ("nothing links TO this page") and No_Internal_Links_ = len(...(From=$id))<1.
-//   • Event Sponsors + Registrations — Registered_Attendees = len(All_Registrations.lookupRecords(
-//     Event=$id)), Ticket_Revenue = SUM(person.Ticket_Value ...), Full_ = Registered/Capacity.
-//   • Social Media Content Calendar — Social_Media_Posts with a real Publication_Time, a
-//     Platforms ChoiceList and Drafted/Reviewed/Published flags.
-//   • UTM Link Builder — Final_URL stitches utm_source/medium/campaign/term/content onto a URL.
+// Marketing is five jobs that rarely share a table, and a lead who has to answer for all of them:
+//   • Campaigns — spend against what the spend returned, per channel and per campaign.
+//   • Content and SEO — pages, traffic, and which of them nothing links to. An orphaned page is
+//     invisible to search however good it is, and it is only findable by counting inbound links.
+//   • The social calendar — posts with a real publication time and a drafted/reviewed/published
+//     state, so the question "what goes out on Thursday" has an answer.
+//   • Events — capacity against registrations, and the ticket revenue behind it.
+//   • Customer sentiment — every response bucketed into promoter, passive or detractor.
 //
-// What none of them does, and this template does:
-//   1. COMPUTE THE NPS. The official doc labels promoters and detractors but never works out
-//      %promoters − %detractors. The Feedback table carries NpsPoints (+100 / 0 / −100) so a plain
-//      average of that column IS the NPS score — no special-case block, and it stays correct as
-//      responses come in.
-//   2. Turn the UTM'd link into a QR code. The source builds the string; you still can't put a
+// Decisions worth knowing about:
+//   1. THE NPS IS COMPUTED, not just labelled. Bucketing responses into promoter and detractor is
+//      the easy half; the score is %promoters − %detractors, and most trackers stop before it. The
+//      Feedback table carries NpsPoints (+100 / 0 / −100), so a plain average of that column IS the
+//      NPS. No special-case block, and it stays right as responses come in.
+//   2. The tagged link becomes a QR code. Building the string is not the job — you cannot put a
 //      string on a conference banner.
-//   3. A DRAGGABLE content calendar — the source calendar is a table with a date column and no
-//      dated view, so rescheduling means editing a cell.
-//   4. Surface orphaned pages as a headline number and a highlighted column, not a hidden bool.
-//   5. One funnel — spend → impressions → clicks → leads → revenue, per channel.
+//   3. The content calendar is draggable. A date column with no dated view means rescheduling a
+//      post is editing a cell, which nobody does at the moment they decide to move it.
+//   4. Orphaned pages are a headline number and a highlighted column rather than a hidden boolean,
+//      because a page nothing links to is a problem you have to see to act on.
+//   5. One funnel, spend through impressions, clicks, leads and revenue, per channel.
 
 import {
   text, accordion, counter, iconBlock, button, tabTarget,

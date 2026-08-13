@@ -1,22 +1,22 @@
 // Legal template — a matter-centric firm cockpit.
-// Researched against Grist's legal positioning (case/matter management, billable hours incl.
-// split-fee and contingency, expert-witness databases, invoicing generated from time logs, and
-// above all **access rules / "ethical walls"**) and the real schemas behind its two legal docs,
-// which ship separately and are internal-only:
-//   • Expert Witness Database — All_Expert_Witnesses (CV attachment, "Worked for us?" flag, and a
-//     two-level taxonomy where Primary_Fields is a formula derived from Secondary_Fields).
-//   • Tracking Time + Invoicing — Clients.Rate_per_Hour → Projects rolling up Hours/Amount →
-//     Time_Log (Amount = Duration_hrs × client rate, Mark_Start/Mark_End checkbox stopwatch) →
-//     Invoices (Subtotal = Hours × rate, Due = invoice date + 30 days).
 //
-// Unified here over five tables — Matters, TimeEntries, Clients, ExpertWitnesses, Invoices — plus
-// the things no source computes: a DRAGGABLE calendar of court dates (the highest-stakes dates in
-// a practice), realization rate, profitability by practice area (a named pain point), and AR
-// ageing on invoices.
+// A practice runs on the matter, not the client and not the invoice, so everything here hangs off
+// one: five tables, Matters, TimeEntries, Clients, ExpertWitnesses and Invoices, each joined back
+// to the matter it belongs to. Time entries price themselves from the client's hourly rate, and
+// invoices roll up from the time rather than being typed twice.
 //
-// CONFIDENTIALITY: this page publishes. Matters are identified by number and practice area with no
-// party names, and the copy tells firms to keep matter detail and billing rates behind Grist
-// access rules and publish only the roll-ups.
+// The numbers chosen are the ones partners actually ask for and a plain time log cannot answer:
+// realization rate (billed against recorded, which is where a firm quietly loses money),
+// profitability by practice area, AR ageing, and a draggable calendar of court dates — the highest
+// stakes dates a practice keeps, and the ones least safe to hold in two places at once.
+//
+// Experts are filed under a two-level taxonomy, a primary field with a specialism beneath it, so
+// searching the broad field still finds the narrow expert.
+//
+// CONFIDENTIALITY. This page publishes. Matters are identified by number and practice area with no
+// party names anywhere, and the copy tells firms to keep matter detail and billing rates behind
+// access rules and publish only the roll-ups. A template that leaked a client name by example would
+// be a bad template however good the charts were.
 
 import {
   text, accordion, counter, iconBlock, button, urlTarget, tabTarget,
@@ -109,7 +109,7 @@ export const TEMPLATE = {
               highlights: [{ ranges: 'G1:G60', color: '#e9ecef' }],
             },
           },
-          text('lg26', '', 'Non-billable time is recorded too — writing it off silently is how firms lose track of realization. In your own document, time entries can price themselves from each client\'s rate, exactly as Grist\'s time-tracking template does.'),
+          text('lg26', '', 'Non-billable time is recorded too. Writing it off silently is how firms lose track of realization. In your own document a time entry can price itself from the client\'s rate, so the hours and the money stay in step without anyone retyping a number.'),
           spacer('lg26s', 10),
           // The only chart in this template plotted against time. Everything else totals or ranks,
           // and a practice that sees only totals cannot tell a strong month from a weak one.
@@ -171,7 +171,7 @@ export const TEMPLATE = {
               highlights: [{ ranges: 'D1:D12', color: '#e9ecef' }],
             },
           },
-          text('lg36', '', 'Experts are filed under a two-level taxonomy — a primary field with a specialism beneath it — so a search for “Engineering” still surfaces the materials-failure expert. That mirrors how Grist\'s own Expert Witness Database derives the primary field from the specialism. In your own document, attach each expert\'s CV to their record and it stays with them.'),
+          text('lg36', '', 'Experts are filed under two levels, a primary field with a specialism beneath it, so a search for "Engineering" still surfaces the materials-failure expert. Filing them the other way round is how a firm ends up unable to find someone it has already instructed. In your own document, attach each expert\'s CV to their record and it stays with them.'),
           accordion('lg37', 'Instructing an expert', [
             { q: 'How do we choose between two experts in the same field?', a: 'Court experience and publications are the usual tiebreak, alongside whether we have instructed them before — all three are columns above.' },
             { q: 'Are day rates negotiable?', a: 'Often, particularly for multi-day trials or where a report is agreed in advance. The rate shown is the standing rate we have on file.' },

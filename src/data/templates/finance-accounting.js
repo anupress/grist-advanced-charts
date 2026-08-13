@@ -1,10 +1,12 @@
 // Finance & Accounting template — a unified "money in vs money out" cockpit.
-// Modeled on Grist's own three finance templates (Invoicing, Payroll, Expense Tracking), which
-// ship as SEPARATE documents. This widget's edge is a published, website-style dashboard, so we
-// unify them into one live view a small business actually runs its books from — and go past what
-// those templates track: invoices carry a Status + Paid Date (so AR aging, overdue emphasis and a
-// draggable due-date calendar are possible), expenses carry an approval Status, and a CashFlow
-// summary ties the streams together by month. Five real tables — Invoices, Expenses, Payroll,
+//
+// Invoicing, payroll and expenses are usually tracked apart, each answering its own question well
+// and none of them answering the one an owner actually asks: is more coming in than going out this
+// month. So they are unified here into a single published view, with the fields that make that
+// question answerable. Invoices carry a Status and a Paid Date, which is what makes AR aging,
+// overdue emphasis and a draggable due-date calendar possible at all; expenses carry an approval
+// Status; and a CashFlow summary ties the streams together by month so the answer is one line on a
+// chart rather than three documents and some arithmetic. Five tables — Invoices, Expenses, Payroll,
 // Clients, CashFlow — matched by data/templates/sample-data.js's finance-accounting entry;
 // adaptTemplateToTable + the template picker's create-or-map flow handle a real Grist document.
 

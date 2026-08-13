@@ -1,15 +1,15 @@
 // Higher Education template — the department, not the bench.
-// Researched against Grist's higher-ed positioning (research & lab management, grant & budget
-// tracking, campus operations, student/staff administration; self-hosting, row-level access
-// control, audit logging, SSO) and two real docs: Class Enrollment — where Classes carries
-// Max_Students with Count = len(Enrollments.lookupRecords(Status="Confirmed")) and
-// Spots_Left = max(Max - Count, 0) or "Full", i.e. capacity as a live rollup — and the Grant
-// Application Tracker, whose Status pipeline, Proposal_Deadline and requested-vs-granted amounts
-// are the shape of research administration.
 //
-// Positioned apart from two neighbouring templates: Research Labs is the bench (samples, reagents,
-// instruments) and Nonprofits is charitable funding. This is the department: course catalogue and
-// enrolment capacity, research funding from sponsors like the NSF and ERC, faculty, and campus.
+// Enrolment is the shape that drives this one. Capacity is a live rollup rather than a typed
+// number: a course knows how many places it has and counts the confirmed enrolments against them,
+// so spots-left is always right and "Full" is a fact rather than someone's note. Research funding
+// works the same way — applications carry a status, a deadline and both the requested and awarded
+// amounts, because the gap between those two is the only thing that tells a department whether its
+// bids are landing.
+//
+// Positioned apart from two neighbouring templates here: Research Labs is the bench (samples,
+// reagents, instruments) and Nonprofits is charitable funding. This one is the department — course
+// catalogue and enrolment capacity, research funding, faculty and campus.
 //
 // FERPA: the source Students table carries insurance policy numbers, physician contacts, allergies
 // and medical-form attachments. This page PUBLISHES, and US student records are legally protected,

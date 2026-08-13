@@ -1,19 +1,20 @@
 // Nonprofit template — one published mission dashboard.
-// Researched against Grist's own nonprofit docs, which ship SEPARATELY: Grant Application Tracker
-// (Applications with Status + Proposal_Deadline + Amount_Applied_For/Granted), Church Management
-// (a constituent CRM with skills/ministries and a List_Visibility privacy flag), Donation Tracking
-// (Amount/Method/Status/Receipt by year) and Event Sponsors + Registrations (Capacity_Limit,
-// Ticket_Revenue, % Full). This widget publishes a website-style page, which is exactly what a
-// nonprofit needs for donors, boards and funders — so those four are unified here over five real
-// tables: Donations, Grants, Volunteers, Programs, Events.
 //
-// Past what the sources do: grant deadlines get a DRAGGABLE calendar and a win-rate (the tracker
-// has deadlines but no calendar view and no requested-vs-awarded ratio), programs get
-// budget-vs-actual, and event capacity gets visualised instead of just computed.
+// A nonprofit keeps four kinds of record that are usually tracked separately: money raised, grants
+// applied for, the people who turn up, and the programmes the money pays for. Donors, boards and
+// funders all want the same joined-up answer — what came in, what it bought, who it reached — and
+// none of the four can give it alone. So the template spans five tables: Donations, Grants,
+// Volunteers, Programs and Events.
 //
-// PRIVACY: the source docs are internal and lean on Grist access rules. This page is public, so
-// the sample donors are deliberately "Maria G." / "Anonymous" and the copy tells users to keep
-// donor-level rows private and publish the aggregates.
+// Where it goes past a plain tracker: grant deadlines get a draggable calendar and a win rate
+// (requested against awarded, which is the number that tells a fundraiser whether to keep applying
+// to a given foundation), programmes get budget against actual, and event capacity is drawn rather
+// than merely computed.
+//
+// PRIVACY. This page is meant to be published, and donor records are not. The sample donors are
+// deliberately "Maria G." and "Anonymous", and the copy tells users to keep donor-level rows behind
+// access rules and publish only the aggregates. A template that demonstrated the opposite would be
+// teaching the wrong habit to exactly the people who can least afford it.
 
 import {
   text, accordion, counter, iconBlock, button, urlTarget, tabTarget,
@@ -198,9 +199,11 @@ export const TEMPLATE = {
           },
           { id: 'np49', type: 'divider', span: 12, config: { style: 'solid', thickness: 1, color: null } },
           image('np50', placeholderImage(GREEN, LIME), 'Volunteers at a community event', 'Our volunteers at last spring\'s food drive', 6),
+          // A programme participant is named by initial only, the same rule the donor tables
+          // follow: publish someone's story with their consent, and never their full identity.
           testimonials('np51', 'From our community', [
-            { name: 'Maria Gomez', quote: 'This program helped my family get back on our feet — I\'m forever grateful.', rating: 5, photoData: null },
-            { name: 'James Whitfield', quote: 'I\'ve volunteered for years — I\'ve never seen an organization this transparent.', rating: 5, photoData: null },
+            { name: 'Maria G., programme participant', quote: 'The food programme carried us through a hard winter, and the staff never once made us feel like a case number.', rating: 5, photoData: null },
+            { name: 'James Whitfield, volunteer', quote: 'I have volunteered here for years and I have never seen an organisation publish this much of its own numbers.', rating: 5, photoData: null },
           ], 6),
           iconBlock('np52', 'users', 'l', GREEN, '#ffffff', 'center', 3),
           iconBlock('np53', 'globe', 'l', LIME, '#ffffff', 'center', 3),
