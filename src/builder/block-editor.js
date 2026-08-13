@@ -1251,8 +1251,7 @@ function openInvoiceEditor(block, ctx) {
       field('Total label', textInput(c.totalLabel || '', (v) => { c.totalLabel = v; refreshPreview(); }, { placeholder: 'Amount due' })),
     ),
     field('Payment details', textInput(c.paymentDetails || '', (v) => { c.paymentDetails = v; refreshPreview(); },
-      { textarea: true, rows: 3, placeholder: 'Bank: Example Bank
-Account: 12345678  Sort code: 00-00-00' })),
+      { textarea: true, rows: 3, placeholder: 'Bank: Example Bank\nAccount: 12345678  Sort code: 00-00-00' })),
     field('Prepared by', textInput(c.preparedBy || '', (v) => { c.preparedBy = v; refreshPreview(); },
       { textarea: true, rows: 2, placeholder: 'A. Name, Accounts' })),
     field('Closing message', textInput(c.thanksText || '', (v) => { c.thanksText = v; refreshPreview(); },
