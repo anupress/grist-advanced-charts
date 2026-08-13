@@ -14,6 +14,7 @@ import { mountCountdowns } from './countdown.js';
 import { mountCalendars } from './calendar.js';
 import { resizeChartsIn, wireGlobalResize } from '../charts/echarts-adapter.js';
 import { icon } from '../assets/icons.js';
+import { selectButton, mountTray } from '../print/printout.js';
 
 export function renderSite(opts) {
   const { root, config, provider } = opts;
@@ -66,8 +67,13 @@ export function renderSite(opts) {
     const grid = el('div', { class: 'ap-grid' });
     // onNav lives at the top level (not inside `edit`) so Button/Icon "jump to page" links work
     // for regular viewers too, not just while editing.
-    const ctx = { provider, config, onNav: showTab, edit: editing ? {
-      active: true, onEditBlock: edit?.onEditBlock, onDeleteBlock: edit?.onDeleteBlock } : null };
+    // pickButton is only handed over on a live, non-editing page: in edit mode the block already
+    // carries its own controls, and someone arranging a design is not the person assembling a
+    // printout. Passed as a factory so blocks.js never has to import the printout module.
+    const ctx = { provider, config, onNav: showTab,
+      pickButton: editing ? null : (b) => selectButton(b),
+      edit: editing ? {
+        active: true, onEditBlock: edit?.onEditBlock, onDeleteBlock: edit?.onDeleteBlock } : null };
     for (const block of tab.blocks || []) grid.append(renderBlock(block, ctx));
     if (editing) grid.append(addBlockTile(tab.id, edit));
     container.append(grid);
@@ -104,6 +110,10 @@ export function renderSite(opts) {
     setTimeout(() => panel.querySelectorAll('.ap-calendar').forEach((c) => c.dispatchEvent(new CustomEvent('ap:shown'))), 130);
     mounted.add(id);
   }
+
+  // The running count of collected blocks. Only on a viewing page: in edit mode the printout
+  // affordance is absent, so a tray counting nothing would be furniture.
+  if (!editing) { try { mountTray(root, config, provider, opts.onSaveLayout); } catch (e) { console.warn('[ANUPRESS] printout tray failed', e); } }
 
   return {
     showTab,

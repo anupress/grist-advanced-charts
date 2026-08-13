@@ -117,6 +117,11 @@ function finishBlock(block, ctx, inner) {
       btn('trash', 'Delete', 'ap-btn--danger', (e) => { e.stopPropagation(); ctx.edit.onDeleteBlock?.(block.id); }),
     ]));
     inner.addEventListener('click', () => ctx.edit.onEditBlock?.(block.id));
+  } else if (ctx.pickButton) {
+    // View mode: the one control a viewer gets, for adding this block to a printout. Supplied
+    // through ctx rather than imported, because print/printout.js renders blocks itself and
+    // importing it here would close the loop between the two modules.
+    wrap.append(el('div', { class: 'ap-block__pick' }, [ctx.pickButton(block)]));
   }
   return wrap;
 }

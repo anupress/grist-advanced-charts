@@ -64,6 +64,24 @@ function renderView() {
   app.siteApi = renderSite({
     root, config: app.config, provider: app.provider,
     onEnterEdit: startEdit,
+    // Saving a printable layout writes a new page into the design, so it needs the same full
+    // access the editor does. Escalation happens here, at the moment it is asked for, rather than
+    // up front — a viewer who only ever prints should never see a permission prompt. Offered only
+    // on a live document; in demo mode there is nothing to write to.
+    onSaveLayout: bridge.isLive() ? async (tab) => {
+      try {
+        const ok = await bridge.escalateToFull();
+        if (!ok) { toast('Grist did not grant access, so the layout was not saved. You can still print it.', 'err'); return; }
+        app.config = { ...app.config, tabs: [...(app.config.tabs || []), tab] };
+        const saved = await bridge.saveConfig(app.config);
+        if (!saved) { toast('Could not write the page to your document.', 'err'); return; }
+        renderView();
+        app.siteApi?.showTab(tab.id);
+      } catch (e) {
+        console.warn('[ANUPRESS] could not save the printable layout', e);
+        toast('Could not save the layout — ' + (e?.message || 'unknown error'), 'err');
+      }
+    } : null,
     // Re-read every table this page uses, then draw again. Grist offers a custom widget no change
     // notification to subscribe to, so without this the only way to see rows edited in the
     // document next door was to reload the whole widget. Only offered on a live document — in

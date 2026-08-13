@@ -601,6 +601,23 @@
   }
   .ap-livetable__table td { color: #11141c !important; }
 
+  /* ---- Printing the assembled layout ----
+     The overlay is the document. Everything behind it — the site, the tray, the chrome — goes,
+     and the sheet loses the shadow and padding that made it look like paper on screen, because on
+     paper the page margin is doing that job. */
+  body.ap-printing-layout > *:not(.ap-layout) { display: none !important; }
+  body.ap-printing-layout .ap-layout { position: static; background: #fff; }
+  body.ap-printing-layout .ap-layout__bar,
+  body.ap-printing-layout .ap-layout__foot,
+  body.ap-printing-layout .ap-sheet__tools,
+  body.ap-printing-layout .ap-sheet__break,
+  body.ap-printing-layout .ap-block__pick,
+  body.ap-printing-layout .ap-tray { display: none !important; }
+  body.ap-printing-layout .ap-layout__scroll { overflow: visible; padding: 0; display: block; }
+  body.ap-printing-layout .ap-sheet { width: auto !important; box-shadow: none; padding: 0; }
+  /* The site header repeats on every sheet, the way a letterhead does. */
+  body.ap-printing-layout .ap-sheet__header { break-after: avoid; page-break-after: avoid; }
+
   /* Printing ONE invoice: its own Print button marks the block and hides the rest of the page,
      so a client receives an invoice rather than a dashboard with an invoice on it. */
   [data-print-only] .ap-block:not(.is-printtarget) { display: none !important; }
@@ -782,3 +799,69 @@
 .ap-livetable__print { flex: none; }
 .ap-livetable__print svg { width: 14px; height: 14px; }
 .ap-livetable__head { gap: 10px; }
+
+/* ================= Printable layout =================
+   Collect blocks while browsing, arrange them on real paper, print. The sheet below is sized in
+   mm because that is what paper is specified in and browsers resolve it exactly — 210mm really is
+   793.69px — so the preview is A4 rather than a picture of A4. */
+
+/* The + on each block, in view mode only. Quiet until the block is hovered, so a page nobody is
+   collecting from does not look like a form. */
+.ap-block__pick { position: absolute; top: 8px; right: 8px; z-index: 5; opacity: 0; transition: opacity .15s; }
+.ap-block { position: relative; }
+.ap-block:hover .ap-block__pick, .ap-block__pick:focus-within { opacity: 1; }
+.ap-pickbtn.is-on { opacity: 1; background: var(--ap-primary); color: #fff; border-color: var(--ap-primary); }
+.ap-block:has(.ap-pickbtn.is-on) .ap-block__pick { opacity: 1; }
+.ap-block:has(.ap-pickbtn.is-on) { outline: 2px solid var(--ap-primary); outline-offset: 3px; border-radius: var(--ap-radius); }
+
+/* The running count. Bottom-right, out of the way, only present once something is in it. */
+.ap-tray { position: fixed; right: 18px; bottom: 18px; z-index: 60; display: flex; align-items: center;
+  gap: 6px; padding: 6px; border-radius: 999px; background: var(--ap-surface);
+  border: 1px solid var(--ap-border); box-shadow: 0 8px 30px -8px rgba(0,0,0,.35); }
+.ap-tray[hidden] { display: none; }
+.ap-tray__open { display: flex; align-items: center; gap: 9px; padding: 8px 14px 8px 12px; border: 0;
+  border-radius: 999px; background: var(--ap-primary); color: #fff; font: inherit; font-weight: 700;
+  font-size: var(--ap-fs-sm); cursor: pointer; }
+.ap-tray__open svg { width: 16px; height: 16px; }
+.ap-tray__count { display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px;
+  border-radius: 999px; background: rgba(255,255,255,.25); font-size: 12px; }
+.ap-tray__cta { opacity: .85; font-weight: 600; border-left: 1px solid rgba(255,255,255,.3); padding-left: 9px; }
+@media (max-width: 620px) { .ap-tray__label, .ap-tray__cta { display: none; } }
+
+/* The layout screen. */
+.ap-layout { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column;
+  background: var(--ap-bg); }
+.ap-layout__bar, .ap-layout__foot { display: flex; align-items: center; gap: 14px; padding: 12px 18px;
+  background: var(--ap-surface); border-bottom: 1px solid var(--ap-border); flex-wrap: wrap; }
+.ap-layout__foot { border-bottom: 0; border-top: 1px solid var(--ap-border); justify-content: flex-end; }
+.ap-layout__title { display: flex; align-items: center; gap: 8px; font-weight: 800; margin-right: auto; }
+.ap-layout__title svg { width: 17px; height: 17px; }
+.ap-layout__x { margin-left: auto; }
+.ap-layout__scroll { flex: 1; overflow: auto; padding: 26px 18px 40px; display: flex; justify-content: center; }
+
+/* One continuous sheet at true paper width, with the printable area inset by the real margin. */
+.ap-sheet { background: #fff; box-shadow: 0 10px 40px -12px rgba(0,0,0,.4); padding: 12mm;
+  align-self: flex-start; color: #11141c; }
+.ap-sheet__body { display: flex; flex-direction: column; gap: 14px; }
+.ap-sheet__header { display: flex; align-items: center; gap: 12px; padding-bottom: 10px;
+  border-bottom: 2px solid var(--ap-primary); }
+.ap-sheet__logo img, .ap-sheet__logo svg { max-height: 34px; max-width: 150px; width: auto; }
+.ap-sheet__name { font-weight: 800; font-size: 15px; }
+.ap-sheet__slogan { font-size: 11px; color: #5a6270; }
+.ap-sheet__footer { margin-top: 10px; padding-top: 10px; border-top: 1px solid #d5d9e0;
+  font-size: 10.5px; color: #5a6270; text-align: center; }
+
+/* Each collected block, with its own handle and remove. */
+.ap-sheet__item { position: relative; break-inside: avoid; page-break-inside: avoid; }
+.ap-sheet__tools { position: absolute; top: 6px; right: 6px; z-index: 4; display: flex; gap: 4px;
+  opacity: 0; transition: opacity .15s; }
+.ap-sheet__item:hover .ap-sheet__tools, .ap-sheet__tools:focus-within { opacity: 1; }
+/* Inside the sheet a block is always full width — a quarter-width KPI on a 703px column is a
+   postage stamp, and the point of the sheet is legibility on paper. */
+.ap-sheet__item .ap-block { grid-column: auto !important; }
+
+/* Where the printer will really break, drawn where it will really happen. */
+.ap-sheet__break { position: relative; height: 0; margin: 8px 0; border-top: 1px dashed #b8bec9; }
+.ap-sheet__break span { position: absolute; right: 0; top: -9px; padding: 1px 7px; border-radius: 999px;
+  background: #eef0f4; color: #5a6270; font-size: 9px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; }
