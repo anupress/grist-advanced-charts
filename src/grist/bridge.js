@@ -384,20 +384,28 @@ async function readConfigRow(key) {
   return null;
 }
 
-export async function loadCreatedTables() {
-  const row = await readConfigRow(CREATED_KEY);
+function parseCreatedRow(row) {
   if (!row?.value) return [];
   try { const v = JSON.parse(row.value); return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []; }
   catch { return []; }
 }
 
-async function writeCreatedTables(names) {
+export async function loadCreatedTables() {
+  return parseCreatedRow(await readConfigRow(CREATED_KEY));
+}
+
+// `row` is the already-read record, passed in by both callers below. readConfigRow has no way to
+// ask for one key — Grist's fetchTable returns the whole table — so every call downloads the
+// design row too, which for a six-page site is 20-30KB. Reading it once to work out the new value
+// and then again to find out where to put it doubled that: two identical 21KB round trips to write
+// the two characters "[]". Pass `undefined` and it still reads for itself.
+async function writeCreatedTables(names, row) {
   if (!hasGrist()) return false;
   try {
     await ensureTables();
     const json = JSON.stringify([...new Set(names)]);
-    const row = await readConfigRow(CREATED_KEY);
-    if (row) await g().docApi.applyUserActions([['UpdateRecord', CONFIG_TABLE, row.rowId, { Value: json }]]);
+    const target = row !== undefined ? row : await readConfigRow(CREATED_KEY);
+    if (target) await g().docApi.applyUserActions([['UpdateRecord', CONFIG_TABLE, target.rowId, { Value: json }]]);
     else await g().docApi.applyUserActions([['AddRecord', CONFIG_TABLE, null, { Key: CREATED_KEY, Value: json }]]);
     return true;
   } catch (e) { console.warn('[ANUPRESS] writeCreatedTables failed', e); return false; }
@@ -406,16 +414,16 @@ async function writeCreatedTables(names) {
 // Additive: a second template installed alongside a first must not erase the first's entry.
 export async function recordCreatedTables(names) {
   if (!Array.isArray(names) || !names.length) return false;
-  const prev = await loadCreatedTables();
-  return writeCreatedTables([...prev, ...names]);
+  const row = await readConfigRow(CREATED_KEY);
+  return writeCreatedTables([...parseCreatedRow(row), ...names], row);
 }
 
 // Called after scratch actually removes them, so the list stays a record of what still exists.
 export async function forgetCreatedTables(names) {
   if (!Array.isArray(names) || !names.length) return false;
   const drop = new Set(names);
-  const prev = await loadCreatedTables();
-  return writeCreatedTables(prev.filter((n) => !drop.has(n)));
+  const row = await readConfigRow(CREATED_KEY);
+  return writeCreatedTables(parseCreatedRow(row).filter((n) => !drop.has(n)), row);
 }
 
 // Wipe the stored design: the row in our own config table plus the widget-option cache. The table
