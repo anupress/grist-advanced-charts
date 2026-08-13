@@ -162,6 +162,14 @@ export function tablesInConfig(config) {
   if (config?.dataTable) ids.add(config.dataTable);
   for (const tab of config?.tabs || []) for (const b of tab.blocks || []) {
     const t = b.config?.table || b.config?.ref?.table || config?.dataTable; if (t) ids.add(t);
+    // Invoice is the one block that reads MORE than one table: its client address book and its
+    // line items. Leaving them out of this list means they are never primed, so on a live document
+    // the invoice would render with no address and fall back to a single line — a quietly wrong
+    // document rather than an obviously broken one, which is worse.
+    if (b.type === 'invoice') {
+      if (b.config?.clientTable) ids.add(b.config.clientTable);
+      if (b.config?.itemsTable) ids.add(b.config.itemsTable);
+    }
   }
   return [...ids];
 }
@@ -200,6 +208,16 @@ function repairBlockColumns(b, cols) {
     if (b.config.detailColumn && !has(b.config.detailColumn)) b.config.detailColumn = null; // legacy single field
     if ((b.config.detailColumns || []).length) b.config.detailColumns = b.config.detailColumns.filter(has);
     if (!has(b.config.colorBy)) b.config.colorBy = null;
+  } else if (b.type === 'invoice') {
+    // Invoice is the only block with SECONDARY table references — a client address book and a
+    // line-items table. repairBlockColumns is told about the columns of the primary table only,
+    // so those two are handled by adaptConfigToTable/adaptTemplateToTable, which know the real
+    // table list. Here we only fix the columns that must live on the invoice table itself.
+    if (!has(b.config.numberColumn)) b.config.numberColumn = dimCol(cols)?.id ?? null;
+    if (!has(b.config.clientColumn)) b.config.clientColumn = dimCol(cols, b.config.numberColumn)?.id ?? null;
+    if (!has(b.config.amountColumn)) b.config.amountColumn = measureCol(cols)?.id ?? null;
+    if (!has(b.config.dateColumn)) b.config.dateColumn = dateCol(cols)?.id ?? null;
+    for (const k of ["dueColumn", "statusColumn", "noteColumn"]) if (!has(b.config[k])) b.config[k] = null;
   } else if (b.type === 'map') {
     if (!has(b.config.latColumn) || !has(b.config.lonColumn)) {
       const lat = geoCol(cols, /lat/i), lon = lat && geoCol(cols, /lon|lng/i);
@@ -219,15 +237,35 @@ function repairBlockColumns(b, cols) {
 // This is the "before you've configured anything, show *something*" first-run experience —
 // deliberately more aggressive than adaptTemplateToTable below, which is for a different moment
 // (browsing a template library, not your first-ever connect).
+
+// The invoice block points at two tables besides its own. repairBlockColumns only knows about the
+// primary table's columns, so clearing a dangling client or line-items reference happens here,
+// where the real table list is in hand. Cleared rather than remapped: an invoice billing lines
+// from an unrelated table would be a wrong bill, whereas cleared simply falls back to the
+// single-amount form, which is correct just less detailed.
+function dropMissingInvoiceTables(b, realTableIds) {
+  if (b.type !== 'invoice' || !b.config) return;
+  if (b.config.clientTable && !realTableIds.has(b.config.clientTable)) {
+    b.config.clientTable = null; b.config.clientAddressColumns = [];
+  }
+  if (b.config.itemsTable && !realTableIds.has(b.config.itemsTable)) {
+    b.config.itemsTable = null; b.config.itemsLinkColumn = null;
+    b.config.itemDescColumn = null; b.config.itemQtyColumn = null;
+    b.config.itemPriceColumn = null; b.config.itemTotalColumn = null;
+  }
+}
+
 export function adaptConfigToTable(config, provider) {
   const table = provider.defaultTable();
   if (!table) return config;
+  const realTableIds = new Set(provider.tables().map((t) => t.id));
   const c = clone(config);
   c.dataTable = table;
   for (const tab of c.tabs || []) for (const b of tab.blocks || []) {
     if (!b.config) continue;
     b.config.table = table;
     repairBlockColumns(b, provider.columns(table));
+    dropMissingInvoiceTables(b, realTableIds);
   }
   return c;
 }
@@ -267,6 +305,7 @@ export function adaptTemplateToTable(config, provider) {
     const bTable = isRealMatch ? ownTable : table;
     b.config.table = bTable;
     repairBlockColumns(b, provider.columns(bTable));
+    dropMissingInvoiceTables(b, realTableIds);
   }
   return c;
 }

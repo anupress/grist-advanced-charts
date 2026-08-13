@@ -14,6 +14,7 @@ import { openBlockEditor } from './block-editor.js';
 import { openGuidedWizard } from './wizard.js';
 import { openBlockChooser } from './chooser.js';
 import { openTemplatePicker } from './template-picker.js';
+import { guessInvoiceConfig } from '../render/invoice.js';
 import { makeBlocksSortable, makeTabsSortable, makePagesSortable } from './dnd.js';
 import { openDrawer, closeDrawer, field, textInput, selectInput, checkboxRow, segmented, colorInput, subhead, divider, primaryBtn, ghostBtn } from './ui.js';
 import { heroEditorBody } from './hero-editor.js';
@@ -126,6 +127,23 @@ function defaultBlock(type, tabId) {
   if (type === 'image') return { id: uid('blk'), type: 'image', span: 6, __isNew: true, config: { mode: 'upload', imageData: null, ref: { table: null, column: null, row: null }, alt: '', fit: 'cover', caption: '', link: { kind: null, tab: null, url: null, newTab: true } } };
   if (type === 'testimonials') return { id: uid('blk'), type: 'testimonials', span: 12, __isNew: true, config: { title: 'What people are saying', mode: 'manual', entries: [{ name: '', quote: '', rating: 5, photoData: null }], table: null, nameColumn: null, quoteColumn: null, ratingColumn: null, photoColumn: null, limit: 6 } };
   if (type === 'livetable') return { id: uid('blk'), type: 'livetable', span: 12, __isNew: true, config: { title: '', table, columns: cols.slice(0, 5).map((c) => c.id), pageSize: 10, searchable: true, sortable: true, defaultSort: null, highlights: [] } };
+  // The column guesses matter more here than elsewhere: an invoice with the wrong column in the
+  // "amount" slot is not a slightly-off chart, it is a wrong bill. guessInvoiceConfig() names the
+  // usual suspects so the block draws something correct immediately, and every guess is a visible
+  // dropdown in the editor rather than a hidden default.
+  if (type === 'invoice') {
+    const guess = guessInvoiceConfig(cols, provider.tables());
+    return { id: uid('blk'), type: 'invoice', span: 12, __isNew: true, config: {
+      title: 'Invoice', documentTitle: 'Invoice', table, ...guess,
+      clientNameColumn: 'Name', clientAddressColumns: [],
+      itemsTable: null, itemsLinkColumn: null, itemDescColumn: null, itemQtyColumn: null,
+      itemPriceColumn: null, itemTotalColumn: null,
+      singleLineLabel: 'Services rendered',
+      from: { name: '', address: '', email: '', phone: '', taxId: '', logoData: null },
+      terms: 'Payment due within 30 days of the issue date.',
+      currency: '$', taxRate: 0, taxLabel: 'Tax', taxIdLabel: 'Tax ID', accent: null, rowId: null,
+    } };
+  }
   if (type === 'embed') return { id: uid('blk'), type: 'embed', span: 12, __isNew: true, config: { html: '', css: '', js: '', height: 300 } };
   if (type === 'qrcode') return { id: uid('blk'), type: 'qrcode', span: 3, __isNew: true, config: { text: 'https://', level: 'M', fg: '#000000', bg: '#ffffff', size: 200, caption: '' } };
   if (type === 'countdown') return { id: uid('blk'), type: 'countdown', span: 4, __isNew: true, config: { title: '', targetDate: new Date(Date.now() + 7 * 86400000).toISOString(), expiredText: 'This has ended.', color: null } };

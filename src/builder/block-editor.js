@@ -1,7 +1,7 @@
 // Drawer editors for the three block kinds. Charts get column pickers, type recommendations
 // and a live preview that updates as you tweak. "Any column" can be used as a category or value.
 
-import { el, clone, debounce } from '../util.js';
+import { el, clone, debounce, toast } from '../util.js';
 import { icon, chartIcon } from '../assets/icons.js';
 import { openDrawer, closeDrawer, field, textInput, selectInput, checkboxRow, segmented, subhead, divider, primaryBtn, ghostBtn, iconPickerField, linkTargetField, colorInput } from './ui.js';
 import { CHART_TYPES, getChartType, CARTESIAN } from '../charts/catalog.js';
@@ -15,6 +15,7 @@ import { mountAttachmentImages } from '../render/media-mount.js';
 import { mountCountdowns } from '../render/countdown.js';
 import { currentSeriesColors } from '../theme/apply.js';
 import { openDataEditor } from './data-editor.js';
+import { guessInvoiceConfig } from '../render/invoice.js';
 import { pickImage, readFileAsDataURL } from './imageutil.js';
 
 const SPANS = [{ value: 3, label: 'XS' }, { value: 4, label: 'S' }, { value: 6, label: 'M' }, { value: 8, label: 'L' }, { value: 12, label: 'Full' }];
@@ -42,6 +43,7 @@ export function openBlockEditor(block, ctx) {
   if (block.type === 'image') return openImageEditor(block, ctx);
   if (block.type === 'testimonials') return openTestimonialsEditor(block, ctx);
   if (block.type === 'livetable') return openLiveTableEditor(block, ctx);
+  if (block.type === 'invoice') return openInvoiceEditor(block, ctx);
   if (block.type === 'embed') return openEmbedEditor(block, ctx);
   if (block.type === 'qrcode') return openQRCodeEditor(block, ctx);
   if (block.type === 'countdown') return openCountdownEditor(block, ctx);
@@ -1098,4 +1100,165 @@ function openCalendarEditor(block, ctx) {
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
   openDrawer({ title: block.__isNew ? 'Add calendar' : 'Edit calendar', body, footer });
   (async () => { await ensureRows(provider, wb.config.table); buildDyn(); refreshPreview(); })();
+}
+
+// ---------------- Invoice ----------------
+// The most configuration of any block, because an invoice is the one place where guessing wrong is
+// not cosmetic — the wrong column in the "amount" slot is a wrong bill. So every mapping is a
+// visible dropdown with a sensible guess pre-selected, grouped by the question it answers: where
+// the invoices are, who they are for, what is on them, who is sending them, and the money.
+function openInvoiceEditor(block, ctx) {
+  const wb = clone(block); wb.config = wb.config || {};
+  const provider = ctx.provider;
+  const c = wb.config;
+  c.table = c.table || provider.defaultTable();
+  c.from = c.from || { name: '', address: '', email: '', phone: '', taxId: '', logoData: null };
+
+  const previewHost = el('div', { class: 'ap-preview' });
+  const refreshPreview = debounce(async () => {
+    await ensureRows(provider, c.table);
+    if (c.itemsTable) await ensureRows(provider, c.itemsTable);
+    if (c.clientTable) await ensureRows(provider, c.clientTable);
+    previewHost.replaceChildren(renderBlock(clone(wb), { provider, config: { dataTable: c.table } }));
+  }, 200);
+
+  const tableOpts = () => provider.tables().map((t) => ({ value: t.id, label: t.label }));
+  const colOpts = (table, allowNone = true, noneLabel = '— none —') => {
+    const opts = (provider.columns(table) || []).map((x) => ({ value: x.id, label: x.label }));
+    return allowNone ? [{ value: '', label: noneLabel }].concat(opts) : opts;
+  };
+  const set = (key) => (v) => { c[key] = v || null; refreshPreview(); };
+  const setFrom = (key) => (v) => { c.from[key] = v; refreshPreview(); };
+  const hint = (text) => el('div', { class: 'ap-muted', style: { fontSize: '11.5px', margin: '-6px 0 10px' }, text });
+
+  // Rebuilt whenever the invoice table changes, since every column dropdown below depends on it.
+  const mapHost = el('div');
+  function buildMap() {
+    mapHost.replaceChildren(
+      field('Invoice number', selectInput(colOpts(c.table), c.numberColumn || '', set('numberColumn'))),
+      field('Client', selectInput(colOpts(c.table), c.clientColumn || '', set('clientColumn'))),
+      twoUp(
+        field('Issue date', selectInput(colOpts(c.table), c.dateColumn || '', set('dateColumn'))),
+        field('Due date', selectInput(colOpts(c.table), c.dueColumn || '', set('dueColumn'))),
+      ),
+      twoUp(
+        field('Amount', selectInput(colOpts(c.table), c.amountColumn || '', set('amountColumn'))),
+        field('Status', selectInput(colOpts(c.table), c.statusColumn || '', set('statusColumn'))),
+      ),
+      field('Note on the invoice', selectInput(colOpts(c.table), c.noteColumn || '', set('noteColumn'))),
+    );
+  }
+
+  // Line items are optional on purpose: without them the block bills the Amount column as a single
+  // line, which is all most invoice tables can support today.
+  const itemsHost = el('div');
+  function buildItems() {
+    const t = c.itemsTable;
+    itemsHost.replaceChildren(
+      field('Line items table', selectInput(
+        [{ value: '', label: '— no line items, bill the amount —' }].concat(tableOpts()), t || '',
+        async (v) => { c.itemsTable = v || null; if (v) await ensureRows(provider, v); buildItems(); refreshPreview(); })),
+      t ? field('Links back to the invoice by', selectInput(colOpts(t), c.itemsLinkColumn || '', set('itemsLinkColumn'))) : null,
+      t ? field('Description', selectInput(colOpts(t), c.itemDescColumn || '', set('itemDescColumn'))) : null,
+      t ? twoUp(
+        field('Quantity', selectInput(colOpts(t), c.itemQtyColumn || '', set('itemQtyColumn'))),
+        field('Unit price', selectInput(colOpts(t), c.itemPriceColumn || '', set('itemPriceColumn'))),
+      ) : null,
+      t ? field('Line total (optional)', selectInput(colOpts(t), c.itemTotalColumn || '', set('itemTotalColumn'))) : null,
+      t ? hint('Leave the line total blank and it is quantity x unit price. Point it at a column to use a stored total instead, which matters when a formula rounds or applies a discount.') : null,
+      !t ? field('Single-line description', textInput(c.singleLineLabel || '', (v) => { c.singleLineLabel = v; refreshPreview(); }, { placeholder: 'Services rendered' })) : null,
+    );
+  }
+
+  const clientHost = el('div');
+  function buildClient() {
+    const t = c.clientTable;
+    clientHost.replaceChildren(
+      field('Client address book', selectInput(
+        [{ value: '', label: '— just use the name on the invoice —' }].concat(tableOpts()), t || '',
+        async (v) => { c.clientTable = v || null; if (v) await ensureRows(provider, v); buildClient(); refreshPreview(); })),
+      t ? field('Name column', selectInput(colOpts(t, false), c.clientNameColumn || '', set('clientNameColumn'))) : null,
+      t ? field('Address lines', columnPicker(provider.columns(t) || [], c.clientAddressColumns || [], (id, on) => {
+        const list = new Set(c.clientAddressColumns || []);
+        if (on) list.add(id); else list.delete(id);
+        c.clientAddressColumns = [...list];
+        refreshPreview();
+      })) : null,
+      t ? hint('Matched by name, or followed directly when the invoice column is a Grist reference.') : null,
+    );
+  }
+
+  const body = [
+    field('Block title', textInput(c.title || '', (v) => { c.title = v; refreshPreview(); }, { placeholder: 'Invoice' })),
+    field('Word on the document', textInput(c.documentTitle || '', (v) => { c.documentTitle = v; refreshPreview(); }, { placeholder: 'Invoice' })),
+
+    subhead('Where the invoices are'),
+    field('Invoice table', selectInput(tableOpts(), c.table, async (v) => {
+      c.table = v; await ensureRows(provider, v);
+      Object.assign(c, guessInvoiceConfig(provider.columns(v) || [], provider.tables()));
+      buildMap(); buildClient(); refreshPreview();
+    })),
+    mapHost,
+
+    subhead('Who it is for'),
+    clientHost,
+
+    subhead('What is on it'),
+    itemsHost,
+
+    subhead('Your details'),
+    hint('The same on every invoice, so they live with the design rather than in a table.'),
+    field('Business name', textInput(c.from.name || '', setFrom('name'), { placeholder: 'Your business' })),
+    field('Address', textInput(c.from.address || '', setFrom('address'), { textarea: true, rows: 3, placeholder: '1 Example Street\nCity, Postcode' })),
+    twoUp(
+      field('Email', textInput(c.from.email || '', setFrom('email'), { placeholder: 'billing@example.com' })),
+      field('Phone', textInput(c.from.phone || '', setFrom('phone'), { placeholder: '+1 (212) 555-0100' })),
+    ),
+    twoUp(
+      field('Tax ID label', textInput(c.taxIdLabel || '', (v) => { c.taxIdLabel = v; refreshPreview(); }, { placeholder: 'VAT no.' })),
+      field('Tax ID', textInput(c.from.taxId || '', setFrom('taxId'), { placeholder: '' })),
+    ),
+    invoiceLogoField(c, refreshPreview),
+
+    subhead('Money'),
+    twoUp(
+      field('Currency symbol', textInput(c.currency || '', (v) => { c.currency = v; refreshPreview(); }, { placeholder: '$' })),
+      field('Accent colour', colorInput(c.accent || '', (v) => { c.accent = v || null; refreshPreview(); })),
+    ),
+    twoUp(
+      field('Tax label', textInput(c.taxLabel || '', (v) => { c.taxLabel = v; refreshPreview(); }, { placeholder: 'VAT' })),
+      field('Tax rate %', textInput(String(c.taxRate ?? 0), (v) => { c.taxRate = v; refreshPreview(); }, { placeholder: '0' })),
+    ),
+    field('Payment terms', textInput(c.terms || '', (v) => { c.terms = v; refreshPreview(); }, { textarea: true, rows: 2, placeholder: 'Payment due within 30 days.' })),
+
+    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    subhead('Live preview'), previewHost,
+  ];
+
+  buildMap(); buildClient(); buildItems();
+  const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
+  openDrawer({ title: block.__isNew ? 'Add invoice' : 'Edit invoice', body, footer });
+  refreshPreview();
+}
+
+// The sender's logo, on the same upload path as the header logo and hero slides.
+function invoiceLogoField(c, refresh) {
+  const preview = el('div', { class: 'ap-logofield__preview' },
+    c.from.logoData ? [el('img', { src: c.from.logoData, alt: '' })] : [el('span', { class: 'ap-muted', text: 'No logo' })]);
+  const pick = el('input', { type: 'file', accept: 'image/*', style: { display: 'none' } });
+  const row = el('div', { class: 'ap-row' }, [
+    el('button', { class: 'ap-btn ap-btn--soft ap-btn--sm', type: 'button', text: 'Upload logo', onClick: () => pick.click() }),
+    el('button', { class: 'ap-btn ap-btn--ghost ap-btn--sm', type: 'button', text: 'Remove',
+      onClick: () => { c.from.logoData = null; preview.replaceChildren(el('span', { class: 'ap-muted', text: 'No logo' })); refresh(); } }),
+    pick,
+  ]);
+  pick.addEventListener('change', async () => {
+    const f = pick.files && pick.files[0]; if (!f) return;
+    try {
+      c.from.logoData = await readFileAsDataURL(f, 260);
+      preview.replaceChildren(el('img', { src: c.from.logoData, alt: '' }));
+      refresh();
+    } catch { toast('Could not read that image.', 'err'); }
+  });
+  return field('Logo', el('div', { class: 'ap-logofield' }, [preview, row]));
 }

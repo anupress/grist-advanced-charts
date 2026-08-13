@@ -183,11 +183,93 @@ function buildTasks(peopleRows) {
 
 const peopleRows = buildPeople();
 
+
+// ---- Invoices ----------------------------------------------------------------
+// Three linked tables, because that is what an invoice actually is: a header, the lines on it, and
+// somebody to send it to. Deliberately small — this exists to show the Invoice block working, not
+// to be a finance dataset; Sales above is where the volume lives.
+const INVOICES_COLUMNS = [
+  { id: 'InvoiceNumber', label: 'Invoice no.', type: 'Text' },
+  { id: 'Client', label: 'Client', type: 'Text' },
+  { id: 'IssueDate', label: 'Issued', type: 'Date' },
+  { id: 'DueDate', label: 'Due', type: 'Date' },
+  { id: 'Amount', label: 'Amount', type: 'Numeric' },
+  { id: 'Status', label: 'Status', type: 'Choice' },
+  { id: 'Note', label: 'Note', type: 'Text' },
+];
+const INVOICE_ITEMS_COLUMNS = [
+  { id: 'Invoice', label: 'Invoice no.', type: 'Text' },
+  { id: 'Description', label: 'Description', type: 'Text' },
+  { id: 'Quantity', label: 'Qty', type: 'Numeric' },
+  { id: 'UnitPrice', label: 'Unit price', type: 'Numeric' },
+  { id: 'LineTotal', label: 'Line total', type: 'Numeric' },
+];
+const CLIENTS_COLUMNS = [
+  { id: 'Name', label: 'Client', type: 'Text' },
+  { id: 'Street', label: 'Street', type: 'Text' },
+  { id: 'City', label: 'City', type: 'Text' },
+  { id: 'Country', label: 'Country', type: 'Text' },
+];
+
+const DEMO_CLIENTS = [
+  ['Harbour Freight Ltd', '18 Dock Road', 'Bristol BS1 6TH', 'United Kingdom'],
+  ['Bluewave Media', '442 Sunset Avenue', 'Austin, TX 78701', 'United States'],
+  ['Northvale Scientific', 'Industriestrasse 9', '8005 Zurich', 'Switzerland'],
+  ['Meridian Analytics', '7 Rue des Halles', '75001 Paris', 'France'],
+  ['Cedar & Finch', '221 Baker Street', 'London NW1 6XE', 'United Kingdom'],
+];
+
+// Each invoice gets two or three real-sounding lines, and its Amount is their sum — so the ledger
+// above and the document below can never disagree, which is exactly the property the block relies
+// on when it falls back to a single line.
+const DEMO_WORK = [
+  ['Dashboard design and build', 1, 4800],
+  ['Data migration and cleanup', 12, 145],
+  ['Team training session', 2, 650],
+  ['Monthly support retainer', 3, 900],
+  ['Custom report development', 6, 320],
+  ['Integration setup', 1, 2200],
+];
+
+function buildInvoices() {
+  const rnd = mulberry32(7731);
+  const invoices = []; const items = [];
+  const statuses = ['Paid', 'Paid', 'Sent', 'Sent', 'Overdue', 'Draft'];
+  for (let i = 0; i < 12; i++) {
+    const number = 'INV-' + (2040 + i);
+    const issued = new Date(); issued.setDate(issued.getDate() - Math.round(8 + rnd() * 90));
+    issued.setHours(0, 0, 0, 0);
+    const due = new Date(issued); due.setDate(due.getDate() + 30);
+    const lineCount = 2 + Math.floor(rnd() * 2);
+    let total = 0;
+    for (let j = 0; j < lineCount; j++) {
+      const [desc, qty, price] = DEMO_WORK[(i + j * 2) % DEMO_WORK.length];
+      const lineTotal = qty * price;
+      total += lineTotal;
+      items.push({ id: items.length + 1, Invoice: number, Description: desc, Quantity: qty, UnitPrice: price, LineTotal: lineTotal });
+    }
+    invoices.push({
+      id: i + 1, InvoiceNumber: number,
+      Client: DEMO_CLIENTS[i % DEMO_CLIENTS.length][0],
+      IssueDate: issued.toISOString().slice(0, 10),
+      DueDate: due.toISOString().slice(0, 10),
+      Amount: total,
+      Status: statuses[i % statuses.length],
+      Note: i % 4 === 0 ? 'Thank you for your business.' : '',
+    });
+  }
+  return { invoices, items };
+}
+const demoInvoicing = buildInvoices();
+
 export const DUMMY_DATA = {
   defaultTable: 'Sales',
   tables: {
     Sales: { id: 'Sales', label: 'Sales (demo)', columns: SALES_COLUMNS, records: buildSales() },
     People: { id: 'People', label: 'People (demo)', columns: PEOPLE_COLUMNS, records: peopleRows },
     Tasks: { id: 'Tasks', label: 'Tasks (demo)', columns: TASKS_COLUMNS, records: buildTasks(peopleRows) },
+    Invoices: { id: 'Invoices', label: 'Invoices (demo)', columns: INVOICES_COLUMNS, records: demoInvoicing.invoices },
+    InvoiceItems: { id: 'InvoiceItems', label: 'Invoice items (demo)', columns: INVOICE_ITEMS_COLUMNS, records: demoInvoicing.items },
+    Clients: { id: 'Clients', label: 'Clients (demo)', columns: CLIENTS_COLUMNS, records: DEMO_CLIENTS.map((c, i) => ({ id: i + 1, Name: c[0], Street: c[1], City: c[2], Country: c[3] })) },
   },
 };

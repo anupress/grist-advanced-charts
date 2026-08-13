@@ -529,6 +529,24 @@
   .ap-livetable { border: none !important; padding: 0 !important; }
   .ap-livetable__title { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
 
+  /* ---- Invoice ---- */
+  /* The chooser strip is a screen control; the document is what prints. */
+  .ap-invoice__bar { display: none !important; }
+  .ap-invoice { border: none !important; }
+  .ap-invoice__doc { padding: 0 !important; }
+  .ap-invoice__table { break-inside: auto; }
+  .ap-invoice__table tr { break-inside: avoid; page-break-inside: avoid; }
+  .ap-invoice__table thead { display: table-header-group; }
+  /* Keep the totals with the last lines rather than orphaned onto a page of their own. */
+  .ap-invoice__totals, .ap-invoice__foot { break-inside: avoid; page-break-inside: avoid; }
+  /* Status pills and the accent rule are the only colour worth spending ink on. */
+  .ap-invoice__status { border: 1px solid #999; }
+
+  /* Printing ONE invoice: its own Print button marks the block and hides the rest of the page,
+     so a client receives an invoice rather than a dashboard with an invoice on it. */
+  [data-print-only] .ap-block:not(.is-printtarget) { display: none !important; }
+  [data-print-only] .ap-hero, [data-print-only] .ap-section-title { display: none !important; }
+  [data-print-only] .ap-block.is-printtarget { grid-column: span 12 !important; }
   /* Charts and maps are canvas/tiles; keep them from spilling across a page break. */
   .ap-chart, .ap-map__canvas { break-inside: avoid; page-break-inside: avoid; }
 
@@ -549,3 +567,79 @@
 .ap-refresh.is-spinning svg { animation: ap-spin .8s linear infinite; }
 @keyframes ap-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .ap-refresh.is-spinning svg { animation: none; opacity: .5; } }
+
+/* ---- Invoice block ----
+   A document, not a dashboard card: white ground, generous margins, a rule under the header, and
+   the totals stacked bottom-right where an eye looks for them. It has to survive being printed,
+   so nothing here depends on hover, scroll or a viewport width. */
+.ap-invoice { --ap-inv-accent: var(--ap-primary); padding: 0; overflow: hidden; }
+
+/* The chooser strip above the document: pick a row, print it. Not part of the document itself. */
+.ap-invoice__bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 12px 16px; border-bottom: 1px solid var(--ap-border); background: var(--ap-bg-soft); }
+.ap-invoice__barlabel { font-weight: 700; font-size: var(--ap-fs-sm); margin-right: auto; }
+.ap-invoice__picker { max-width: 320px; }
+.ap-invoice__print { flex: none; }
+.ap-invoice__print svg { width: 14px; height: 14px; }
+
+.ap-invoice__doc { padding: clamp(20px, 4vw, 40px); background: var(--ap-surface); }
+
+.ap-invoice__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px;
+  padding-bottom: 20px; border-bottom: 2px solid var(--ap-inv-accent); }
+.ap-invoice__brand { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ap-invoice__logo { max-height: 46px; max-width: 190px; object-fit: contain; }
+.ap-invoice__fromname { font-family: var(--ap-font-head); font-weight: 800; font-size: var(--ap-fs-lg); }
+.ap-invoice__title { text-align: right; flex: none; }
+.ap-invoice__word { font-family: var(--ap-font-head); font-weight: 800; font-size: var(--ap-fs-2xl);
+  letter-spacing: -.02em; line-height: 1; color: var(--ap-inv-accent); text-transform: uppercase; }
+.ap-invoice__number { font-family: var(--ap-font-mono, ui-monospace, monospace); font-size: var(--ap-fs-sm);
+  color: var(--ap-text-soft); margin-top: 4px; }
+.ap-invoice__status { display: inline-block; margin-top: 8px; padding: 3px 10px; border-radius: 999px;
+  font-size: var(--ap-fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  background: var(--ap-bg-soft); color: var(--ap-text-soft); }
+.ap-invoice__status[data-status="paid"] { background: #e4f0e9; color: #2b6146; }
+.ap-invoice__status[data-status="overdue"] { background: #fbe9e7; color: #a92218; }
+.ap-invoice__status[data-status="sent"] { background: #eef1fb; color: #3b4a8a; }
+
+.ap-invoice__parties { display: grid; grid-template-columns: 1fr 1fr auto; gap: 28px; padding: 24px 0; }
+.ap-invoice__partylabel { font-size: var(--ap-fs-xs); font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--ap-text-mute); margin-bottom: 6px; }
+.ap-invoice__partyname { font-weight: 700; font-size: var(--ap-fs-md); margin-bottom: 2px; }
+.ap-invoice__partyline { font-size: var(--ap-fs-sm); color: var(--ap-text-soft); line-height: 1.5; }
+.ap-invoice__partyline--meta { color: var(--ap-text-mute); }
+.ap-invoice__metas { display: flex; flex-direction: column; gap: 10px; text-align: right; min-width: 150px; }
+.ap-invoice__metalabel { font-size: var(--ap-fs-xs); font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--ap-text-mute); }
+.ap-invoice__metavalue { font-size: var(--ap-fs-md); font-weight: 600; font-variant-numeric: tabular-nums; }
+.ap-invoice__meta.is-total .ap-invoice__metavalue { font-size: var(--ap-fs-xl); font-weight: 800;
+  color: var(--ap-inv-accent); letter-spacing: -.01em; }
+
+.ap-invoice__linesbox { overflow-x: auto; }
+.ap-invoice__table { width: 100%; border-collapse: collapse; }
+.ap-invoice__table th { text-align: left; padding: 10px 12px; font-size: var(--ap-fs-xs);
+  font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--ap-text-mute);
+  border-bottom: 1px solid var(--ap-border); }
+.ap-invoice__table td { padding: 11px 12px; font-size: var(--ap-fs-sm); border-bottom: 1px solid var(--ap-border); }
+.ap-invoice__table .is-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.ap-invoice__totals { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; padding: 18px 12px 0; }
+.ap-invoice__totalrow { display: flex; justify-content: space-between; gap: 40px; min-width: 240px;
+  font-size: var(--ap-fs-sm); color: var(--ap-text-soft); font-variant-numeric: tabular-nums; }
+.ap-invoice__totalrow.is-grand { margin-top: 8px; padding-top: 10px; border-top: 2px solid var(--ap-inv-accent);
+  font-size: var(--ap-fs-lg); font-weight: 800; color: var(--ap-text); }
+
+.ap-invoice__foot { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 28px;
+  padding-top: 18px; border-top: 1px solid var(--ap-border); font-size: var(--ap-fs-sm); color: var(--ap-text-soft); }
+
+@media (max-width: 720px) {
+  .ap-invoice__parties { grid-template-columns: 1fr; gap: 18px; }
+  .ap-invoice__metas { text-align: left; }
+  .ap-invoice__foot { grid-template-columns: 1fr; }
+  .ap-invoice__head { flex-direction: column; }
+  .ap-invoice__title { text-align: left; }
+}
+
+.ap-logofield { display: flex; align-items: center; gap: 12px; }
+.ap-logofield__preview { width: 76px; height: 46px; display: grid; place-items: center; flex: none;
+  border: 1px dashed var(--ap-border); border-radius: var(--ap-radius-sm, 6px); overflow: hidden; }
+.ap-logofield__preview img { max-width: 100%; max-height: 100%; object-fit: contain; }

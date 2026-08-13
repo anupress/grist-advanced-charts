@@ -4,6 +4,7 @@
 
 import { el, fromHTML, fmtNumber, interpolate, clamp } from '../util.js';
 import { sanitizeToFragment } from '../security/sanitize.js';
+import { renderInvoice } from './invoice.js';
 import { icon, chartIcon, EMPTY_ART } from '../assets/icons.js';
 import { computeKpi, sparkSeries, aggregate, AGGREGATIONS, resolveDeltaBy } from '../stats/aggregate.js';
 import { renderChart } from '../charts/echarts-adapter.js';
@@ -89,6 +90,7 @@ export function renderBlock(block, ctx) {
   else if (block.type === 'image') inner = renderImage(block, ctx);
   else if (block.type === 'testimonials') inner = renderTestimonials(block, ctx);
   else if (block.type === 'livetable') inner = renderLiveTable(block, ctx);
+  else if (block.type === 'invoice') inner = renderInvoice(block, ctx);
   else if (block.type === 'embed') inner = renderEmbed(block);
   else if (block.type === 'qrcode') inner = renderQRCode(block);
   else if (block.type === 'countdown') inner = renderCountdown(block);

@@ -41,6 +41,11 @@ export const BLOCK_CATALOG = [
     info: 'Shows the raw rows of a table, with search, click-to-sort columns and paging — handy for browsing a full list rather than a summary.',
   },
   {
+    type: 'invoice', star: true, category: 'data', icon: 'download', title: 'Invoice',
+    desc: 'Turn a row into a document you can send',
+    info: 'Pick an invoice from your table and this renders it as a finished document — your details, the client\'s, the lines and the totals — ready to print or save as PDF. Works with a single Amount column, or itemises properly if you keep line items in their own table.',
+  },
+  {
     type: 'calendar', star: true, category: 'data', icon: 'calendar', title: 'Calendar',
     desc: 'A month view of rows by date, drag to reschedule',
     info: 'Plots a table\'s rows on a month calendar by a date column. On a live page, dragging an event to a new day writes the new date back to your Grist table — and picks up edits made directly in Grist on its own, without needing a page refresh.',
