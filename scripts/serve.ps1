@@ -2,7 +2,11 @@
 # Concurrent: each connection is handled in a runspace, with socket timeouts, so a single
 # idle/preconnect socket can never wedge the accept loop.
 # Default web root = the project root (parent of /scripts).
-param([int]$Port = 4178, [string]$Root = (Split-Path -Parent $PSScriptRoot))
+param(
+  # -Port wins; otherwise the PORT env var (set by preview tooling that assigns a free port); otherwise 4178.
+  [int]$Port = $(if ($env:PORT) { [int]$env:PORT } else { 4178 }),
+  [string]$Root = (Split-Path -Parent $PSScriptRoot)
+)
 
 $listener = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, $Port)
 $listener.Start()

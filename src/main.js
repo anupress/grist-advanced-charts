@@ -5,8 +5,10 @@
 
 import { clone, toast } from './util.js';
 import * as bridge from './grist/bridge.js';
-import { DummyProvider, GristProvider, tablesInConfig, adaptConfigToTable } from './data/provider.js';
+import { DummyProvider, GristProvider, tablesInConfig, adaptConfigToTable, adaptTemplateToTable } from './data/provider.js';
 import { DEFAULT_SITE } from './data/default-site.js';
+import { TEMPLATES } from './data/templates/index.js';
+import { TEMPLATE_SAMPLE_DATA } from './data/templates/sample-data.js';
 import { renderSite } from './render/site.js';
 import { showConsent } from './consent/modal.js';
 
@@ -34,8 +36,25 @@ async function boot() {
       }
     } catch (e) { console.warn('[ANUPRESS] boot view-mode load failed', e); }
   }
+  maybeApplyTemplateParam();
   renderView();
   maybeStartTour();
+}
+
+// ?template=<id> (demo only) boots straight into an installed template — the same demo-mode apply
+// the picker performs, driven from the URL so a template can be linked to or screenshotted without
+// clicking through the drawer. Ignored on a live document: there, applying creates tables, and
+// that must stay behind the picker's confirm step.
+function maybeApplyTemplateParam() {
+  if (app.live) return;
+  let params; try { params = new URLSearchParams(location.search); } catch { return; }
+  const id = params.get('template');
+  if (!id) return;
+  const t = TEMPLATES.find((x) => x.id === id);
+  const sample = TEMPLATE_SAMPLE_DATA[id];
+  if (!t || !sample || typeof app.provider.setData !== 'function') return;
+  app.provider.setData(clone(sample));
+  app.config = adaptTemplateToTable(t.config, app.provider);
 }
 
 // ?tour=1 (or ?tour=<seconds>) auto-cycles the tabs for a hands-off looping demo.
