@@ -518,7 +518,14 @@ export function openLayout(opts) {
     if (!openOpts) return;
     const { id, before } = openOpts;
     openOpts = null;
-    if (keep) { sheet.querySelectorAll('.ap-sheet__opts').forEach((n) => n.remove()); return; }
+    if (keep) {
+      // Keep closes the panel without redrawing, so everything the panel put on the item has to be
+      // taken off by hand. Removing only the panel left is-optioning behind, and with it a block
+      // whose drag, options and delete buttons never came back until something else forced a redraw.
+      sheet.querySelectorAll('.ap-sheet__opts').forEach((n) => n.remove());
+      sheet.querySelectorAll('.ap-sheet__item.is-optioning').forEach((n) => n.classList.remove('is-optioning'));
+      return;
+    }
     restoreOpts(id, before);
     draw();
   }
@@ -589,6 +596,12 @@ export function openLayout(opts) {
     panel.addEventListener('click', (e) => e.stopPropagation());
     // Above the block, not after it. The tools are absolutely positioned, so flow order is free.
     wrap.prepend(panel);
+    // The item's hover tools sit at its top-right corner, which is exactly where Keep and Cancel
+    // land once the panel is the first child — at Full width they were drawn straight over them,
+    // so the button you needed was underneath the button you did not. While the panel is open it
+    // owns this block's controls and the tools stand down: the sliders button only reopens what is
+    // already open, and Keep and Cancel are the two things anyone wants to press next.
+    wrap.classList.add('is-optioning');
     return panel;
   }
 

@@ -982,6 +982,11 @@
 .ap-sheet__optbar .ap-row { display: flex; gap: 5px; flex-wrap: wrap; }
 /* Pushed to the far end so "Keep" is always in the same place, whatever the block type adds. */
 .ap-sheet__optdone { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+/* While a block's options are open, its hover tools stand down. They are absolutely positioned at
+   the item's top-right, which is where Keep and Cancel end up — at Full width the tools were drawn
+   directly over them. Raising the panel's z-index instead would have hidden the tools BEHIND it and
+   left them unclickable, which trades a visible collision for an invisible one. */
+.ap-sheet__item.is-optioning .ap-sheet__tools { display: none; }
 .ap-sheet__optcols { display: flex; gap: 5px; flex-wrap: wrap; }
 .ap-sheet__opts .ap-chip { background: #fff; border-color: #d5d9e0; color: #11141c; }
 .ap-sheet__opts .ap-chip.is-active { background: var(--ap-primary); border-color: var(--ap-primary);
