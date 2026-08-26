@@ -106,7 +106,7 @@ export const BLOCK_CATALOG = [
     info: 'Generates a QR code for a link or any text, entirely in the visitor\'s browser — nothing is sent anywhere to create it, matching this widget\'s zero-third-party-calls design.',
   },
   {
-    type: 'barcode', category: 'basic', icon: 'qrcode', title: 'Barcode',
+    type: 'barcode', category: 'basic', icon: 'barcode', title: 'Barcode',
     desc: 'Code 128, EAN-13, EAN-8 or UPC-A',
     info: 'Generates a scannable barcode at a real physical size, in the browser. Code 128 takes any text and suits asset tags and internal references; EAN and UPC take the digits printed on retail packaging. Sized in millimetres rather than pixels, because a linear barcode that gets scaled no longer scans.',
   },

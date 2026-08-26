@@ -3,7 +3,7 @@
 // tablesInConfig), so — unlike Counter/Image/Testimonials — this needs no lazy-mount pass; all
 // its interactivity (search/sort/page) is self-contained DOM event wiring set up once here.
 
-import { el, debounce, formatCellValue } from '../util.js';
+import { el, debounce, formatCellValue, isStructuredType } from '../util.js';
 import { icon, brandLogo } from '../assets/icons.js';
 import { isDateColumn } from '../grist/dates.js';
 
@@ -154,7 +154,7 @@ export function renderLiveTable(block, ctx) {
     // A reference holds a row id, so comparing the raw cell sorts by insertion order wearing a
     // column heading's clothes. Sorting on what the reader can actually see is the only order that
     // looks like sorting to them.
-    const isRef = /^Ref(List)?(:|$)/i.test(type);
+    const isRef = isStructuredType(type);
     const text = (r) => (isRef ? formatCellValue(r[colId], col) : String(r[colId] ?? ''));
     return (a, b) => {
       const av = text(a), bv = text(b);

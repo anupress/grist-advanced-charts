@@ -1,7 +1,7 @@
 // "Map" block: plots lat/long points on a Leaflet map with SVG-pin markers, popups, optional
 // clustering and category coloring. Maps mount lazily (like charts) once their tab is visible.
 
-import { el, escapeHtml, interpolate } from '../util.js';
+import { el, escapeHtml, interpolate, formatCellValue } from '../util.js';
 import { currentSeriesColors } from '../theme/apply.js';
 
 // `__apLeaflet` is captured in index.html the instant after leaflet.js and its cluster plugin have
@@ -136,6 +136,14 @@ function mountOne(container) {
   const palette = currentSeriesColors();
   const groupColors = {};
   const colLabel = (id) => columns.find((x) => x.id === id)?.label || id;
+  // Same rule as everywhere else: a Reference cell holds a row id, so a map coloured or labelled by
+  // one produced a legend of numbers and pins named after nothing.
+  const cellText = (r, id, fallback = '') => {
+    const col = columns.find((x) => x.id === id) || null;
+    const v = r?.[id];
+    if (v == null || v === '') return fallback;
+    return (col ? formatCellValue(v, col) : String(v)) || fallback;
+  };
   const extraCols = (c.popupColumns || []).filter(Boolean);
 
   const points = [];
@@ -145,14 +153,14 @@ function mountOne(container) {
     if (lat == null || lon == null || lat < -90 || lat > 90 || lon < -180 || lon > 180) { missing++; continue; }
     let color = palette[0];
     if (colorBy) {
-      const g = (r[colorBy] == null || r[colorBy] === '') ? '—' : String(r[colorBy]);
+      const g = cellText(r, colorBy, '—');
       if (!(g in groupColors)) groupColors[g] = palette[Object.keys(groupColors).length % palette.length];
       color = groupColors[g];
     }
     const marker = Lf.marker([lat, lon], { icon: pinIcon(color), riseOnHover: true });
     const lines = [];
-    if (labelC && r[labelC] != null && r[labelC] !== '') lines.push(`<strong>${escapeHtml(String(r[labelC]))}</strong>`);
-    for (const col of extraCols) lines.push(`${escapeHtml(colLabel(col))}: ${escapeHtml(String(r[col] ?? '—'))}`);
+    if (labelC && r[labelC] != null && r[labelC] !== '') lines.push(`<strong>${escapeHtml(cellText(r, labelC))}</strong>`);
+    for (const col of extraCols) lines.push(`${escapeHtml(colLabel(col))}: ${escapeHtml(cellText(r, col, '—'))}`);
     if (lines.length) marker.bindPopup(lines.join('<br/>'));
     layer.addLayer(marker);
     points.push([lat, lon]);

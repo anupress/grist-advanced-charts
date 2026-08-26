@@ -1,7 +1,7 @@
 // Pure-JS statistics engine (no server). Group-by + aggregation, KPI deltas, and the
 // numeric helpers behind the spreadsheet-style stats. Operates on plain row objects.
 
-import { formatCellValue } from '../util.js';
+import { formatCellValue, isStructuredType } from '../util.js';
 
 export const AGGREGATIONS = [
   { id: 'sum', label: 'Sum' },
@@ -67,7 +67,7 @@ const keyOf = (v) => (v == null || v === '' ? '—' : String(v));
  */
 function keyerFor(cols, dim) {
   const col = Array.isArray(cols) ? cols.find((c) => c.id === dim) : null;
-  if (!col || !/^Ref(List)?(:|$)/i.test(String(col.type || ''))) return keyOf;
+  if (!col || !isStructuredType(col.type)) return keyOf;
   return (v) => {
     if (v == null || v === '' || v === 0) return '—';
     return formatCellValue(v, col) || '—';

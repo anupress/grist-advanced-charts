@@ -114,6 +114,21 @@ export function designSignature(config) {
 // format the document did not ask for, except for thousands separators on Numeric, where the
 // alternative is an unreadable run of digits. Int is deliberately left bare, because that is
 // where years, invoice numbers and postcodes live and "2,026" would be actively wrong.
+/**
+ * Columns whose stored value is structurally not its display value.
+ *
+ * A Reference holds a row id; a ChoiceList, an Attachments cell and a Reference List all hold
+ * Grist's list tuple ['L', …]. Stringifying any of them produces something that is not a rough
+ * approximation of the truth but a different value entirely — "2", or "L,Red,Blue".
+ *
+ * One definition, used everywhere that groups, filters, sorts or prints a cell, because three
+ * copies of this regex is three chances for one of them to fall behind the others. Deliberately
+ * NOT a general "does this need formatting" test: Bool and Numeric also format, but their raw form
+ * is still recognisably the value, and treating them here would desynchronise filter lists from the
+ * plain-text inputs beside them.
+ */
+export const isStructuredType = (type) => /^(Ref(List)?(:|$)|ChoiceList|Attachments)/i.test(String(type || ''));
+
 export function formatCellValue(value, col) {
   if (value == null || value === '') return '';
   const type = String(col?.type || '');
@@ -139,6 +154,24 @@ export function formatCellValue(value, col) {
     }
     // 0 is Grist's empty reference, not a row.
     return value === 0 ? '' : one(value);
+  }
+
+  // Grist stores every list-shaped cell as the same tuple, ['L', …], so ChoiceList and Attachments
+  // fall into exactly the trap Reference List did: String() on one produces "L,Red,Blue", which is
+  // not a near-miss but a made-up value with a stray letter at the front. A ChoiceList is the
+  // multi-select tag column people reach for constantly, so this is worth spelling out separately
+  // rather than leaving to the default.
+  if (/^ChoiceList/i.test(type)) {
+    const list = Array.isArray(value) ? (value[0] === 'L' ? value.slice(1) : value) : [value];
+    return list.filter((x) => x != null && x !== '').join(', ');
+  }
+  if (/^Attachments/i.test(type)) {
+    // The ids mean nothing to a reader and the filenames are not in this cell — they live in
+    // _grist_Attachments, which this pure function has no way to reach. A count is the honest
+    // thing a table cell can say about them.
+    const list = Array.isArray(value) ? (value[0] === 'L' ? value.slice(1) : value) : [value];
+    const n = list.filter((x) => x != null && x !== '').length;
+    return n ? `${n} file${n === 1 ? '' : 's'}` : '';
   }
 
   if (/^Bool/i.test(type) || typeof value === 'boolean') {

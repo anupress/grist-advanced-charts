@@ -8,7 +8,7 @@
 // genuinely live page, matching Button/Icon/Pricing's clickTarget pattern — so a stray drag in
 // the editor's own preview or while our widget is in design-edit mode can't silently rewrite data.
 
-import { el } from '../util.js';
+import { el, formatCellValue } from '../util.js';
 import { icon } from '../assets/icons.js';
 import { currentSeriesColors } from '../theme/apply.js';
 import { zoneOfType, dayToEpochSeconds } from '../grist/dates.js';
@@ -57,6 +57,15 @@ export function renderCalendar(block, ctx) {
   // saved before this still work. Each field renders as "Label: value" using the real column label.
   const columns = ctx.provider.columns(table) || [];
   const colLabel = (id) => columns.find((x) => x.id === id)?.label || id;
+  // What a cell should READ as on the calendar. A booking titled by its Client reference held a row
+  // id, so the event chip said "2" and the popup agreed with it. Everything non-reference formats
+  // exactly as before.
+  const cellText = (row, id, fallback = '') => {
+    const col = columns.find((x) => x.id === id) || null;
+    const v = row?.[id];
+    if (v == null || v === '') return fallback;
+    return (col ? formatCellValue(v, col) : String(v)) || fallback;
+  };
   const detailCols = (c.detailColumns && c.detailColumns.length
     ? c.detailColumns
     : (c.detailColumn ? [c.detailColumn] : [])).filter(Boolean);
@@ -73,7 +82,7 @@ export function renderCalendar(block, ctx) {
       .filter((col) => row[col] != null && row[col] !== '')
       .map((col) => el('div', { class: 'ap-calendar__pop-detail' }, [
         el('span', { class: 'ap-calendar__pop-label', text: colLabel(col) + ': ' }),
-        el('span', { text: String(row[col]) }),
+        el('span', { text: cellText(row, col) }),
       ]));
   }
 
@@ -89,7 +98,7 @@ export function renderCalendar(block, ctx) {
   function showPopover(anchorEl, row) {
     popover.classList.remove('is-daylist');
     popover.replaceChildren(
-      el('div', { class: 'ap-calendar__pop-title', text: String(row[c.titleColumn] ?? 'Untitled') }),
+      el('div', { class: 'ap-calendar__pop-title', text: cellText(row, c.titleColumn, 'Untitled') }),
       ...detailRows(row),
     );
     placePopover(anchorEl);
@@ -103,7 +112,7 @@ export function renderCalendar(block, ctx) {
       el('div', { class: 'ap-calendar__pop-title',
         text: `${WEEKDAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} · ${dayEvents.length}` }),
       ...dayEvents.map(({ r }) => el('div', { class: 'ap-calendar__pop-item' }, [
-        el('div', { class: 'ap-calendar__pop-itemtitle', text: String(r[c.titleColumn] ?? 'Untitled') }),
+        el('div', { class: 'ap-calendar__pop-itemtitle', text: cellText(r, c.titleColumn, 'Untitled') }),
         ...detailRows(r),
       ])),
     );
@@ -133,10 +142,10 @@ export function renderCalendar(block, ctx) {
   // order and operable from the keyboard like any other control. Native button semantics give both
   // without a roving-tabindex dance, and dragging still works on one.
   function eventPill(row, cmap) {
-    const color = cmap ? cmap.get(row[c.colorBy] == null ? '' : String(row[c.colorBy])) : null;
+    const color = cmap ? cmap.get(cellText(row, c.colorBy)) : null;
     const pill = el('button', {
       type: 'button', class: 'ap-calendar__event', style: { '--ap-cal-dot': color || 'var(--ap-primary)' },
-      draggable: canDrag, text: String(row[c.titleColumn] ?? 'Untitled'),
+      draggable: canDrag, text: cellText(row, c.titleColumn, 'Untitled'),
     });
     pill.addEventListener('click', (e) => { e.stopPropagation(); showPopover(pill, row); });
     if (canDrag) {

@@ -1,17 +1,23 @@
 // "Group-wise breakdown" block: counts each distinct value of a column and shows them as a
 // list of colored-dot rows with a count and percentage (like the reference widget's quality cards).
 
-import { el, interpolate } from '../util.js';
+import { el, interpolate, formatCellValue, isStructuredType } from '../util.js';
 import { currentSeriesColors, readVar } from '../theme/apply.js';
 
 export function computeBreakdown(rows, column, opts = {}) {
   const limit = opts.limit || 12;
   const counts = new Map();
   let empty = 0;
+  // Grouping a Reference column by its raw cell counts row ids, so the list reads 1, 2, 3 with no
+  // hint of what any of them are. Given the column, each id resolves to the name the document
+  // shows. Grist's empty reference is 0 rather than null, so it has to be recognised here too or
+  // every unset reference becomes a group called "0".
+  const col = opts.col || null;
+  const isRef = col && isStructuredType(col.type);
   for (const r of rows) {
     const v = r[column];
-    if (v == null || v === '' || (typeof v === 'string' && !v.trim())) { empty++; continue; }
-    const key = String(v);
+    if (v == null || v === '' || (typeof v === 'string' && !v.trim()) || (isRef && v === 0)) { empty++; continue; }
+    const key = isRef ? (formatCellValue(v, col) || '—') : String(v);
     counts.set(key, (counts.get(key) || 0) + 1);
   }
   let entries = [...counts.entries()].sort((a, b) => b[1] - a[1]);
@@ -24,7 +30,8 @@ export function renderBreakdown(block, ctx) {
   const c = block.config || {};
   const table = c.table || ctx.config?.dataTable;
   const rows = ctx.provider.records(table);
-  const { total, shown, otherCount, empty, groups, top, topcount } = computeBreakdown(rows, c.column, { limit: c.limit || 12 });
+  const col = (ctx.provider.columns(table) || []).find((x) => x.id === c.column) || null;
+  const { total, shown, otherCount, empty, groups, top, topcount } = computeBreakdown(rows, c.column, { limit: c.limit || 12, col });
 
   const palette = (c.colors && c.colors.length) ? c.colors : currentSeriesColors();
   const muted = readVar('--ap-text-mute') || '#8a90a6';

@@ -18,7 +18,7 @@
 // Writes go through bridge.saveRows(), which sends everything as ONE action bundle so the whole
 // edit is a single undoable step in the document's history rather than one per cell.
 
-import { el, clone, toast, debounce, formatCellValue } from '../util.js';
+import { el, clone, toast, debounce, formatCellValue, isStructuredType } from '../util.js';
 import { icon } from '../assets/icons.js';
 import * as bridge from '../grist/bridge.js';
 import { isDateColumn } from '../grist/dates.js';
@@ -28,12 +28,13 @@ import { openDrawer, closeDrawer, subhead, primaryBtn, ghostBtn } from './ui.js'
 // correction tool, not a spreadsheet — paging keeps the DOM sane and the intent honest.
 const PAGE = 25;
 
-// A Reference stores a row id, so there is nothing sensible to type into it. Left editable, this
-// grid would send Grist the string "2" for a column expecting the integer 2 — and for a Reference
-// List, the literal text "L,1,2". Both write a broken cell into someone's real table, which is the
-// one thing this editor is not allowed to do. Read-only until there is a proper picker; the labels
-// needed to build one are already resolved on the column.
-const isRefType = (t) => /^Ref(List)?(:|$)/i.test(t || '');
+// Columns holding a structured value rather than text: a Reference (a row id), a Reference List, a
+// Choice List, an Attachments cell (all Grist's ['L', …] tuple). There is nothing sensible to type
+// into any of them. Left editable, this grid would send the string "2" for a column expecting the
+// integer 2, or the literal text "Urgent, Billable" for one expecting a list — writing a broken
+// cell into someone's real table, which is the one thing this editor is not allowed to do.
+// Read-only until there is a picker for each; the labels one would need are already resolved.
+const isRefType = (t) => isStructuredType(t);
 
 /**
  * Rows narrowed by a free-text search and by per-column value filters, then ordered.
@@ -124,15 +125,15 @@ const isBoolType = (t) => /^Bool/i.test(t || '');
 export function lockedNote(formulaCount, refCount) {
   const parts = [];
   if (formulaCount) parts.push(`${formulaCount} calculated column${formulaCount === 1 ? '' : 's'}`);
-  if (refCount) parts.push(`${refCount} reference column${refCount === 1 ? '' : 's'}`);
+  if (refCount) parts.push(`${refCount} reference or list column${refCount === 1 ? '' : 's'}`);
   if (!parts.length) return '';
   const subject = parts.join(' and ');
   const plural = formulaCount + refCount > 1;
   const why = formulaCount && refCount
-    ? 'Grist computes the first from your formulas, and a reference is changed in Grist itself.'
+    ? 'Grist computes the first from your formulas; the others hold values a text box cannot produce.'
     : formulaCount
       ? `Grist computes ${formulaCount === 1 ? 'it' : 'them'} from your formulas.`
-      : `Change ${refCount === 1 ? 'it' : 'them'} in Grist, where the row being pointed at can be picked.`;
+      : `Change ${refCount === 1 ? 'it' : 'them'} in Grist, where the values can be picked.`;
   return `${subject} ${plural ? 'are' : 'is'} shown read-only. ${why}`;
 }
 
@@ -221,7 +222,7 @@ export function openDataEditor(opts) {
 
     if (!editable(col)) {
       const why = isRefType(col.type)
-        ? 'A reference to another table — change it in Grist'
+        ? 'Holds a reference or a list — change it in Grist, where its values can be picked'
         : 'Calculated in Grist — edit the formula there';
       // formatCellValue rather than display(): a locked cell that reads "Meridian Biotech" tells
       // you what is in the row, and one that reads "2" tells you nothing.
