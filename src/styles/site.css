@@ -883,6 +883,33 @@
 .ap-layout__x { margin-left: auto; }
 .ap-layout__scroll { flex: 1; overflow: auto; padding: 26px 18px 40px; display: flex; justify-content: center; }
 
+/* Page geometry controls. Office paper, then label stock, then a size you type yourself -- the
+   separator is what stops "Business card" reading as a kind of A4. */
+.ap-paper { flex-wrap: wrap; gap: 6px; align-items: center; }
+.ap-paper__sep { width: 1px; height: 20px; background: var(--ap-border); margin: 0 4px; }
+.ap-paper__custom { gap: 6px; align-items: center; }
+.ap-paper__custom[hidden] { display: none; }
+.ap-mm { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--ap-muted); }
+.ap-mm__input { width: 58px; padding: 4px 6px; border: 1px solid var(--ap-border); border-radius: 7px;
+  background: var(--ap-bg); color: var(--ap-ink); font: inherit; font-size: 12px; text-align: right; }
+.ap-mm__input:focus-visible { outline: 2px solid var(--ap-primary); outline-offset: 1px; }
+.ap-mm__unit { opacity: .7; }
+.ap-repeat, .ap-repeat__opts { flex-wrap: wrap; gap: 6px; align-items: center; }
+.ap-repeat__opts[hidden] { display: none; }
+.ap-repeat__table { width: auto; min-width: 130px; text-align: left; }
+
+/* One record, repeated. The record is the unit that must not be split across a page break -- a
+   label cut in half by the paper edge is waste, not a layout choice. */
+.ap-sheet__record { grid-column: span 12; display: grid; grid-template-columns: repeat(12, 1fr);
+  gap: 8px; align-content: start; break-inside: avoid; page-break-inside: avoid; }
+.ap-sheet__record[data-across="2"] { grid-column: span 6; }
+.ap-sheet__record[data-across="3"] { grid-column: span 4; }
+.ap-sheet__record[data-across="4"] { grid-column: span 3; }
+.ap-sheet__record[data-across="6"] { grid-column: span 2; }
+.ap-sheet__record > .ap-block { grid-column: 1 / -1; width: 100%; }
+.ap-sheet__record.is-page { break-after: page; page-break-after: always; }
+.ap-sheet__record.is-page:last-child { break-after: auto; page-break-after: auto; }
+
 /* One continuous sheet at true paper width, with the printable area inset by the real margin.
 
    The sheet is paper, so it carries paper's palette rather than the site's. Every block reads its
@@ -932,3 +959,30 @@
 .ap-sheet__break span { position: absolute; right: 0; top: -9px; padding: 1px 7px; border-radius: 999px;
   background: #eef0f4; color: #5a6270; font-size: 9px; font-weight: 700; letter-spacing: .06em;
   text-transform: uppercase; }
+
+/* A linear barcode is read by timing bar widths against the narrowest bar, so a scaled barcode is
+   an unreadable one -- and unlike a QR code it has no error correction to absorb the damage. The
+   SVG is sized in millimetres by the renderer; these rules stop anything downstream shrinking it
+   to fit, and let it overflow visibly instead, where the problem can be seen and fixed. */
+.ap-barcode { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.ap-barcode svg { max-width: none; flex: none; }
+.ap-barcode__text { display: flex; gap: 0.6em; font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 12px; letter-spacing: .08em; color: #11141c; }
+.ap-sheet .ap-barcode { background: #fff; }
+
+/* Per-block options, sitting ABOVE the block they change.
+   Width is the setting people reach for, and underneath a full-height chart it meant scrolling
+   down to click and back up to see the result. Here the control and its effect share a screen. */
+.ap-sheet__opts { margin: 0 0 8px; padding: 8px 10px; border: 1px solid var(--ap-primary);
+  border-radius: 10px; background: color-mix(in srgb, var(--ap-primary) 6%, #ffffff);
+  display: flex; flex-direction: column; gap: 8px; }
+.ap-sheet__optbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ap-sheet__optlabel { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  color: #5a6270; }
+.ap-sheet__optbar .ap-row { display: flex; gap: 5px; flex-wrap: wrap; }
+/* Pushed to the far end so "Keep" is always in the same place, whatever the block type adds. */
+.ap-sheet__optdone { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.ap-sheet__optcols { display: flex; gap: 5px; flex-wrap: wrap; }
+.ap-sheet__opts .ap-chip { background: #fff; border-color: #d5d9e0; color: #11141c; }
+.ap-sheet__opts .ap-chip.is-active { background: var(--ap-primary); border-color: var(--ap-primary);
+  color: var(--ap-on-primary, #fff); }
