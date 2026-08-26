@@ -13,6 +13,8 @@ import { mountMaps, detectLatLon } from '../render/map.js';
 import { mountCounters } from '../render/counter.js';
 import { mountAttachmentImages } from '../render/media-mount.js';
 import { mountCountdowns } from '../render/countdown.js';
+import { SYMBOLOGIES } from '../barcode/linear.js';
+import { DEFAULT_MODULE_MM, MIN_MODULE_MM, MAX_MODULE_MM, DEFAULT_HEIGHT_MM } from '../render/barcode.js';
 import { currentSeriesColors } from '../theme/apply.js';
 import { openDataEditor } from './data-editor.js';
 import { guessInvoiceConfig, STYLES, STYLE_LABELS } from '../render/invoice.js';
@@ -46,6 +48,7 @@ export function openBlockEditor(block, ctx) {
   if (block.type === 'invoice') return openInvoiceEditor(block, ctx);
   if (block.type === 'embed') return openEmbedEditor(block, ctx);
   if (block.type === 'qrcode') return openQRCodeEditor(block, ctx);
+  if (block.type === 'barcode') return openBarcodeEditor(block, ctx);
   if (block.type === 'countdown') return openCountdownEditor(block, ctx);
   if (block.type === 'timeline') return openTimelineEditor(block, ctx);
   if (block.type === 'divider') return openDividerEditor(block, ctx);
@@ -876,6 +879,53 @@ function openEmbedEditor(block, ctx) {
 }
 
 // ---------------- QR code editor ----------------
+/**
+ * Barcode editor.
+ *
+ * Everything here is in millimetres, not pixels, and the panel says so — the module width IS the
+ * scannability of the result, and someone who thinks they are choosing a display size will pick a
+ * number that cannot be read by a scanner.
+ */
+function openBarcodeEditor(block, ctx) {
+  const wb = clone(block); wb.config = wb.config || {};
+  const previewHost = el('div', { class: 'ap-preview' });
+  const hint = el('div', { class: 'ap-muted', style: { fontSize: '12px', marginTop: '6px' } });
+  const refreshPreview = debounce(() => {
+    previewHost.replaceChildren(renderBlock(clone(wb), { provider: ctx.provider, config: {} }));
+    const sym = SYMBOLOGIES[wb.config.symbology] || SYMBOLOGIES.code128;
+    const svg = previewHost.querySelector('svg');
+    hint.textContent = svg
+      ? `${sym.label} · prints ${svg.getAttribute('width')} wide by ${svg.getAttribute('height')} tall`
+      : sym.hint;
+  }, 150);
+  const body = [
+    field('Symbology', segmented(Object.values(SYMBOLOGIES).map((s) => ({ value: s.id, label: s.label })),
+      wb.config.symbology || 'code128', (v) => { wb.config.symbology = v; refreshPreview(); }),
+      'Code 128 carries any text and suits asset tags and internal references. EAN and UPC take the digits printed on retail packaging.'),
+    field('Value', textInput(wb.config.value || '', (v) => { wb.config.value = v; refreshPreview(); }, { placeholder: 'e.g. AC-0007 or 5901234123457' }),
+      'For EAN and UPC the check digit is worked out for you, so paste the number with or without it. In a printout that repeats per record, %ColumnName is replaced by that row\'s value.'),
+    twoUp(
+      field('Bar width', textInput(String(wb.config.moduleMm ?? DEFAULT_MODULE_MM), (v) => {
+        wb.config.moduleMm = Math.max(MIN_MODULE_MM, Math.min(MAX_MODULE_MM, Number(v) || DEFAULT_MODULE_MM)); refreshPreview();
+      }), 'Millimetres, for the narrowest bar. Below about 0.25 many printers and hand scanners start to struggle.'),
+      field('Height', textInput(String(wb.config.heightMm ?? DEFAULT_HEIGHT_MM), (v) => {
+        wb.config.heightMm = Math.max(5, Math.min(120, Number(v) || DEFAULT_HEIGHT_MM)); refreshPreview();
+      }), 'Millimetres.'),
+    ),
+    checkboxRow('Show the number underneath', wb.config.showText !== false, (v) => { wb.config.showText = v; refreshPreview(); }),
+    twoUp(
+      colorField('Bars', wb.config.fg, '#000000', (v) => { wb.config.fg = v; refreshPreview(); }),
+      colorField('Background', wb.config.bg, '#ffffff', (v) => { wb.config.bg = v; refreshPreview(); }),
+    ),
+    field('Caption (optional)', textInput(wb.config.caption || '', (v) => { wb.config.caption = v; refreshPreview(); }, { placeholder: 'e.g. Asset tag' })),
+    field('Block width', segmented(SPANS, wb.span || 3, (v) => { wb.span = v; })),
+    subhead('Live preview'), previewHost, hint,
+  ];
+  const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
+  openDrawer({ title: block.__isNew ? 'Add barcode' : 'Edit barcode', body, footer });
+  refreshPreview();
+}
+
 function openQRCodeEditor(block, ctx) {
   const wb = clone(block); wb.config = wb.config || {};
   const previewHost = el('div', { class: 'ap-preview' });

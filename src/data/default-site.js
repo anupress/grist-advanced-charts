@@ -11,7 +11,7 @@
 //   Get started   — "how do I do this with my data?"      (the five steps, privacy, FAQ)
 //
 // It also doubles as the sensible starting point once a real user begins editing, and as the
-// coverage net for the block library: every one of the 22 block types and all 11 chart types
+// coverage net for the block library: every one of the 23 block types and all 11 chart types
 // appear here, each in a place where it makes sense rather than dumped on one "showcase" page.
 
 import {
@@ -83,7 +83,7 @@ export const DEFAULT_SITE = {
         slides: [
           { image: demoSlide(VIOLET, TEAL), title: 'This is a Grist table 👋', subtitle: 'Read live from 48 rows of demo data — nothing here is hard-coded.' },
           { image: demoSlide(TEAL, '#ff8a5b'), title: 'Point it at your own data', subtitle: 'Any table, any columns — text, number, choice, date, yes/no.' },
-          { image: demoSlide('#7048e8', '#e64980'), title: 'Publish it as a page', subtitle: 'Menus, themes, dark mode and twenty-one kinds of block.' },
+          { image: demoSlide('#7048e8', '#e64980'), title: 'Publish it as a page', subtitle: 'Menus, themes, dark mode and twenty-three kinds of block.' },
         ],
       },
       blocks: [
@@ -238,7 +238,7 @@ export const DEFAULT_SITE = {
           { name: 'A second reviewer', quote: 'Add as many as you like. They wrap onto their own row on a narrow screen.', rating: 4, photoData: null },
         ], 6),
         { id: 'e13', type: 'pricing', span: 8, config: { title: 'Pricing tables, if you need one', plans: [
-          { name: 'Advanced Charts', price: '$0', period: 'forever', features: ['All 22 block types', 'All 11 chart types', '9 starter templates', 'Open source and self-hostable'], highlighted: true, buttonLabel: 'Read the guide', buttonTarget: urlTarget(GUIDE) },
+          { name: 'Advanced Charts', price: '$0', period: 'forever', features: ['All 23 block types', 'All 11 chart types', '9 starter templates', 'Open source and self-hostable'], highlighted: true, buttonLabel: 'Read the guide', buttonTarget: urlTarget(GUIDE) },
           { name: 'Your dashboard', price: 'Yours', period: 'to keep', features: ['Lives in your own document', 'No account, no sign-up', 'No analytics, no tracking', 'Works on self-hosted Grist'], highlighted: false, buttonLabel: 'Get started', buttonTarget: tabTarget('tab-start') },
         ] } },
         { id: 'e14', type: 'countdown', span: 4, config: { title: 'Countdowns for launches & deadlines', targetDate: new Date(Date.now() + 21 * 86400000).toISOString(), expiredText: 'The date has passed — this message replaces the timer.', color: VIOLET } },
@@ -284,6 +284,7 @@ export const DEFAULT_SITE = {
           { q: 'What if I only want a couple of blocks?', a: 'Delete the rest. This demo is deliberately maximal so you can see what exists; a real page is usually four or five blocks. Nothing here is required.' },
         ]),
         { id: 'x9', type: 'qrcode', span: 4, config: { text: GUIDE, level: 'M', fg: '#0b1020', bg: '#ffffff', size: 180, caption: 'Scan to open the full guide on your phone' } },
+        { id: 'x9b', type: 'barcode', span: 4, config: { symbology: 'code128', value: 'ANUPRESS-AC-3', moduleMm: 0.4, heightMm: 20, showText: true, fg: '#0b1020', bg: '#ffffff', caption: 'Barcodes print at a real size, in millimetres' } },
         text('x10', 'Read the full guide',
           'The guide covers installation, every block type, theming, publishing and self-hosting, plus release notes for each version. It is the same link as the QR code beside it — handy if you are reading this on a laptop and would rather have the docs in your hand.'),
         spacer('x11', 10),
