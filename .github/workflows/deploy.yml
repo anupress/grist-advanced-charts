@@ -24,6 +24,10 @@ jobs:
           node-version: 20
       - name: Install build tooling
         run: npm install --no-audit --no-fund
+      # Before the build, not after: a deploy that ships a broken barcode or a design whose blocks
+      # point at columns that no longer exist is worse than a deploy that does not happen.
+      - name: Test
+        run: npm test
       - name: Build obfuscated dist/
         run: npm run build
       - uses: actions/upload-pages-artifact@v3

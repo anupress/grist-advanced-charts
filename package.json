@@ -8,6 +8,7 @@
   "license": "MIT",
   "scripts": {
     "build": "node build.mjs",
+    "test": "node tests/run.mjs",
     "clean": "node -e \"import('node:fs').then(fs=>fs.rmSync('dist',{recursive:true,force:true}))\""
   },
   "devDependencies": {
