@@ -3,6 +3,58 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.1.0] — 2026-08-26
+
+Barcodes, printing onto label stock, and a long-standing bug in how reference
+columns were displayed — which turned out to affect every block that groups or
+labels by a column.
+
+### Added
+
+- **Barcode block** — Code 128, EAN-13, EAN-8 and UPC-A, bringing the library to
+  23 block types. Encoded in the browser like the QR code beside it, and **sized
+  in millimetres rather than pixels**: a linear barcode is read by timing bar
+  widths against the narrowest one, so a symbol the browser scaled to fit is a
+  symbol that no longer scans. It overflows visibly instead. EAN and UPC compute
+  the check digit, so a number pastes in with or without it.
+- **Any page size for Print/PDF.** Four office sizes, four label stocks (business
+  card, shipping, address, small), a size you type, and an adjustable margin.
+  Label stock defaults to no margin, because a die-cut label has no waste edge.
+- **Repeat a printout once per record.** Pick a table and the selected blocks
+  repeat per row, 1 to 6 across or one per page — a sheet of labels, or every
+  unpaid invoice in one run. Blocks that mean something for a single row are
+  rebound (an Invoice is told which row it is, a barcode or QR interpolates
+  `%Column`); a chart of a whole table is left alone.
+- **A test suite in the repository**, run in CI before every deploy: 117
+  assertions across barcodes, references, the data editor's view logic, and the
+  integrity of all ten shipped designs.
+
+### Fixed
+
+- **Reference columns showed the row id instead of what they point at.** A client
+  called Meridian Biotech read as "2", a Reference List as "L,1,2", and a chart
+  grouped by a reference drew one bar per number. Now resolved through the
+  document's own visible column, in tables, charts, breakdowns, calendars and
+  maps. One whole-table fetch per referenced table, never one per row.
+- **ChoiceList was never handled at all** — a multi-select tag column rendered as
+  "L,Urgent,Billable". Attachments shared the fault and now show a file count.
+- **The data editor could write a broken cell.** Reference, Reference List,
+  ChoiceList and Attachments columns were editable as free text, so editing one
+  sent Grist a string where it expected a row id or a list. They are read-only
+  now, alongside formula columns, and say which reason applies.
+- **Search, filters and sorting agree with what is on screen.** Searching a
+  client's name could not match the id in the cell, and clicking a column heading
+  sorted by insertion order.
+- **Printed pages could be narrower than the paper.** The sheet carried a fixed
+  12mm inset while its contents were sized to the full page width, so on an 85mm
+  card every block hung 24mm off the edge.
+- **Page counts were wrong for side-by-side blocks.** Pagination added every
+  item's height in sequence, but two half-width blocks occupy one row of paper
+  between them.
+- **The block width control** sat below the block it changed and was destroyed by
+  its own click. It sits above it now, holds open while you try sizes, and has
+  Keep and Cancel.
+
 ## [3.0.0] — 2026-08-13
 
 The release that turns the widget from a chart tool into a page builder. v2 could
