@@ -51,7 +51,13 @@ export class DummyProvider extends BaseProvider {
 }
 
 export class GristProvider extends BaseProvider {
-  constructor() { super(); this._tables = []; this._cols = new Map(); this._rows = new Map(); this._default = null; }
+  constructor() {
+    super();
+    this._tables = []; this._cols = new Map(); this._rows = new Map(); this._default = null;
+    // rowId -> display value, per referenced table and visible column. Built from a table this
+    // provider already holds, so resolving a reference costs no network at all.
+    this._refLabels = new Map();
+  }
   get isLive() { return true; }
 
   async init() {
@@ -93,6 +99,44 @@ export class GristProvider extends BaseProvider {
         console.warn(`[ANUPRESS] could not load ${id}`, e);
       }
     }));
+
+    // A Reference column stores a row id, and the label for it lives in the table it points at. If
+    // that table is not on the page it was never loaded, and every reference would fall back to
+    // printing its id. So pull in the targets too — ONE whole-table fetch each, which is what keeps
+    // this cheap: a reference costs a fetch per referenced TABLE, never one per row.
+    const targets = new Set();
+    for (const id of ids) {
+      for (const c of this._cols.get(id) || []) {
+        if (c.refTable && !this._rows.has(c.refTable) && known.has(c.refTable)) targets.add(c.refTable);
+      }
+    }
+    if (targets.size) {
+      await Promise.all([...targets].map(async (id) => {
+        try {
+          const cols = await this._loadColumns(id);
+          this._rows.set(id, await grist.getRecords(id, cols));
+        } catch (e) {
+          console.warn(`[ANUPRESS] could not load referenced table ${id}`, e);
+        }
+      }));
+    }
+  }
+
+  /**
+   * The labels a Reference column should display instead of its row ids.
+   *
+   * Cached per target table and visible column, and thrown away whenever that table's rows are
+   * invalidated — a stale label is worse than a row id, because it looks right.
+   */
+  _labelsFor(refTable, visibleCol) {
+    const key = refTable + '|' + (visibleCol || '');
+    if (this._refLabels.has(key)) return this._refLabels.get(key);
+    const rows = this._rows.get(refTable);
+    if (!rows) return null;          // not loaded; formatCellValue falls back to the row id
+    const map = Object.create(null);
+    for (const r of rows) map[r.id] = visibleCol ? r[visibleCol] : r.id;
+    this._refLabels.set(key, map);
+    return map;
   }
   // Re-fetch the table list from Grist and load BOTH schema and rows for any table that wasn't
   // there before. Used after the template picker creates new tables via createTableWithRecords —
@@ -122,7 +166,7 @@ export class GristProvider extends BaseProvider {
     }));
     return this._tables;
   }
-  invalidate(tableId) { if (tableId) this._rows.delete(tableId); else this._rows.clear(); }
+  invalidate(tableId) { this._refLabels.clear(); if (tableId) this._rows.delete(tableId); else this._rows.clear(); }
 
   // A complete re-read of the document, for the header's Refresh button.
   //
@@ -170,7 +214,13 @@ export class GristProvider extends BaseProvider {
   }
 
   tables() { return this._tables; }
-  columns(tableId) { return this._cols.get(tableId || this._default) || []; }
+  columns(tableId) {
+    const cols = this._cols.get(tableId || this._default) || [];
+    // Mutated in place rather than mapped to fresh objects: this runs on every render, and handing
+    // back a new array of new objects each time would defeat every identity check downstream.
+    for (const c of cols) if (c.refTable) c.refLabels = this._labelsFor(c.refTable, c.refVisibleCol);
+    return cols;
+  }
   records(tableId) { return this._rows.get(tableId || this._default) || []; }
   defaultTable() { return this._default; }
 }

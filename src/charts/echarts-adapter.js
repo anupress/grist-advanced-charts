@@ -78,12 +78,14 @@ export function buildOption(block, ctx) {
 
   if (type === 'scatter') return scatterOption(cfg, rows, colors);
   if (type === 'gauge') return gaugeOption(cfg, rows, colors);
-  if (type === 'radar') return radarOption(cfg, rows, colors);
+  if (type === 'radar') return radarOption(cfg, rows, colors, ctx.columns);
   // Checked before groupAggregate, which needs a dimension to group by and has none here.
   if (isMeasureFunnel(cfg)) return funnelOption(measureFunnelData(cfg, rows, ctx.columns), colors, { staged: true });
 
   const g = groupAggregate(rows, {
     dims: cfg.dims || [], measures: cfg.measures || [], agg: cfg.agg || 'sum',
+    // So a chart grouped by a Reference column is labelled with names rather than row ids.
+    cols: ctx.columns,
     sortByValue: cfg.sortByValue ?? SINGLE_SERIES.has(type), limit: cfg.limit || 0,
     // A pie or doughnut asserts parts-of-a-whole by its shape, so truncating the tail draws a
     // complete circle out of incomplete data — an 8-category pie limited to 5 showed 83% of the
@@ -222,8 +224,8 @@ export function measureFunnelData(cfg, rows, columns) {
 // A funnel whose stages are its measures: no category dimension, two or more values in order.
 export const isMeasureFunnel = (cfg) =>
   (cfg?.chartType === 'funnel') && !(cfg.dims || []).length && (cfg.measures || []).length >= 2;
-function radarOption(cfg, rows, colors) {
-  const g = groupAggregate(rows, { dims: [cfg.dims?.[0]].filter(Boolean), measures: cfg.measures || [], agg: cfg.agg || 'sum' });
+function radarOption(cfg, rows, colors, cols) {
+  const g = groupAggregate(rows, { dims: [cfg.dims?.[0]].filter(Boolean), measures: cfg.measures || [], agg: cfg.agg || 'sum', cols });
   const max = Math.max(1, ...g.series.flatMap((s) => s.data));
   const indicator = g.categories.map((c) => ({ name: c, max: max * 1.1 }));
   return { color: colors, tooltip: tooltipCfg('item'), legend: legendCfg(g.series.length > 1),

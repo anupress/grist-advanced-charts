@@ -12,12 +12,13 @@
 //   • Edit cells and append rows. No delete — a mis-click here would destroy real data, and our
 //     undo would be far weaker than the document history Grist already keeps.
 //   • Formula columns render read-only. Grist rejects writes to them, so offering an input that
-//     fails on save would be a lie told by the UI.
+//     fails on save would be a lie told by the UI. Reference columns are read-only for the same
+//     reason from the other direction: they hold a row id, and free text is not one.
 //
 // Writes go through bridge.saveRows(), which sends everything as ONE action bundle so the whole
 // edit is a single undoable step in the document's history rather than one per cell.
 
-import { el, clone, toast, debounce } from '../util.js';
+import { el, clone, toast, debounce, formatCellValue } from '../util.js';
 import { icon } from '../assets/icons.js';
 import * as bridge from '../grist/bridge.js';
 import { isDateColumn } from '../grist/dates.js';
@@ -26,6 +27,13 @@ import { openDrawer, closeDrawer, subhead, primaryBtn, ghostBtn } from './ui.js'
 // How many rows the grid shows at once. A table can be tens of thousands of rows and this is a
 // correction tool, not a spreadsheet — paging keeps the DOM sane and the intent honest.
 const PAGE = 25;
+
+// A Reference stores a row id, so there is nothing sensible to type into it. Left editable, this
+// grid would send Grist the string "2" for a column expecting the integer 2 — and for a Reference
+// List, the literal text "L,1,2". Both write a broken cell into someone's real table, which is the
+// one thing this editor is not allowed to do. Read-only until there is a proper picker; the labels
+// needed to build one are already resolved on the column.
+const isRefType = (t) => /^Ref(List)?(:|$)/i.test(t || '');
 
 /**
  * Rows narrowed by a free-text search and by per-column value filters, then ordered.
@@ -44,12 +52,21 @@ const PAGE = 25;
 export function applyView(rows, cols, { query = '', filters = {}, sort = null, display = String } = {}) {
   let out = rows;
 
+  // Reference columns are matched on the label, everything else on the raw value. Narrow on
+  // purpose: a Ref cell holds a row id, so searching a client's name could never match it and the
+  // filter list offered a choice between "1", "2" and "3". Formatting the OTHER types here would
+  // desynchronise the filter list from the inputs beside it, which still show raw text — a numeric
+  // column would offer "1,234" while its cell reads 1234.
+  const colOf = (id) => cols.find((c) => c.id === id) || null;
+  const cellText = (v, col) => (col && isRefType(col.type) ? formatCellValue(v, col) : (v == null ? '' : String(v)));
+
   const q = String(query || '').trim().toLowerCase();
-  if (q) out = out.filter((r) => cols.some((c) => String(r[c.id] ?? '').toLowerCase().includes(q)));
+  if (q) out = out.filter((r) => cols.some((c) => cellText(r[c.id], c).toLowerCase().includes(q)));
 
   for (const [colId, allowed] of Object.entries(filters)) {
     if (!allowed || !allowed.size) continue;
-    out = out.filter((r) => allowed.has(display(r[colId])));
+    const col = colOf(colId);
+    out = out.filter((r) => allowed.has(col && isRefType(col.type) ? cellText(r[colId], col) : display(r[colId])));
   }
 
   if (sort?.col) {
@@ -69,17 +86,20 @@ export function applyView(rows, cols, { query = '', filters = {}, sort = null, d
         const an = Number(av), bn = Number(bv);
         if (Number.isFinite(an) && Number.isFinite(bn)) return (an - bn) * dir;
       }
-      return collator.compare(String(av), String(bv)) * dir;
+      // A reference sorts by the name shown, not the row id behind it — otherwise clicking the
+      // Client heading appears to shuffle the rows at random.
+      return collator.compare(cellText(av, col), cellText(bv, col)) * dir;
     });
   }
   return out;
 }
 
 /** The distinct values in a column, in the order a person would scan them. */
-export function distinctValues(rows, colId, display = String) {
+export function distinctValues(rows, colId, display = String, col = null) {
   const seen = new Map();
   for (const r of rows) {
-    const v = display(r[colId]);
+    // Same rule as applyView: a reference offers its label, so the two agree on what a value IS.
+    const v = col && isRefType(col.type) ? formatCellValue(r[colId], col) : display(r[colId]);
     seen.set(v, (seen.get(v) || 0) + 1);
   }
   return [...seen.entries()]
@@ -93,6 +113,28 @@ export function distinctValues(rows, colId, display = String) {
 
 const isNumericType = (t) => /^(Numeric|Int|Currency)/i.test(t || '');
 const isBoolType = (t) => /^Bool/i.test(t || '');
+
+/**
+ * Why some columns in this grid cannot be typed into.
+ *
+ * Two different reasons, and saying the wrong one is worse than saying nothing: a formula column is
+ * read-only because Grist computes it, a reference because it points at another table's row. The
+ * sentence is assembled rather than templated so neither reason is claimed about the other.
+ */
+export function lockedNote(formulaCount, refCount) {
+  const parts = [];
+  if (formulaCount) parts.push(`${formulaCount} calculated column${formulaCount === 1 ? '' : 's'}`);
+  if (refCount) parts.push(`${refCount} reference column${refCount === 1 ? '' : 's'}`);
+  if (!parts.length) return '';
+  const subject = parts.join(' and ');
+  const plural = formulaCount + refCount > 1;
+  const why = formulaCount && refCount
+    ? 'Grist computes the first from your formulas, and a reference is changed in Grist itself.'
+    : formulaCount
+      ? `Grist computes ${formulaCount === 1 ? 'it' : 'them'} from your formulas.`
+      : `Change ${refCount === 1 ? 'it' : 'them'} in Grist, where the row being pointed at can be picked.`;
+  return `${subject} ${plural ? 'are' : 'is'} shown read-only. ${why}`;
+}
 
 // What to send to Grist for a typed column. Grist stores numbers as numbers and dates as epoch
 // seconds; handing it the raw string from an <input> would store text into a numeric column and
@@ -134,7 +176,7 @@ export function openDataEditor(opts) {
   // every other pending change with it.
   const state = { page: 0, query: '', filters: {}, sort: null, full: false };
 
-  const editable = (col) => !col.isFormula;
+  const editable = (col) => !col.isFormula && !isRefType(col.type);
   const dirtyCount = () => [...edits.values()].reduce((n, f) => n + Object.keys(f).length, 0) + additions.length;
 
   const grid = el('div', { class: 'ap-dataedit__grid' });
@@ -178,7 +220,12 @@ export function openDataEditor(opts) {
     const value = current !== undefined ? current : row[col.id];
 
     if (!editable(col)) {
-      return el('div', { class: 'ap-dataedit__cell is-locked', title: 'Calculated in Grist — edit the formula there', text: display(value) });
+      const why = isRefType(col.type)
+        ? 'A reference to another table — change it in Grist'
+        : 'Calculated in Grist — edit the formula there';
+      // formatCellValue rather than display(): a locked cell that reads "Meridian Biotech" tells
+      // you what is in the row, and one that reads "2" tells you nothing.
+      return el('div', { class: 'ap-dataedit__cell is-locked', title: why, text: formatCellValue(value, col) });
     }
     const input = el('input', {
       class: 'ap-dataedit__input',
@@ -273,7 +320,7 @@ export function openDataEditor(opts) {
   function openFilter(col, anchor) {
     document.querySelectorAll('.ap-dataedit__filterpop').forEach((n) => n.remove());
     const chosen = new Set(state.filters[col.id] || []);
-    const values = distinctValues(rowsForFilterList(col.id), col.id, display);
+    const values = distinctValues(rowsForFilterList(col.id), col.id, display, col);
 
     const list = el('div', { class: 'ap-dataedit__filterlist' });
     const find = el('input', { class: 'ap-input ap-input--sm', type: 'search', placeholder: `Search ${values.length} values…` });
@@ -435,7 +482,9 @@ export function openDataEditor(opts) {
   // A click anywhere else closes an open filter list, the way a menu does.
   document.addEventListener('mousedown', () => document.querySelectorAll('.ap-dataedit__filterpop').forEach((n) => n.remove()));
 
-  const lockedCount = cols.filter((c) => c.isFormula).length;
+  const formulaCount = cols.filter((c) => c.isFormula).length;
+  const refCount = cols.filter((c) => !c.isFormula && isRefType(c.type)).length;
+  const lockedCount = formulaCount + refCount;
   const body = [
     el('div', { class: 'ap-trust' }, [
       el('div', {}, [
@@ -445,7 +494,7 @@ export function openDataEditor(opts) {
       ]),
     ]),
     lockedCount ? el('div', { class: 'ap-muted', style: { fontSize: '12px', margin: '0 0 10px' },
-      text: `${lockedCount} calculated column${lockedCount === 1 ? ' is' : 's are'} shown read-only — Grist computes ${lockedCount === 1 ? 'it' : 'them'} from your formulas.` }) : null,
+      text: lockedNote(formulaCount, refCount) }) : null,
     search,
     toolbar,
     grid,

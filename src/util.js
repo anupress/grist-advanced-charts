@@ -118,6 +118,29 @@ export function formatCellValue(value, col) {
   if (value == null || value === '') return '';
   const type = String(col?.type || '');
 
+  // References are how Grist does relationships, so they turn up in most real documents — and what
+  // it stores in the cell is a row id. Printing that raw is not a formatting nicety we skipped, it
+  // is the wrong value: an invoice's client reads as "4", and a chart grouped by that column groups
+  // by numbers nobody recognises. A Reference List arrives as Grist's list tuple ['L', 1, 2],
+  // which stringifies to the memorable nonsense "L,1,2".
+  //
+  // `refLabels` is supplied by the provider, which has the referenced table cached whole. One fetch
+  // per referenced TABLE, never one per row — that distinction is the difference between this
+  // working and it being the "too many fetches" problem in a different coat.
+  if (/^Ref(List)?(:|$)/i.test(type)) {
+    const labels = col?.refLabels || null;
+    const one = (id) => {
+      const v = labels ? labels[id] : undefined;
+      return v == null || v === '' ? String(id) : String(v);
+    };
+    if (/^RefList/i.test(type)) {
+      const list = Array.isArray(value) ? (value[0] === 'L' ? value.slice(1) : value) : [value];
+      return list.filter((x) => x != null && x !== 0 && x !== '').map(one).join(', ');
+    }
+    // 0 is Grist's empty reference, not a row.
+    return value === 0 ? '' : one(value);
+  }
+
   if (/^Bool/i.test(type) || typeof value === 'boolean') {
     if (typeof value === 'boolean') return value ? 'Yes' : 'No';
     if (value === 'true' || value === 1 || value === '1') return 'Yes';

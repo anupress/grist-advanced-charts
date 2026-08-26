@@ -126,7 +126,8 @@ export function renderLiveTable(block, ctx) {
   // than per value, fixes both and makes the comparator consistent instead of mixing two orderings
   // within one sort.
   function comparatorFor(colId) {
-    const type = allCols.find((c) => c.id === colId)?.type || '';
+    const col = allCols.find((c) => c.id === colId) || null;
+    const type = col?.type || '';
     const blankLast = (av, bv) => (av === bv ? 0 : av ? 1 : -1); // blanks sort to the end either way
 
     if (isDateColumn(type)) {
@@ -150,8 +151,13 @@ export function renderLiveTable(block, ctx) {
     // Text and anything untyped. `numeric: true` gives a natural order, so "item 2" precedes
     // "item 10" and version-ish strings behave, without the old numeric/string split.
     const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+    // A reference holds a row id, so comparing the raw cell sorts by insertion order wearing a
+    // column heading's clothes. Sorting on what the reader can actually see is the only order that
+    // looks like sorting to them.
+    const isRef = /^Ref(List)?(:|$)/i.test(type);
+    const text = (r) => (isRef ? formatCellValue(r[colId], col) : String(r[colId] ?? ''));
     return (a, b) => {
-      const av = String(a[colId] ?? ''), bv = String(b[colId] ?? '');
+      const av = text(a), bv = text(b);
       if (!av || !bv) return blankLast(!av, !bv);
       return collator.compare(av, bv);
     };

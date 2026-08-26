@@ -141,6 +141,12 @@ export async function getColumns(tableId) {
     const [metaT, metaC] = await Promise.all([fetchMetaTables(), fetchMetaColumns()]);
     const tRowToId = {};
     for (let i = 0; i < metaT.id.length; i++) tRowToId[metaT.id[i]] = metaT.tableId[i];
+    // A Reference column stores a ROW ID, and the thing to show in its place lives in another
+    // table's column — named by `visibleCol`, which is itself a row id into this same metadata
+    // table. Without this map a Ref cell renders as the bare number Grist stores, which is how a
+    // client called "Northgate Realty" ends up printed as "4".
+    const cRowToColId = {};
+    for (let i = 0; i < metaC.id.length; i++) cRowToColId[metaC.id[i]] = metaC.colId[i];
     const cols = [];
     for (let i = 0; i < metaC.id.length; i++) {
       if (tRowToId[metaC.parentId[i]] !== tableId) continue;
@@ -159,10 +165,17 @@ export async function getColumns(tableId) {
         const raw = metaC.widgetOptions && metaC.widgetOptions[i];
         if (raw) widgetOptions = typeof raw === 'string' ? JSON.parse(raw) : raw;
       } catch { /* a malformed option blob is not worth failing a column over */ }
+      const type = String(metaC.type[i] || 'Text');
+      // Ref:Clients / RefList:Tasks — the target table is the half after the colon. A visibleCol of
+      // 0 means the document really is showing row ids, so leaving it null keeps that faithful.
+      const refMatch = /^(Ref|RefList):(.+)$/.exec(type);
+      const visRow = metaC.visibleCol && metaC.visibleCol[i];
       cols.push({
-        id: colId, label: metaC.label[i] || colId, type: String(metaC.type[i] || 'Text'),
+        id: colId, label: metaC.label[i] || colId, type,
         isFormula: !!(metaC.isFormula && metaC.isFormula[i]) && !!(metaC.formula && metaC.formula[i]),
         widgetOptions,
+        refTable: refMatch ? refMatch[2] : null,
+        refVisibleCol: refMatch && visRow ? (cRowToColId[visRow] || null) : null,
       });
     }
     if (cols.length) return cols;

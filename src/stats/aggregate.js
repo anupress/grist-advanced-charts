@@ -1,6 +1,8 @@
 // Pure-JS statistics engine (no server). Group-by + aggregation, KPI deltas, and the
 // numeric helpers behind the spreadsheet-style stats. Operates on plain row objects.
 
+import { formatCellValue } from '../util.js';
+
 export const AGGREGATIONS = [
   { id: 'sum', label: 'Sum' },
   { id: 'avg', label: 'Average' },
@@ -53,6 +55,25 @@ export function stdev(nums) {
 
 const keyOf = (v) => (v == null || v === '' ? '—' : String(v));
 
+/**
+ * The category label for one dimension.
+ *
+ * Grouping is done on whatever the cell holds, and for a Reference column that is a row id. "Revenue
+ * by Client" then draws one bar per number, which is a chart of the right shape carrying labels
+ * nobody can read. Given the column, the reference resolves to the name the document shows.
+ *
+ * Without a column descriptor this is exactly the old behaviour, so every caller that has no
+ * columns to hand keeps working unchanged.
+ */
+function keyerFor(cols, dim) {
+  const col = Array.isArray(cols) ? cols.find((c) => c.id === dim) : null;
+  if (!col || !/^Ref(List)?(:|$)/i.test(String(col.type || ''))) return keyOf;
+  return (v) => {
+    if (v == null || v === '' || v === 0) return '—';
+    return formatCellValue(v, col) || '—';
+  };
+}
+
 // Sort category keys: dates/numbers naturally, otherwise by value desc when sensible.
 function sortCategories(cats, isTemporal) {
   if (isTemporal) return cats.sort();
@@ -65,9 +86,11 @@ function sortCategories(cats, isTemporal) {
  * Returns: { categories:[...], series:[{name, data:[...]}], total }
  */
 export function groupAggregate(rows, opts) {
-  const { dims = [], measures = [], agg = 'sum', sortByValue = false, limit = 0 } = opts;
+  const { dims = [], measures = [], agg = 'sum', sortByValue = false, limit = 0, cols = null } = opts;
   const catDim = dims[0];
   const seriesDim = dims[1];
+  const catKey = keyerFor(cols, catDim);
+  const seriesKey = keyerFor(cols, seriesDim);
 
   if (!catDim) {
     // No category: each measure becomes a single aggregated bar.
@@ -77,7 +100,7 @@ export function groupAggregate(rows, opts) {
 
   const cats = [];
   const catSet = new Set();
-  for (const r of rows) { const k = keyOf(r[catDim]); if (!catSet.has(k)) { catSet.add(k); cats.push(k); } }
+  for (const r of rows) { const k = catKey(r[catDim]); if (!catSet.has(k)) { catSet.add(k); cats.push(k); } }
   const temporal = opts.temporalDim || /date|month|time|day|year/i.test(catDim);
   sortCategories(cats, temporal);
 
@@ -87,10 +110,10 @@ export function groupAggregate(rows, opts) {
     const measure = measures[0];
     const sNames = [];
     const sSet = new Set();
-    for (const r of rows) { const k = keyOf(r[seriesDim]); if (!sSet.has(k)) { sSet.add(k); sNames.push(k); } }
+    for (const r of rows) { const k = seriesKey(r[seriesDim]); if (!sSet.has(k)) { sSet.add(k); sNames.push(k); } }
     const bucket = new Map(); // `${cat}||${s}` -> values[]
     for (const r of rows) {
-      const ck = keyOf(r[catDim]); const sk = keyOf(r[seriesDim]);
+      const ck = catKey(r[catDim]); const sk = seriesKey(r[seriesDim]);
       const key = ck + '||' + sk;
       if (!bucket.has(key)) bucket.set(key, []);
       bucket.get(key).push(measure ? r[measure] : 1);
@@ -103,7 +126,7 @@ export function groupAggregate(rows, opts) {
     // One series per measure.
     const bucket = new Map(); // cat -> {measure -> values[]}
     for (const r of rows) {
-      const ck = keyOf(r[catDim]);
+      const ck = catKey(r[catDim]);
       if (!bucket.has(ck)) bucket.set(ck, {});
       const slot = bucket.get(ck);
       const list = measures.length ? measures : ['__count'];
