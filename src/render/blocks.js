@@ -20,6 +20,7 @@ import { renderLiveTable } from './livetable.js';
 import { renderEmbed } from './embed.js';
 import { renderQRCode } from './qrcode.js';
 import { renderBarcode } from './barcode.js';
+import { renderSlicer } from './slicer.js';
 import { renderCountdown } from './countdown.js';
 import { renderTimeline } from './timeline.js';
 import { renderPricing } from './pricing.js';
@@ -95,6 +96,7 @@ export function renderBlock(block, ctx) {
   else if (block.type === 'embed') inner = renderEmbed(block);
   else if (block.type === 'qrcode') inner = renderQRCode(block);
   else if (block.type === 'barcode') inner = renderBarcode(block);
+  else if (block.type === 'slicer') inner = renderSlicer(block, ctx);
   else if (block.type === 'countdown') inner = renderCountdown(block);
   else if (block.type === 'timeline') inner = renderTimeline(block);
   else if (block.type === 'divider') inner = renderDivider(block);

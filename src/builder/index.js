@@ -234,11 +234,11 @@ function openTemplatesPanel() {
 
 function addBlock(tabId, type) {
   const block = defaultBlock(type, tabId);
-  openBlockEditor(block, { provider, site: working, onApply: (nb) => { delete nb.__isNew; const tab = findTab(tabId); (tab.blocks ||= []).push(nb); mark(); rerender(); } });
+  openBlockEditor(block, { provider, site: working, tabId, onApply: (nb) => { delete nb.__isNew; const tab = findTab(tabId); (tab.blocks ||= []).push(nb); mark(); rerender(); } });
 }
 function editBlock(blockId) {
   const found = findBlock(blockId); if (!found) return;
-  openBlockEditor(found.block, { provider, site: working, onApply: (nb) => { delete nb.__isNew; found.tab.blocks[found.idx] = nb; mark(); rerender(); } });
+  openBlockEditor(found.block, { provider, site: working, tabId: found.tab.id, onApply: (nb) => { delete nb.__isNew; found.tab.blocks[found.idx] = nb; mark(); rerender(); } });
 }
 function deleteBlock(blockId) {
   const found = findBlock(blockId); if (!found) return;

@@ -11,7 +11,7 @@
 //   Get started   — "how do I do this with my data?"      (the five steps, privacy, FAQ)
 //
 // It also doubles as the sensible starting point once a real user begins editing, and as the
-// coverage net for the block library: every one of the 23 block types and all 11 chart types
+// coverage net for the block library: every one of the 24 block types and all 11 chart types
 // appear here, each in a place where it makes sense rather than dumped on one "showcase" page.
 
 import {
@@ -83,10 +83,12 @@ export const DEFAULT_SITE = {
         slides: [
           { image: demoSlide(VIOLET, TEAL), title: 'This is a Grist table 👋', subtitle: 'Read live from 48 rows of demo data — nothing here is hard-coded.' },
           { image: demoSlide(TEAL, '#ff8a5b'), title: 'Point it at your own data', subtitle: 'Any table, any columns — text, number, choice, date, yes/no.' },
-          { image: demoSlide('#7048e8', '#e64980'), title: 'Publish it as a page', subtitle: 'Menus, themes, dark mode and twenty-three kinds of block.' },
+          { image: demoSlide('#7048e8', '#e64980'), title: 'Publish it as a page', subtitle: 'Menus, themes, dark mode and twenty-four kinds of block.' },
         ],
       },
       blocks: [
+        // The reader's control, first, so the four cards and four charts below visibly answer to it.
+        { id: 's0', type: 'slicer', span: 12, config: { table: 'Sales', column: 'Region', label: 'Region', style: 'chips', multi: true, showCounts: true } },
         stat('s1', 'Total Revenue', 'Revenue', 'sum', 'coins', { compact: true, currency: '$' }),
         stat('s2', 'Units Sold', 'Units', 'sum', 'cart', { compact: true }),
         stat('s3', 'Total Profit', 'Profit', 'sum', 'trending', { compact: true, currency: '$' }),
@@ -97,7 +99,7 @@ export const DEFAULT_SITE = {
         chart('c4', 'Units by channel', 'column', ['Channel'], ['Units'], {}, 6),
         { id: 'c5', type: 'progress', span: 12, config: { title: 'Annual revenue goal', mode: 'data', table: 'Sales', valueColumn: 'Revenue', agg: 'sum', target: 3000000, prefix: '$', suffix: '', color: VIOLET } },
         text('c6', 'Everything above came from one table',
-          'Four KPI cards, four charts and a progress bar — all reading the same 48-row demo table, each pointed at a different column. Nothing was typed in by hand, so when the rows change the page changes with them. Use the menu to see what else the widget can draw, or jump straight to <b>Get started</b> to point it at your own document.'),
+          'Four KPI cards, four charts and a progress bar — all reading the same 48-row demo table, each pointed at a different column. Nothing was typed in by hand, so when the rows change the page changes with them. Pick a region in the slicer at the top and every one of them narrows to match. Use the menu to see what else the widget can draw, or jump straight to <b>Get started</b> to point it at your own document.'),
         button('c7', 'Show me how to use my own data', 'primary', 'center', tabTarget('tab-start'), 12),
       ],
     },
@@ -238,7 +240,7 @@ export const DEFAULT_SITE = {
           { name: 'A second reviewer', quote: 'Add as many as you like. They wrap onto their own row on a narrow screen.', rating: 4, photoData: null },
         ], 6),
         { id: 'e13', type: 'pricing', span: 8, config: { title: 'Pricing tables, if you need one', plans: [
-          { name: 'Advanced Charts', price: '$0', period: 'forever', features: ['All 23 block types', 'All 11 chart types', '9 starter templates', 'Open source and self-hostable'], highlighted: true, buttonLabel: 'Read the guide', buttonTarget: urlTarget(GUIDE) },
+          { name: 'Advanced Charts', price: '$0', period: 'forever', features: ['All 24 block types', 'All 11 chart types', '9 starter templates', 'Open source and self-hostable'], highlighted: true, buttonLabel: 'Read the guide', buttonTarget: urlTarget(GUIDE) },
           { name: 'Your dashboard', price: 'Yours', period: 'to keep', features: ['Lives in your own document', 'No account, no sign-up', 'No analytics, no tracking', 'Works on self-hosted Grist'], highlighted: false, buttonLabel: 'Get started', buttonTarget: tabTarget('tab-start') },
         ] } },
         { id: 'e14', type: 'countdown', span: 4, config: { title: 'Countdowns for launches & deadlines', targetDate: new Date(Date.now() + 21 * 86400000).toISOString(), expiredText: 'The date has passed — this message replaces the timer.', color: VIOLET } },

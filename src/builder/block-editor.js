@@ -14,6 +14,7 @@ import { mountCounters } from '../render/counter.js';
 import { mountAttachmentImages } from '../render/media-mount.js';
 import { mountCountdowns } from '../render/countdown.js';
 import { SYMBOLOGIES } from '../barcode/linear.js';
+import { affectedBlocks } from '../data/slicer.js';
 import { DEFAULT_MODULE_MM, MIN_MODULE_MM, MAX_MODULE_MM, DEFAULT_HEIGHT_MM } from '../render/barcode.js';
 import { currentSeriesColors } from '../theme/apply.js';
 import { openDataEditor } from './data-editor.js';
@@ -49,6 +50,7 @@ export function openBlockEditor(block, ctx) {
   if (block.type === 'embed') return openEmbedEditor(block, ctx);
   if (block.type === 'qrcode') return openQRCodeEditor(block, ctx);
   if (block.type === 'barcode') return openBarcodeEditor(block, ctx);
+  if (block.type === 'slicer') return openSlicerEditor(block, ctx);
   if (block.type === 'countdown') return openCountdownEditor(block, ctx);
   if (block.type === 'timeline') return openTimelineEditor(block, ctx);
   if (block.type === 'divider') return openDividerEditor(block, ctx);
@@ -886,6 +888,96 @@ function openEmbedEditor(block, ctx) {
  * scannability of the result, and someone who thinks they are choosing a display size will pick a
  * number that cannot be read by a scanner.
  */
+/**
+ * Slicer editor.
+ *
+ * The one question an author has about a slicer is "what will it filter?", and the answer used to
+ * be something they found out by trying it. The panel answers it live: as the table and column
+ * change, the list of blocks the automatic rules would reach updates underneath. Naming the blocks
+ * explicitly is there for when the rules are not what was meant — a chart that should stay whole
+ * as context, say, while everything around it narrows.
+ */
+function openSlicerEditor(block, ctx) {
+  const wb = clone(block); wb.config = wb.config || {};
+  const site = ctx.site || {};
+  const tab = (site.tabs || []).find((t) => t.id === ctx.tabId)
+    || (site.tabs || []).find((t) => (t.blocks || []).some((b) => b.id === block.id))
+    || { blocks: [] };
+  const tables = ctx.provider.tables();
+  if (!wb.config.table) wb.config.table = ctx.provider.defaultTable();
+  const previewHost = el('div', { class: 'ap-preview' });
+  const reach = el('div', { class: 'ap-muted', style: { fontSize: '12px', marginTop: '6px' } });
+  const blockName = (b) => b.config?.title || b.config?.label || b.config?.heading || b.type;
+  const siblings = (tab.blocks || []).filter((b) => b.id !== block.id && b.type !== 'slicer');
+
+  const refreshPreview = debounce(() => {
+    previewHost.replaceChildren(renderBlock(clone(wb), { provider: ctx.provider, config: site }));
+    if (Array.isArray(wb.config.targets)) {
+      const n = wb.config.targets.length;
+      reach.textContent = n ? `Filters ${n} chosen block${n === 1 ? '' : 's'} on this page.` : 'Filters nothing until you choose some blocks below.';
+      return;
+    }
+    const hit = affectedBlocks(wb, tab, ctx.provider);
+    reach.textContent = hit.length
+      ? `Filters ${hit.length} block${hit.length === 1 ? '' : 's'} on this page: ${hit.map(blockName).join(', ')}.`
+      : (wb.config.table && wb.config.column ? 'Reaches no other block on this page yet — none shares this column or references this table.' : '');
+  }, 150);
+
+  const columnField = () => {
+    const cols = (ctx.provider.columns(wb.config.table) || []).map((c) => ({ value: c.id, label: c.label || c.id }));
+    return selectInput([{ value: '', label: 'Choose a column…' }, ...cols], wb.config.column || '', (v) => { wb.config.column = v; refreshPreview(); });
+  };
+  const columnHost = el('div', {}, [columnField()]);
+
+  const targetsHost = el('div', { class: 'ap-slicer-targets' });
+  const drawTargets = () => {
+    targetsHost.replaceChildren();
+    if (!Array.isArray(wb.config.targets)) return;
+    if (!siblings.length) { targetsHost.append(el('div', { class: 'ap-muted', text: 'No other blocks on this page yet.' })); return; }
+    for (const b of siblings) {
+      targetsHost.append(checkboxRow(blockName(b), wb.config.targets.includes(b.id), (on) => {
+        const set = new Set(wb.config.targets);
+        if (on) set.add(b.id); else set.delete(b.id);
+        wb.config.targets = [...set];
+        refreshPreview();
+      }));
+    }
+  };
+
+  const body = [
+    field('Table', selectInput(tables.map((t) => ({ value: t.id, label: t.label || t.id })), wb.config.table, (v) => {
+      wb.config.table = v; wb.config.column = '';
+      columnHost.replaceChildren(columnField());
+      refreshPreview();
+    })),
+    field('Column', columnHost, 'The values in this column become the choices. A Choice, Reference or Text column works best.'),
+    field('Label (optional)', textInput(wb.config.label || '', (v) => { wb.config.label = v; refreshPreview(); }, { placeholder: 'Shown above the choices' })),
+    twoUp(
+      field('Show as', segmented([{ value: 'auto', label: 'Auto' }, { value: 'chips', label: 'Chips' }, { value: 'dropdown', label: 'Menu' }],
+        wb.config.style || 'auto', (v) => { wb.config.style = v; refreshPreview(); }), 'Auto uses chips up to twelve choices, then a menu.'),
+      field('Selection', segmented([{ value: 'multi', label: 'Several' }, { value: 'single', label: 'One' }],
+        wb.config.multi === false ? 'single' : 'multi', (v) => { wb.config.multi = v !== 'single'; refreshPreview(); })),
+    ),
+    checkboxRow('Show how many rows each choice has', wb.config.showCounts !== false, (v) => { wb.config.showCounts = v; refreshPreview(); }),
+    subhead('What it filters'),
+    field('Blocks', segmented([{ value: 'auto', label: 'Automatic' }, { value: 'custom', label: 'Choose' }],
+      Array.isArray(wb.config.targets) ? 'custom' : 'auto', (v) => {
+        if (v === 'custom') wb.config.targets = affectedBlocks(wb, tab, ctx.provider).map((b) => b.id);
+        else delete wb.config.targets;
+        drawTargets(); refreshPreview();
+      }),
+      'Automatic reaches any block whose table shares this column, and follows reference columns both ways.'),
+    targetsHost,
+    reach,
+    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    subhead('Live preview'), previewHost,
+  ];
+  const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
+  openDrawer({ title: block.__isNew ? 'Add slicer' : 'Edit slicer', body, footer });
+  drawTargets();
+  refreshPreview();
+}
+
 function openBarcodeEditor(block, ctx) {
   const wb = clone(block); wb.config = wb.config || {};
   const previewHost = el('div', { class: 'ap-preview' });

@@ -87,6 +87,22 @@ const { DEFAULT_SITE } = await import(pathToFileURL(join(ROOT, 'src/data/default
 const d = checkDesign('demo', DEFAULT_SITE, dummy.DUMMY_DATA.tables);
 console.log(`demo site: ${d.blocks} table-bound blocks, ${d.cols} column refs, ${d.ranges} highlight ranges`);
 
+// ---- 3b. the demo is the block library's coverage net -------------------------------------------
+// Adding a block type without adding it to the demo quietly stops the demo being the thing that
+// shows every block. It happened once (the barcode) and was caught by hand; this catches it, and
+// keeps the pricing card's "All N block types" honest at the same time.
+{
+  const cat = await import(pathToFileURL(join(ROOT, 'src/builder/block-catalog.js')).href);
+  const used = new Set();
+  for (const tab of DEFAULT_SITE.tabs || []) for (const b of tab.blocks || []) used.add(b.type);
+  const types = cat.BLOCK_CATALOG.map((x) => x.type);
+  const missing = types.filter((t) => !used.has(t));
+  if (missing.length) fail(`the demo does not show these block types: ${missing.join(', ')}`);
+  const claimed = (readFileSync(join(ROOT, 'src/data/default-site.js'), 'utf8').match(/All (\d+) block types/) || [])[1];
+  if (String(types.length) !== claimed) fail(`the demo claims "All ${claimed} block types" but the catalog has ${types.length}`);
+  console.log(`coverage: ${used.size} of ${types.length} block types appear in the demo; the pricing card claims ${claimed}`);
+}
+
 // ---- 4. banned words in shipped strings ----
 const BANNED = [
   'Airtable', 'Notion', 'Tableau', 'Power BI', 'Google Sheets', 'Smartsheet', 'Retool', 'Zapier',

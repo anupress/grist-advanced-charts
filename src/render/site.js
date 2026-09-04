@@ -15,6 +15,7 @@ import { mountCalendars } from './calendar.js';
 import { resizeChartsIn, wireGlobalResize } from '../charts/echarts-adapter.js';
 import { icon } from '../assets/icons.js';
 import { selectButton, mountTray } from '../print/printout.js';
+import { slicersFor, filteredProvider } from '../data/slicer.js';
 
 export function renderSite(opts) {
   const { root, config, provider } = opts;
@@ -70,11 +71,20 @@ export function renderSite(opts) {
     // pickButton is only handed over on a live, non-editing page: in edit mode the block already
     // carries its own controls, and someone arranging a design is not the person assembling a
     // printout. Passed as a factory so blocks.js never has to import the printout module.
-    const ctx = { provider, config, onNav: showTab,
+    const shared = { config, onNav: showTab, tabId: tab.id,
       pickButton: editing ? null : (b) => selectButton(b),
+      // What a slicer calls when its selection changes. Only on a live page: in the editor the
+      // slicer is a preview of a control, and redrawing the tab under the author mid-edit would be
+      // the block fighting the person configuring it.
+      slicers: editing ? null : { refresh: () => refreshTab(tab.id) },
       edit: editing ? {
         active: true, onEditBlock: edit?.onEditBlock, onDeleteBlock: edit?.onDeleteBlock } : null };
-    for (const block of tab.blocks || []) grid.append(renderBlock(block, ctx));
+    // Each block gets its own provider, narrowed by whichever slicers on this tab reach it. With
+    // nothing selected that is the real provider itself, so a page with no slicers pays nothing.
+    for (const block of tab.blocks || []) {
+      const ctx = { ...shared, provider: filteredProvider(provider, slicersFor(block, tab)) };
+      grid.append(renderBlock(block, ctx));
+    }
     if (editing) grid.append(addBlockTile(tab.id, edit));
     container.append(grid);
     children.push(container);
@@ -86,6 +96,28 @@ export function renderSite(opts) {
       el('button', { class: 'ap-addblock', onClick: () => edit.onAddBlock?.(tabId) }, [icon('plus'), 'Add Element']),
     ]);
     return tile;
+  }
+
+  /**
+   * Redraw one tab in place, after a slicer changes what its blocks should show.
+   *
+   * The whole panel is rebuilt rather than patched, because that is the only way every block gets
+   * a provider reflecting the new selection — and the blocks were built to be rebuilt; it is what
+   * the editor does on every change. The scroll position is kept, because a reader who clicked a
+   * chip halfway down the page should still be halfway down the page.
+   */
+  function refreshTab(id) {
+    const tab = (config.tabs || []).find((t) => t.id === id);
+    const old = panels.get(id);
+    if (!tab || !old) return;
+    const scroller = root.closest('.ap-scroll') || document.scrollingElement || document.documentElement;
+    const y = scroller.scrollTop;
+    const fresh = buildPanel(tab);
+    fresh.hidden = old.hidden;
+    old.replaceWith(fresh);
+    panels.set(id, fresh);
+    scroller.scrollTop = y;
+    if (id === activeTabId) setTimeout(() => mountTab(id), 0);
   }
 
   function showTab(id) {

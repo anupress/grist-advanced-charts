@@ -76,7 +76,7 @@ export function openBlockChooser({ onPick, onGuided, onTemplates }) {
       onClick: () => onPick(b.type),
     }, [
       // A star on the handful of blocks most pages are actually built from, so a newcomer facing
-      // twenty-three tiles has an obvious entry point. `title` carries the same cue for screen
+      // twenty-four tiles has an obvious entry point. `title` carries the same cue for screen
       // readers, which cannot see the glyph.
       b.star ? el('span', { class: 'ap-eltile__star', 'aria-hidden': 'true', text: '★' }) : null,
       el('span', { class: 'ap-eltile__icon' }, [icon(b.icon)]),
