@@ -993,22 +993,52 @@
   color: var(--ap-on-primary, #fff); }
 
 
-/* Slicer: the reader's control. Chips are real buttons; the active ones wear the primary colour so
-   the state of the whole page is legible from the row alone. */
-.ap-slicer { display: flex; flex-direction: column; gap: 10px; }
-.ap-slicer__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.ap-slicer__title { display: flex; align-items: center; gap: 7px; font-weight: 800; font-size: 14px; }
-.ap-slicer__icon { width: 15px; height: 15px; opacity: .75; }
-.ap-slicer__clear { background: none; border: 0; padding: 2px 4px; font: inherit; font-size: 12px; font-weight: 600;
-  color: var(--ap-primary); cursor: pointer; border-radius: 6px; }
-.ap-slicer__clear:hover { text-decoration: underline; }
-.ap-slicer__clear:focus-visible { outline: 2px solid var(--ap-primary); outline-offset: 2px; }
-.ap-slicer__chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.ap-slicer__chip { gap: 7px; }
+/* Slicer: the reader's control, so it has to LOOK like one.
+
+   One row: the column name as a quiet label, the choices as pill buttons, and at the far end the
+   count of rows the page is currently showing. The title used to sit on its own line above the
+   chips, which left a full-width card mostly empty; a label beside its options reads as one
+   control, and the row wraps on a narrow screen anyway.
+
+   Chips carry a border and a hover tint so they read as pressable rather than as tags. The active
+   state is the primary colour with a drawn tick, because "which of these is on" has to be legible
+   at a glance from across the room — that is the whole state of the page. The tick is a rotated
+   border rather than an icon so it inherits the chip's text colour in either theme for free. */
+.ap-slicer { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 18px 22px; }
+.ap-slicer__head { display: flex; align-items: center; gap: 10px; flex: none; margin-right: 6px; }
+.ap-slicer__title { display: flex; align-items: center; gap: 7px; font-weight: 800; font-size: 12px;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--ap-text-soft); }
+.ap-slicer__icon { width: 14px; height: 14px; opacity: .7; }
+.ap-slicer__chips { display: flex; flex-wrap: wrap; gap: 8px; flex: 1 1 auto; min-width: 0; }
+.ap-slicer__chip { gap: 9px; padding: 8px 15px; font-size: 13px; cursor: pointer;
+  border: 1px solid var(--ap-border); background: var(--ap-surface); color: var(--ap-text);
+  transition: background-color .12s, border-color .12s, box-shadow .12s, transform .08s; }
+.ap-slicer__chip:hover { border-color: var(--ap-primary);
+  background: color-mix(in srgb, var(--ap-primary) 9%, var(--ap-surface)); }
+.ap-slicer__chip:active { transform: translateY(1px); }
+.ap-slicer__chip:focus-visible { outline: 2px solid var(--ap-primary); outline-offset: 2px; }
+.ap-slicer__chip.is-active, .ap-slicer__chip[aria-pressed="true"] {
+  background: var(--ap-primary); border-color: var(--ap-primary); color: var(--ap-on-primary, #fff);
+  box-shadow: 0 3px 12px -5px color-mix(in srgb, var(--ap-primary) 80%, transparent); }
+.ap-slicer__chip.is-active::before { content: ''; width: 5px; height: 9px; flex: none;
+  border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(45deg); margin: -3px 1px 0 -1px; }
 .ap-slicer__chip[disabled] { opacity: 1; pointer-events: none; }   /* an inert preview is still readable */
-.ap-slicer__count { font-size: 11px; opacity: .65; font-variant-numeric: tabular-nums; }
-.ap-slicer__chip.is-active .ap-slicer__count { opacity: .85; }
+.ap-slicer__count { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px;
+  background: color-mix(in srgb, var(--ap-text) 9%, transparent); color: var(--ap-text-mute);
+  font-variant-numeric: tabular-nums; }
+.ap-slicer__chip.is-active .ap-slicer__count { background: color-mix(in srgb, #ffffff 24%, transparent); color: inherit; }
+/* Row count and Clear, at the end of the row. The count is the feedback that a filter applied —
+   without it the only sign was other blocks changing, somewhere below. */
+.ap-slicer__tail { display: flex; align-items: center; gap: 12px; margin-left: auto; flex: none; }
+.ap-slicer__status { font-size: 12px; color: var(--ap-text-mute); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ap-slicer__status strong { color: var(--ap-text); font-weight: 700; }
+.ap-slicer__clear { display: inline-flex; align-items: center; gap: 5px; background: none; border: 1px solid transparent;
+  padding: 4px 9px; border-radius: 999px; font: inherit; font-size: 12px; font-weight: 700; color: var(--ap-primary); cursor: pointer; }
+.ap-slicer__clear:hover { border-color: color-mix(in srgb, var(--ap-primary) 40%, transparent);
+  background: color-mix(in srgb, var(--ap-primary) 8%, transparent); }
+.ap-slicer__clear:focus-visible { outline: 2px solid var(--ap-primary); outline-offset: 2px; }
 .ap-slicer__select { width: 100%; padding: 6px 8px; border: 1px solid var(--ap-border); border-radius: 8px;
-  background: var(--ap-bg); color: var(--ap-text); font: inherit; font-size: 13px; }
-.ap-slicer__hint { font-size: 12px; color: var(--ap-text-mute); }
+  background: var(--ap-bg); color: var(--ap-text); font: inherit; font-size: 13px; flex: 1 1 220px; }
+.ap-slicer__hint { flex-basis: 100%; font-size: 12px; color: var(--ap-text-mute); }
+.ap-slicer .ap-qr__empty { flex-basis: 100%; }
 .ap-slicer-targets { display: flex; flex-direction: column; gap: 0; margin: 4px 0 8px; }

@@ -11,7 +11,7 @@
 
 import { el } from '../util.js';
 import { icon } from '../assets/icons.js';
-import { getSelection, toggleValue, clearSelection, slicerOptions } from '../data/slicer.js';
+import { getSelection, toggleValue, clearSelection, slicerOptions, resolveFilter } from '../data/slicer.js';
 
 const CHIP_LIMIT = 12;   // above this a row of chips stops being scannable and becomes a wall
 
@@ -44,18 +44,33 @@ export function renderSlicer(block, ctx) {
 
   const apply = () => ctx.slicers?.refresh?.();
 
-  // Header: title, and a Clear link that only exists while there is something to clear.
-  const head = el('div', { class: 'ap-slicer__head' }, [
+  // The column name as a label; the choices follow on the same row.
+  card.append(el('div', { class: 'ap-slicer__head' }, [
     el('div', { class: 'ap-slicer__title' }, [icon('filter', 'ap-slicer__icon'), el('span', { text: title })]),
+  ]));
+
+  // The row count is the feedback that a filter applied. Without it the only sign was other blocks
+  // changing somewhere further down the page, which a reader could easily miss — or misread as
+  // the page being wrong. Counted on the slicer's own table with its own selection, so it is exact.
+  const allRows = base.records(table) || [];
+  let shown = allRows.length;
+  if (selected.size) {
+    const pred = resolveFilter({ table, column, values: selected }, table, base.columns(table) || [], base);
+    if (pred) shown = allRows.filter(pred).length;
+  }
+  const tail = el('div', { class: 'ap-slicer__tail' }, [
+    el('div', { class: 'ap-slicer__status', role: 'status', 'aria-live': 'polite' },
+      selected.size
+        ? [el('strong', { text: String(shown) }), el('span', { text: ` of ${allRows.length} rows` })]
+        : [el('span', { text: `All ${allRows.length} rows` })]),
     selected.size
       ? el('button', {
-          class: 'ap-slicer__clear', type: 'button', text: `Clear${selected.size > 1 ? ` (${selected.size})` : ''}`,
+          class: 'ap-slicer__clear', type: 'button',
           'aria-label': `Clear the ${title} filter`,
           onClick: () => { clearSelection(block.id); apply(); },
-        })
+        }, [icon('close', 'ap-slicer__icon'), el('span', { text: `Clear${selected.size > 1 ? ` (${selected.size})` : ''}` })])
       : null,
   ]);
-  card.append(head);
 
   if (!options.length) {
     card.append(el('div', { class: 'ap-qr__empty', text: 'No values in this column yet.' }));
@@ -100,6 +115,7 @@ export function renderSlicer(block, ctx) {
     card.append(sel);
   }
 
+  card.append(tail);
   if (c.hint) card.append(el('div', { class: 'ap-slicer__hint', text: c.hint }));
   return card;
 }
