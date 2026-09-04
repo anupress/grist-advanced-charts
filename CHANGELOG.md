@@ -3,6 +3,36 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.2.0] — 2026-09-05
+
+The block that turns a dashboard someone looks at into one they can ask a
+question of. Asked for on the community thread as "something closer to a BI
+tool".
+
+### Added
+
+- **Slicer block.** A row of chips or a menu built from one column. Pick a value
+  and every other block on the page narrows to match — the KPI cards and their
+  trend deltas, the charts, the table, the map, the calendar. Twenty-four block
+  types now.
+
+  Deciding *which* blocks a slicer should reach was the hard part, and the rules
+  are the ones the request itself proposed, composed: a block is filtered if it
+  reads the slicer's table, or a table with a column of the same name, or a
+  table joined to it by a reference column in either direction — Grist's own
+  "select by", which the reference work in 3.1.0 made possible. Anything else is
+  left whole. The editor shows the answer live ("Filters 9 blocks on this page:
+  …") before a reader ever asks, and the author can name the blocks explicitly
+  instead.
+
+  Several slicers AND together; values within one OR. Selections are session
+  state — a reader's exploration is never written into the design. No block
+  renderer changed: every block already reads through one provider call, and a
+  slicer hands each block a provider that returns fewer rows.
+- **The demo checks its own coverage.** A test now fails if any block type in the
+  catalog is missing from the demo site, or if the pricing card's "All N block
+  types" disagrees with the catalog. It happened once by hand; not again.
+
 ## [3.1.0] — 2026-08-26
 
 Barcodes, printing onto label stock, and a long-standing bug in how reference
