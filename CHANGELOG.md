@@ -3,6 +3,19 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.2.2] — 2026-09-05
+
+Embedded in a web page's iframe without `?demo`, the widget stayed blank.
+`connect()` took `grist.ready()` resolving as proof of a Grist host, but
+`ready()` returns nothing: it posts "ready" to whatever the parent window is
+and returns at once, so inside any iframe the app went live and its first real
+request waited for a host that was never there. The handshake is now what a
+Grist host actually does on ready, at every access level: it answers with a
+message. No answer within four seconds means no Grist, and the demo is drawn.
+`?demo=1` still skips the wait and remains the right flag for an embed. The
+timed wrapper also clears its timer now, which stops the test process idling
+for two minutes after its last assertion.
+
 ## [3.2.1] — 2026-09-05
 
 A widget list for self-hosted Grist. `manifest.json` now follows the schema of
