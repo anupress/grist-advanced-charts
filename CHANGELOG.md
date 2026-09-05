@@ -3,6 +3,16 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.2.1] — 2026-09-05
+
+A widget list for self-hosted Grist. `manifest.json` now follows the schema of
+Grist's own gallery and lists both ANUPRESS widgets, Advanced Charts and
+Invoice Studio, with absolute URLs. A Grist started with `GRIST_WIDGET_LIST_URL`
+pointing at `https://anupress.github.io/grist-advanced-charts/manifest.json`
+offers both in its Custom widget picker with nothing to paste. The previous
+file had a relative URL and a key Grist does not read, so it listed nothing
+anywhere.
+
 ## [3.2.0] — 2026-09-05
 
 The block that turns a dashboard someone looks at into one they can ask a

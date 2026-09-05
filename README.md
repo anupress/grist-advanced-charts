@@ -64,6 +64,12 @@ Your design is stored inside your own document: in the widget's options, mirrore
 `ANUPRESS_Config` table (the newer of the two wins, so older documents keep working). To reset,
 use **Settings → Templates → Start from scratch**.
 
+**Self-hosted Grist** can offer Advanced Charts and [Invoice Studio](https://github.com/anupress/grist-invoice-studio)
+in its Custom widget picker, with nothing to paste: start Grist with `GRIST_WIDGET_LIST_URL` set
+to `https://anupress.github.io/grist-advanced-charts/manifest.json`. The variable takes one URL
+and replaces Grist's own list, so an installation that wants both copies the two entries into a
+list of its own.
+
 ## Privacy, stated plainly
 
 ANUPRESS has no server. The widget is a static page; every chart, table, invoice and QR code is
