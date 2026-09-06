@@ -3,6 +3,32 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.4.0] — 2026-09-06
+
+### Added
+
+- **Grid block: a panel with its own rows and columns.** Choose one to four
+  columns and one to four rows and put a block in each cell — four small stat
+  cards in one panel, a chart beside its notes, a 3×3 of icons. Cells can stay
+  empty, a title turns the grid into a card, and the gap between cells is
+  compact, normal or roomy. Twenty-five block types now.
+
+  A block in a cell is the block it would be on the page: same editor, same
+  hover controls, same chart mount, and the same slicer narrowing, because
+  every cell hands its block its own provider. Every walk over a page's blocks
+  now goes through one helper that also sees inside grids, so a slicer reaches
+  a chart in a cell, a live document primes the table a stat in a cell reads,
+  a nested block can be collected for a printout on its own, and the editor
+  finds it by id. One level only: a grid does not offer a grid, and dragging
+  stays a page-level affair (blocks in cells have no drag handle).
+
+  Shrinking a grid keeps each block in its row and column where both still
+  exist, moves the displaced ones into free cells, and says in the editor how
+  many would be removed before it happens. The demo's Page elements page now
+  keeps its eight icons and counters in one 4×2 grid, and the "Block types"
+  counter there is checked against the catalog by the test suite, having sat
+  at 21 through three additions.
+
 ## [3.3.1] — 2026-09-06
 
 The table snapshot now fills the whole space beside the drawer, from the left

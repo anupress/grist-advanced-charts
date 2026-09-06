@@ -25,6 +25,7 @@ import { renderCountdown } from './countdown.js';
 import { renderTimeline } from './timeline.js';
 import { renderPricing } from './pricing.js';
 import { renderCalendar } from './calendar.js';
+import { normalizeGrid } from '../data/grid.js';
 
 function blockData(block, ctx) {
   const table = block.config?.table || ctx.config?.dataTable;
@@ -102,25 +103,63 @@ export function renderBlock(block, ctx) {
   else if (block.type === 'divider') inner = renderDivider(block);
   else if (block.type === 'pricing') inner = renderPricing(block, ctx);
   else if (block.type === 'calendar') inner = renderCalendar(block, ctx);
+  else if (block.type === 'grid') inner = renderGridBlock(block, ctx);
   else inner = renderChartCard(block, ctx);
 
   return finishBlock(block, ctx, inner);
 }
 
+// A Grid block: a panel of cells, each holding one whole block rendered through renderBlock, so a
+// chart in a cell is the same chart it would be on the page — same editor, same mount pass, same
+// slicer narrowing (ctx.cellContext hands each child its own provider). Empty cells keep their
+// place: on the page as blank space, in the editor as an Add button.
+function renderGridBlock(block, ctx) {
+  const c = normalizeGrid(block.config);
+  const titled = !!c.title;
+  const card = el('div', {
+    class: titled ? 'ap-card ap-gridblock ap-gridblock--titled' : 'ap-gridblock',
+    dataset: { blockId: block.id, cols: String(c.cols), gap: c.gap },
+  });
+  if (titled) card.append(el('div', { class: 'ap-gridblock__title', text: c.title }));
+  const grid = el('div', { class: 'ap-gridblock__grid' });
+  c.cells.forEach((child, i) => {
+    if (child) {
+      const childCtx = ctx.cellContext ? ctx.cellContext(child) : { ...ctx, nested: true };
+      grid.append(el('div', { class: 'ap-gridblock__cell' }, [renderBlock(child, childCtx)]));
+    } else if (ctx.edit?.active) {
+      const add = el('button', { class: 'ap-gridblock__add', type: 'button', 'aria-label': `Add a block to cell ${i + 1}` }, [icon('plus'), el('span', { text: 'Add' })]);
+      add.addEventListener('click', (e) => { e.stopPropagation(); ctx.edit.onAddInGrid?.(block.id, i); });
+      grid.append(el('div', { class: 'ap-gridblock__cell ap-gridblock__cell--empty' }, [add]));
+    } else {
+      grid.append(el('div', { class: 'ap-gridblock__cell ap-gridblock__cell--blank', 'aria-hidden': 'true' }));
+    }
+  });
+  card.append(grid);
+  return card;
+}
+
 // Grid wrapper + (in edit mode) the per-block chrome. Shared by the normal render path and the
 // "needs a table" notice above, so an unconfigured block is still draggable/editable/deletable.
 function finishBlock(block, ctx, inner) {
-  const wrap = el('div', { class: 'ap-block', dataset: { span: String(block.span || 12), blockId: block.id } }, [inner]);
+  const wrap = el('div', { class: 'ap-block' + (ctx.nested ? ' ap-block--nested' : ''), dataset: { span: String(block.span || 12), blockId: block.id } }, [inner]);
 
   if (ctx.edit?.active) {
     inner.classList.add('ap-editable');
     inner.append(el('span', { class: 'ap-edit-tag', text: block.type }));
     wrap.append(el('div', { class: 'ap-block__tools' }, [
-      btn('grip', 'Drag to reorder', 'ap-drag-handle', null),
+      // A block inside a Grid block lives in its cell; the page-level drag handle has nothing to
+      // offer it, and dragging one out of a cell is not a thing the page grid could mean.
+      ctx.nested ? null : btn('grip', 'Drag to reorder', 'ap-drag-handle', null),
       btn('edit', 'Edit', '', (e) => { e.stopPropagation(); ctx.edit.onEditBlock?.(block.id); }),
       btn('trash', 'Delete', 'ap-btn--danger', (e) => { e.stopPropagation(); ctx.edit.onDeleteBlock?.(block.id); }),
     ]));
-    inner.addEventListener('click', () => ctx.edit.onEditBlock?.(block.id));
+    // A click anywhere in the block opens its editor — unless it landed in a block nested inside
+    // this one, whose own handler has already opened the right editor and must not be overruled
+    // by this one opening the grid's as the event bubbles up.
+    inner.addEventListener('click', (e) => {
+      if (e.target.closest('.ap-block') !== wrap) return;
+      ctx.edit.onEditBlock?.(block.id);
+    });
   } else if (ctx.pickButton) {
     // View mode: the one control a viewer gets, for adding this block to a printout. Supplied
     // through ctx rather than imported, because print/printout.js renders blocks itself and

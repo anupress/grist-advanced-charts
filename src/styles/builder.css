@@ -481,3 +481,10 @@
 .ap-peek__type { display: block; font-size: 10px; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--ap-text-mute); }
 .ap-peek__table tbody tr:last-child td { border-bottom: 0; }
 .ap-peek__foot { padding: 9px 18px; font-size: var(--ap-fs-xs); color: var(--ap-text-mute); border-top: 1px solid var(--ap-border); }
+
+/* ---- grid block in edit mode: the container is visible, empty cells offer Add ---- */
+.is-editing .ap-gridblock:not(.ap-gridblock--titled) { outline: 1.5px dashed color-mix(in srgb, var(--ap-primary) 35%, transparent); outline-offset: 8px; border-radius: 10px; }
+.ap-gridblock__cell--empty { min-height: 84px; border: 1.5px dashed var(--ap-border); border-radius: var(--ap-radius); display: flex; }
+.ap-gridblock__add { flex: 1; appearance: none; -webkit-appearance: none; background: transparent; border: 0; border-radius: inherit; color: var(--ap-text-mute); font: inherit; font-size: var(--ap-fs-sm); font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.ap-gridblock__add:hover { color: var(--ap-link); background: color-mix(in srgb, var(--ap-primary) 6%, transparent); }
+.is-editing .ap-block--nested .ap-block__tools { top: 6px; right: 6px; }

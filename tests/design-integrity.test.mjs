@@ -35,6 +35,7 @@ console.log(`parse: ${files.length} files scanned`);
 
 // ---- load the data modules ----
 const { TEMPLATES } = await import(pathToFileURL(join(ROOT, 'src/data/templates/index.js')).href);
+const { flattenBlocks } = await import(pathToFileURL(join(ROOT, 'src/data/grid.js')).href);
 const sample = await import(pathToFileURL(join(ROOT, 'src/data/templates/sample-data.js')).href);
 const dummy = await import(pathToFileURL(join(ROOT, 'src/data/dummy-data.js')).href);
 
@@ -51,7 +52,7 @@ function checkDesign(label, config, tables) {
   const byId = new Map(Object.entries(tables).map(([id, t]) => [id, (t.columns || []).map((c) => c.id)]));
   let blocks = 0, cols = 0, ranges = 0;
   for (const tab of config.tabs || []) {
-    for (const b of tab.blocks || []) {
+    for (const b of flattenBlocks(tab.blocks)) {
       const cfg = b.config || {};
       if (!cfg.table) continue;
       blocks++;
@@ -94,13 +95,18 @@ console.log(`demo site: ${d.blocks} table-bound blocks, ${d.cols} column refs, $
 {
   const cat = await import(pathToFileURL(join(ROOT, 'src/builder/block-catalog.js')).href);
   const used = new Set();
-  for (const tab of DEFAULT_SITE.tabs || []) for (const b of tab.blocks || []) used.add(b.type);
+  for (const tab of DEFAULT_SITE.tabs || []) for (const b of flattenBlocks(tab.blocks)) used.add(b.type);
   const types = cat.BLOCK_CATALOG.map((x) => x.type);
   const missing = types.filter((t) => !used.has(t));
   if (missing.length) fail(`the demo does not show these block types: ${missing.join(', ')}`);
-  const claimed = (readFileSync(join(ROOT, 'src/data/default-site.js'), 'utf8').match(/All (\d+) block types/) || [])[1];
+  const demoSrc = readFileSync(join(ROOT, 'src/data/default-site.js'), 'utf8');
+  const claimed = (demoSrc.match(/All (\d+) block types/) || [])[1];
   if (String(types.length) !== claimed) fail(`the demo claims "All ${claimed} block types" but the catalog has ${types.length}`);
-  console.log(`coverage: ${used.size} of ${types.length} block types appear in the demo; the pricing card claims ${claimed}`);
+  // The "Block types" counter on the Page elements page is a second copy of the same number, and
+  // it sat at 21 through three additions before anyone looked.
+  const counted = (demoSrc.match(/counter\('e5', 'Block types', 0, (\d+)/) || [])[1];
+  if (String(types.length) !== counted) fail(`the demo's "Block types" counter says ${counted} but the catalog has ${types.length}`);
+  console.log(`coverage: ${used.size} of ${types.length} block types appear in the demo; the pricing card claims ${claimed}, the counter ${counted}`);
 }
 
 // ---- 4. banned words in shipped strings ----

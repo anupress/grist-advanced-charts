@@ -15,6 +15,7 @@ import { mountAttachmentImages } from '../render/media-mount.js';
 import { mountCountdowns } from '../render/countdown.js';
 import { SYMBOLOGIES } from '../barcode/linear.js';
 import { affectedBlocks } from '../data/slicer.js';
+import { normalizeGrid, resizeCells, flattenBlocks, GRID_MIN, GRID_MAX } from '../data/grid.js';
 import { DEFAULT_MODULE_MM, MIN_MODULE_MM, MAX_MODULE_MM, DEFAULT_HEIGHT_MM } from '../render/barcode.js';
 import { currentSeriesColors } from '../theme/apply.js';
 import { openDataEditor } from './data-editor.js';
@@ -51,6 +52,7 @@ export function openBlockEditor(block, ctx) {
   if (block.type === 'qrcode') return openQRCodeEditor(block, ctx);
   if (block.type === 'barcode') return openBarcodeEditor(block, ctx);
   if (block.type === 'slicer') return openSlicerEditor(block, ctx);
+  if (block.type === 'grid') return openGridEditor(block, ctx);
   if (block.type === 'countdown') return openCountdownEditor(block, ctx);
   if (block.type === 'timeline') return openTimelineEditor(block, ctx);
   if (block.type === 'divider') return openDividerEditor(block, ctx);
@@ -923,13 +925,14 @@ function openSlicerEditor(block, ctx) {
   const wb = clone(block); wb.config = wb.config || {};
   const site = ctx.site || {};
   const tab = (site.tabs || []).find((t) => t.id === ctx.tabId)
-    || (site.tabs || []).find((t) => (t.blocks || []).some((b) => b.id === block.id))
+    || (site.tabs || []).find((t) => flattenBlocks(t.blocks).some((b) => b.id === block.id))
     || { blocks: [] };
   if (!wb.config.table) wb.config.table = ctx.provider.defaultTable();
   const previewHost = el('div', { class: 'ap-preview' });
   const reach = el('div', { class: 'ap-muted', style: { fontSize: '12px', marginTop: '6px' } });
   const blockName = (b) => b.config?.title || b.config?.label || b.config?.heading || b.type;
-  const siblings = (tab.blocks || []).filter((b) => b.id !== block.id && b.type !== 'slicer');
+  // Blocks inside a Grid block are candidates too; the grid itself holds no data and is not.
+  const siblings = flattenBlocks(tab.blocks).filter((b) => b.id !== block.id && b.type !== 'slicer' && b.type !== 'grid');
 
   const refreshPreview = debounce(() => {
     previewHost.replaceChildren(renderBlock(clone(wb), { provider: ctx.provider, config: site }));
@@ -996,6 +999,50 @@ function openSlicerEditor(block, ctx) {
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
   openDrawer({ title: block.__isNew ? 'Add slicer' : 'Edit slicer', body, footer });
   drawTargets();
+  refreshPreview();
+}
+
+// ---------------- Grid editor ----------------
+// The grid's own settings are its shape. Its blocks are added from the page — every empty cell has
+// an Add button, and a block in a cell is edited and deleted like any other — so this panel is the
+// one place to change how many cells there are, and it says what a smaller shape would cost.
+function openGridEditor(block, ctx) {
+  const wb = clone(block); wb.config = normalizeGrid(wb.config);
+  const previewHost = el('div', { class: 'ap-preview' });
+  const warn = el('div', { class: 'ap-muted', style: { fontSize: '12px', marginTop: '6px' } });
+  const count = el('div', { class: 'ap-muted', style: { fontSize: '12px' } });
+  const refreshPreview = debounce(() => {
+    previewHost.replaceChildren(renderBlock(clone(wb), { provider: ctx.provider, config: ctx.site || {} }));
+    mountCharts(previewHost); mountCounters(previewHost);
+    const filled = wb.config.cells.filter(Boolean).length, total = wb.config.cols * wb.config.rows;
+    count.textContent = `${filled} of ${total} cell${total === 1 ? '' : 's'} hold a block. Fill the rest from the page: each empty cell has an Add button.`;
+  }, 150);
+  const resize = (cols, rows) => {
+    const { cells, dropped } = resizeCells(wb.config.cells, wb.config.cols, wb.config.rows, cols, rows);
+    wb.config.cols = cols; wb.config.rows = rows; wb.config.cells = cells;
+    warn.textContent = dropped.length
+      ? `${dropped.length} block${dropped.length === 1 ? '' : 's'} no longer fit at this size and will be removed when you apply. Cancel keeps them.`
+      : '';
+    refreshPreview();
+  };
+  const dims = [];
+  for (let n = GRID_MIN; n <= GRID_MAX; n++) dims.push({ value: n, label: String(n) });
+  const body = [
+    field('Title (optional)', textInput(wb.config.title || '', (v) => { wb.config.title = v; refreshPreview(); }, { placeholder: 'Shown above the cells' }),
+      'With a title the grid draws as a panel. Without one it is invisible and only its blocks show.'),
+    twoUp(
+      field('Columns', segmented(dims, wb.config.cols, (v) => resize(v, wb.config.rows))),
+      field('Rows', segmented(dims, wb.config.rows, (v) => resize(wb.config.cols, v))),
+    ),
+    warn,
+    field('Gap between cells', segmented([{ value: 'compact', label: 'Compact' }, { value: 'normal', label: 'Normal' }, { value: 'roomy', label: 'Roomy' }],
+      wb.config.gap, (v) => { wb.config.gap = v; refreshPreview(); })),
+    count,
+    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    subhead('Live preview'), previewHost,
+  ];
+  const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
+  openDrawer({ title: block.__isNew ? 'Add grid' : 'Edit grid', body, footer });
   refreshPreview();
 }
 

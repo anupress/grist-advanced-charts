@@ -78,7 +78,10 @@ export function renderSite(opts) {
       // the block fighting the person configuring it.
       slicers: editing ? null : { refresh: () => refreshTab(tab.id) },
       edit: editing ? {
-        active: true, onEditBlock: edit?.onEditBlock, onDeleteBlock: edit?.onDeleteBlock } : null };
+        active: true, onEditBlock: edit?.onEditBlock, onDeleteBlock: edit?.onDeleteBlock, onAddInGrid: edit?.onAddInGrid } : null };
+    // A block inside a Grid block is narrowed by the same slicers, on its own terms: a chart of
+    // Sales in a cell answers the Region chips exactly as it would on the page.
+    shared.cellContext = (child) => ({ ...shared, nested: true, provider: filteredProvider(provider, slicersFor(child, tab)) });
     // Each block gets its own provider, narrowed by whichever slicers on this tab reach it. With
     // nothing selected that is the real provider itself, so a page with no slicers pays nothing.
     for (const block of tab.blocks || []) {

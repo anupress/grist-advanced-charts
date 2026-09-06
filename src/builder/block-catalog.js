@@ -111,6 +111,11 @@ export const BLOCK_CATALOG = [
     info: 'Generates a scannable barcode at a real physical size, in the browser. Code 128 takes any text and suits asset tags and internal references; EAN and UPC take the digits printed on retail packaging. Sized in millimetres rather than pixels, because a linear barcode that gets scaled no longer scans.',
   },
   {
+    type: 'grid', category: 'basic', icon: 'grid', title: 'Grid',
+    desc: 'A panel with its own rows and columns',
+    info: 'A block that holds other blocks. Choose how many columns and rows, then put a block in each cell: four small stat cards in one panel, a chart beside its notes, a 3×3 of icons. Cells can stay empty, and a title turns the grid into a card. A grid cannot hold another grid.',
+  },
+  {
     type: 'slicer', star: true, category: 'data', icon: 'filter', title: 'Slicer',
     desc: 'Let readers filter the page by a column',
     info: "A row of chips or a menu built from one column. Pick a value and every other block on the page narrows to match — the KPI cards, the charts, the table, the map. It reaches any block on a table that shares the column, and follows reference columns the way Grist's own “select by” does, so picking a client narrows every table that points at Clients. Or name exactly which blocks it should affect.",

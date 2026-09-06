@@ -11,7 +11,7 @@
 //   Get started   — "how do I do this with my data?"      (the five steps, privacy, FAQ)
 //
 // It also doubles as the sensible starting point once a real user begins editing, and as the
-// coverage net for the block library: every one of the 24 block types and all 11 chart types
+// coverage net for the block library: every one of the 25 block types and all 11 chart types
 // appear here, each in a place where it makes sense rather than dumped on one "showcase" page.
 
 import {
@@ -83,7 +83,7 @@ export const DEFAULT_SITE = {
         slides: [
           { image: demoSlide(VIOLET, TEAL), title: 'This is a Grist table 👋', subtitle: 'Read live from 48 rows of demo data — nothing here is hard-coded.' },
           { image: demoSlide(TEAL, '#ff8a5b'), title: 'Point it at your own data', subtitle: 'Any table, any columns — text, number, choice, date, yes/no.' },
-          { image: demoSlide('#7048e8', '#e64980'), title: 'Publish it as a page', subtitle: 'Menus, themes, dark mode and twenty-four kinds of block.' },
+          { image: demoSlide('#7048e8', '#e64980'), title: 'Publish it as a page', subtitle: 'Menus, themes, dark mode and twenty-five kinds of block.' },
         ],
       },
       blocks: [
@@ -221,16 +221,21 @@ export const DEFAULT_SITE = {
       id: 'tab-elements', title: 'Page elements',
       hero: { title: 'It builds pages, not just charts 🧩', subtitle: 'The blocks below hold no data at all — they are what turn a dashboard into something you would happily send to a client.' },
       blocks: [
-        iconBlock('e1', 'sparkles', 'l', VIOLET, '#ffffff', 'center', 3),
-        iconBlock('e2', 'target', 'l', TEAL, '#ffffff', 'center', 3),
-        iconBlock('e3', 'shield', 'l', '#7048e8', '#ffffff', 'center', 3),
-        iconBlock('e4', 'star', 'l', '#e64980', '#ffffff', 'center', 3),
-        counter('e5', 'Block types', 0, 21, {}, 3),
-        counter('e6', 'Chart types', 0, 11, {}, 3),
-        counter('e7', 'Starter templates', 0, 9, {}, 3),
-        counter('e8', 'Servers in the middle', 0, 0, {}, 3),
-        text('e9', 'Icons and counters',
-          'Counters animate upward when they scroll into view, and hold still if your system asks for reduced motion. Both take any icon from the built-in set, or an SVG of your own.'),
+        // Eight small blocks in one Grid block, four across by two down. They used to be eight
+        // separate blocks on the page; as a grid they move, resize and print as one, and the
+        // demo shows the container doing its job rather than describing it.
+        { id: 'e0', type: 'grid', span: 12, config: { title: '', cols: 4, rows: 2, gap: 'normal', cells: [
+          iconBlock('e1', 'sparkles', 'l', VIOLET, '#ffffff', 'center', 3),
+          iconBlock('e2', 'target', 'l', TEAL, '#ffffff', 'center', 3),
+          iconBlock('e3', 'shield', 'l', '#7048e8', '#ffffff', 'center', 3),
+          iconBlock('e4', 'star', 'l', '#e64980', '#ffffff', 'center', 3),
+          counter('e5', 'Block types', 0, 25, {}, 3),
+          counter('e6', 'Chart types', 0, 11, {}, 3),
+          counter('e7', 'Starter templates', 0, 9, {}, 3),
+          counter('e8', 'Servers in the middle', 0, 0, {}, 3),
+        ] } },
+        text('e9', 'Icons, counters, and the grid holding them',
+          'The eight blocks above sit in one Grid block, four across by two down, so they move and resize together. Counters animate upward when they scroll into view, and hold still if your system asks for reduced motion. Both take any icon from the built-in set, or an SVG of your own.'),
         { id: 'e10', type: 'divider', span: 12, config: { style: 'solid', thickness: 1, color: null } },
         image('e11', placeholderImage(VIOLET, TEAL), 'A published dashboard on a laptop screen', 'Images can be uploaded, or pulled from a Grist attachment column', 6),
         // Sample text, deliberately. These are not real quotes about this widget, and writing
@@ -240,7 +245,7 @@ export const DEFAULT_SITE = {
           { name: 'A second reviewer', quote: 'Add as many as you like. They wrap onto their own row on a narrow screen.', rating: 4, photoData: null },
         ], 6),
         { id: 'e13', type: 'pricing', span: 8, config: { title: 'Pricing tables, if you need one', plans: [
-          { name: 'Advanced Charts', price: '$0', period: 'forever', features: ['All 24 block types', 'All 11 chart types', '9 starter templates', 'Open source and self-hostable'], highlighted: true, buttonLabel: 'Read the guide', buttonTarget: urlTarget(GUIDE) },
+          { name: 'Advanced Charts', price: '$0', period: 'forever', features: ['All 25 block types', 'All 11 chart types', '9 starter templates', 'Open source and self-hostable'], highlighted: true, buttonLabel: 'Read the guide', buttonTarget: urlTarget(GUIDE) },
           { name: 'Your dashboard', price: 'Yours', period: 'to keep', features: ['Lives in your own document', 'No account, no sign-up', 'No analytics, no tracking', 'Works on self-hosted Grist'], highlighted: false, buttonLabel: 'Get started', buttonTarget: tabTarget('tab-start') },
         ] } },
         { id: 'e14', type: 'countdown', span: 4, config: { title: 'Countdowns for launches & deadlines', targetDate: new Date(Date.now() + 21 * 86400000).toISOString(), expiredText: 'The date has passed — this message replaces the timer.', color: VIOLET } },

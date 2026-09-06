@@ -12,7 +12,9 @@ import { icon } from '../assets/icons.js';
 import { openDrawer, closeDrawer, ghostBtn, infoButton } from './ui.js';
 import { CATEGORIES, BLOCK_CATALOG } from './block-catalog.js';
 
-export function openBlockChooser({ onPick, onGuided, onTemplates }) {
+// `exclude` hides block types that make no sense where the chooser was opened from — a grid's
+// cell does not offer another grid.
+export function openBlockChooser({ onPick, onGuided, onTemplates, exclude = [] }) {
   let query = '';
   render();
 
@@ -59,7 +61,7 @@ export function openBlockChooser({ onPick, onGuided, onTemplates }) {
   }
 
   function categorySection(cat, matches) {
-    const items = BLOCK_CATALOG.filter((b) => b.category === cat.id && matches(b));
+    const items = BLOCK_CATALOG.filter((b) => b.category === cat.id && !exclude.includes(b.type) && matches(b));
     if (!items.length) return null;
     return el('details', { class: 'ap-el-cat', open: true }, [
       el('summary', { class: 'ap-el-cat__head' }, [

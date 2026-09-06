@@ -17,6 +17,7 @@ import { openDrawer, closeDrawer, primaryBtn, ghostBtn, subhead, divider, field,
 import { emptySite } from '../data/default-site.js';
 import { TEMPLATES } from '../data/templates/index.js';
 import { adaptTemplateToTable, DummyProvider } from '../data/provider.js';
+import { flattenBlocks } from '../data/grid.js';
 import { TEMPLATE_SAMPLE_DATA } from '../data/templates/sample-data.js';
 import { renderBlock, mountCharts } from '../render/blocks.js';
 import { mountMaps } from '../render/map.js';
@@ -113,13 +114,13 @@ export function templateStatus(config, templateId) {
  */
 export function inferTemplateId(config) {
   const here = new Set();
-  for (const tab of config?.tabs || []) for (const b of tab.blocks || []) if (b?.id) here.add(b.id);
+  for (const tab of config?.tabs || []) for (const b of flattenBlocks(tab.blocks)) if (b?.id) here.add(b.id);
   if (!here.size) return null;
 
   let best = null;
   for (const t of TEMPLATES) {
     const own = new Set();
-    for (const tab of t.config.tabs || []) for (const b of tab.blocks || []) if (b?.id) own.add(b.id);
+    for (const tab of t.config.tabs || []) for (const b of flattenBlocks(tab.blocks)) if (b?.id) own.add(b.id);
     if (!own.size) continue;
     let hits = 0;
     for (const id of here) if (own.has(id)) hits++;
@@ -176,7 +177,7 @@ export function resolveCleanupTicks({ candidates = [], wanted = new Set(), touch
 export function templateTables(t) {
   const ids = new Set();
   for (const tab of t.config.tabs || []) {
-    for (const b of tab.blocks || []) {
+    for (const b of flattenBlocks(tab.blocks)) {
       for (const id of [b.config?.table, b.config?.clientTable, b.config?.itemsTable]) {
         if (id && id !== 'Data') ids.add(id);
       }
@@ -190,7 +191,7 @@ export function templateTables(t) {
 function referencedColumns(config) {
   const map = {};
   const add = (table, ...cols) => { if (!table) return; (map[table] ||= new Set()); for (const c of cols) if (c) map[table].add(c); };
-  for (const tab of config.tabs || []) for (const b of tab.blocks || []) {
+  for (const tab of config.tabs || []) for (const b of flattenBlocks(tab.blocks)) {
     const c = b.config || {}; if (!c.table) continue;
     add(c.table, c.column, c.dateColumn, c.titleColumn, c.colorBy, c.valueColumn, c.targetColumn, c.latColumn, c.lonColumn, c.labelColumn);
     add(c.table, ...(c.dims || []), ...(c.measures || []), ...(c.columns || []), ...(c.popupColumns || []), ...(c.detailColumns || []));
@@ -232,7 +233,7 @@ function bestMatch(colId, colLabel, targetCols) {
 // sentinel are skipped here (handled by the create/backfill path). Returns a fresh config.
 function remapUsedTables(config, choices) {
   const c = clone(config);
-  for (const tab of c.tabs || []) for (const b of tab.blocks || []) {
+  for (const tab of c.tabs || []) for (const b of flattenBlocks(tab.blocks)) {
     const cfg = b.config; if (!cfg?.table) continue;
 
     // An Invoice block's client and item tables are chosen independently of its own, so they are

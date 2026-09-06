@@ -20,6 +20,7 @@
 // the document, so that stays behind Edit.
 
 import { el, clone, uid, toast, interpolate } from '../util.js';
+import { flattenBlocks } from '../data/grid.js';
 import { icon, brandLogo } from '../assets/icons.js';
 import { renderBlock, mountCharts } from '../render/blocks.js';
 import { mountMaps, settleMapsForPrint } from '../render/map.js';
@@ -193,7 +194,8 @@ export function repeatRows(provider) {
 // is the whole point of collecting as you browse rather than printing one page at a time.
 export function findBlock(config, id) {
   for (const tab of config?.tabs || []) {
-    for (const b of tab.blocks || []) if (b.id === id) return { block: b, tab };
+    // A block inside a Grid block can be collected on its own, and so can the whole grid.
+    for (const b of flattenBlocks(tab.blocks)) if (b.id === id) return { block: b, tab };
   }
   return null;
 }

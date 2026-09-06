@@ -5,6 +5,7 @@
 import { DUMMY_DATA } from './dummy-data.js';
 import * as grist from '../grist/bridge.js';
 import { clone } from '../util.js';
+import { flattenBlocks } from './grid.js';
 
 class BaseProvider {
   tables() { return []; }
@@ -229,7 +230,9 @@ export class GristProvider extends BaseProvider {
 export function tablesInConfig(config) {
   const ids = new Set();
   if (config?.dataTable) ids.add(config.dataTable);
-  for (const tab of config?.tabs || []) for (const b of tab.blocks || []) {
+  // flattenBlocks, not tab.blocks: a stat inside a Grid block reads a table too, and a table that
+  // is never primed renders as an empty card on a live document.
+  for (const tab of config?.tabs || []) for (const b of flattenBlocks(tab.blocks)) {
     const t = b.config?.table || b.config?.ref?.table || config?.dataTable; if (t) ids.add(t);
     // Invoice is the one block that reads MORE than one table: its client address book and its
     // line items. Leaving them out of this list means they are never primed, so on a live document
@@ -367,8 +370,8 @@ export function adaptConfigToTable(config, provider) {
   const realTableIds = new Set(provider.tables().map((t) => t.id));
   const c = clone(config);
   c.dataTable = table;
-  for (const tab of c.tabs || []) for (const b of tab.blocks || []) {
-    if (!b.config) continue;
+  for (const tab of c.tabs || []) for (const b of flattenBlocks(tab.blocks)) {
+    if (!b.config || b.type === 'grid') continue;
     b.config.table = table;
     repairBlockColumns(b, provider.columns(table));
     dropMissingInvoiceTables(b, realTableIds);
@@ -402,8 +405,8 @@ export function adaptTemplateToTable(config, provider) {
   // (By the time this runs, template-picker.js has already created the template's tables and
   // called provider.refreshTables(), so they are present in realTableIds.)
   c.dataTable = (c.dataTable && realTableIds.has(c.dataTable)) ? c.dataTable : table;
-  for (const tab of c.tabs || []) for (const b of tab.blocks || []) {
-    if (!b.config) continue;
+  for (const tab of c.tabs || []) for (const b of flattenBlocks(tab.blocks)) {
+    if (!b.config || b.type === 'grid') continue;
     const ownTable = b.config.table;
     const isRealMatch = ownTable && realTableIds.has(ownTable);
     const isFallbackPlaceholder = ownTable === 'Data';

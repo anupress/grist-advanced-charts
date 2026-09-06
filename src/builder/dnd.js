@@ -3,15 +3,18 @@
 
 const SJS = () => window.Sortable;
 
+// Only the page's own blocks drag. A block inside a Grid block is also an .ap-block, but it lives
+// in a cell, not in the page list; it carries no drag handle, and it must not count when the new
+// order is read back, or the page order would be computed from ids it does not contain.
 export function makeBlocksSortable(gridEl, onReorder) {
   if (!SJS() || !gridEl) return null;
   return SJS().create(gridEl, {
     handle: '.ap-drag-handle',
-    draggable: '.ap-block[data-block-id]',
+    draggable: '.ap-grid > .ap-block[data-block-id]',
     animation: 160,
     ghostClass: 'ap-sortable-ghost',
     chosenClass: 'ap-sortable-chosen',
-    onEnd: () => onReorder([...gridEl.querySelectorAll('.ap-block[data-block-id]')].map((b) => b.dataset.blockId)),
+    onEnd: () => onReorder([...gridEl.querySelectorAll(':scope > .ap-block[data-block-id]')].map((b) => b.dataset.blockId)),
   });
 }
 

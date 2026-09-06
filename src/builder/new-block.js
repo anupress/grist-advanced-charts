@@ -14,6 +14,7 @@ import { autoPick, isMeasure, isDimension, isTemporal } from '../charts/recommen
 import { detectLatLon } from '../render/map.js';
 import { guessInvoiceConfig } from '../render/invoice.js';
 import { DEFAULT_MODULE_MM, DEFAULT_HEIGHT_MM } from '../render/barcode.js';
+import { emptyCells } from '../data/grid.js';
 
 const link = () => ({ kind: null, tab: null, url: null, newTab: true });
 
@@ -100,6 +101,9 @@ export function newBlock(type, { table, provider }) {
       || cols[0];
     return blk(12, { table, column: col?.id || '', label: col?.label || col?.id || '', style: 'auto', multi: true, showCounts: true });
   }
+  // Six empty cells, three across: the shape people draw when they ask for "a grid". Blocks go
+  // into the cells from the page, where each empty cell has its own Add button.
+  if (type === 'grid') return blk(12, { title: '', cols: 3, rows: 2, gap: 'normal', cells: emptyCells(3, 2) });
   if (type !== 'chart') throw new Error(`newBlock: no default for block type "${type}"`);
   return blk(6, { table, title: 'New chart', ...autoPick(cols) });
 }

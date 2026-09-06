@@ -10,6 +10,7 @@ import * as bridge from '../grist/bridge.js';
 import { tablesInConfig } from '../data/provider.js';
 import { openBlockEditor } from './block-editor.js';
 import { newBlock } from './new-block.js';
+import { findBlockIn, flattenBlocks } from '../data/grid.js';
 import { openGuidedWizard } from './wizard.js';
 import { openBlockChooser } from './chooser.js';
 import { openTemplatePicker } from './template-picker.js';
@@ -31,9 +32,19 @@ export function openBuilder(opts) {
 
 function mark() { dirty = true; }
 const findTab = (id) => (working.tabs || []).find((t) => t.id === id);
+// Where a block is: on a tab's page list, or in a cell of a Grid block on that tab (then `parent`
+// is the grid and `idx` the cell).
 function findBlock(blockId) {
-  for (const tab of working.tabs || []) { const i = (tab.blocks || []).findIndex((b) => b.id === blockId); if (i >= 0) return { tab, idx: i, block: tab.blocks[i] }; }
+  for (const tab of working.tabs || []) {
+    const hit = findBlockIn(tab.blocks, blockId);
+    if (hit) return { tab, idx: hit.index, block: hit.block, parent: hit.parent };
+  }
   return null;
+}
+// Put a block where another one is, or was.
+function placeBlock(found, nb) {
+  if (found.parent) found.parent.config.cells[found.idx] = nb;
+  else found.tab.blocks[found.idx] = nb;
 }
 
 function rerender() {
@@ -52,6 +63,7 @@ function rerender() {
       onEditBlock: editBlock,
       onDeleteBlock: deleteBlock,
       onAddBlock: chooseNewBlock,
+      onAddInGrid: addBlockInGrid,
     },
   });
   root.prepend(buildEditBar());
@@ -173,11 +185,28 @@ function addBlock(tabId, type) {
 }
 function editBlock(blockId) {
   const found = findBlock(blockId); if (!found) return;
-  openBlockEditor(found.block, { provider, site: working, tabId: found.tab.id, onApply: (nb) => { delete nb.__isNew; found.tab.blocks[found.idx] = nb; mark(); rerender(); } });
+  openBlockEditor(found.block, { provider, site: working, tabId: found.tab.id, onApply: (nb) => { delete nb.__isNew; placeBlock(found, nb); mark(); rerender(); } });
 }
 function deleteBlock(blockId) {
   const found = findBlock(blockId); if (!found) return;
-  found.tab.blocks.splice(found.idx, 1); mark(); rerender();
+  // A deleted cell stays a cell: the grid keeps its shape and the cell goes back to empty.
+  if (found.parent) found.parent.config.cells[found.idx] = null;
+  else found.tab.blocks.splice(found.idx, 1);
+  mark(); rerender();
+}
+// The Add button in an empty cell of a Grid block. Same chooser and same editors as the page's
+// Add Element, landing in the cell instead of at the end of the page. One level only: the chooser
+// does not offer a grid here.
+function addBlockInGrid(gridId, cell) {
+  const found = findBlock(gridId); if (!found || found.block.type !== 'grid') return;
+  const grid = found.block;
+  const put = (nb) => { delete nb.__isNew; (grid.config.cells ||= [])[cell] = nb; mark(); rerender(); };
+  openBlockChooser({
+    exclude: ['grid'],
+    onPick: (type) => { closeDrawer(); openBlockEditor(defaultBlock(type), { provider, site: working, tabId: found.tab.id, onApply: put }); },
+    onGuided: () => { closeDrawer(); openGuidedWizard({ provider, onCreate: put }); },
+    onTemplates: () => { closeDrawer(); openTemplatesPanel(); },
+  });
 }
 
 // ---------------- Theme ----------------
@@ -323,7 +352,7 @@ function rerenderSoon() { clearTimeout(_soon); _soon = setTimeout(() => rerender
 
 function cleanConfig() {
   const c = clone(working);
-  for (const tab of c.tabs || []) for (const b of tab.blocks || []) delete b.__isNew;
+  for (const tab of c.tabs || []) for (const b of flattenBlocks(tab.blocks)) delete b.__isNew;
   return c;
 }
 
