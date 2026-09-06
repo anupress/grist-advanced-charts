@@ -6,15 +6,13 @@ import { icon, brandLogo } from '../assets/icons.js';
 import { renderSite } from '../render/site.js';
 import { applyTheme, applyDesign } from '../theme/apply.js';
 import { PALETTES, FONT_PAIRS } from '../theme/palettes.js';
-import { autoPick, isMeasure, isDimension } from '../charts/recommend.js';
-import { detectLatLon } from '../render/map.js';
 import * as bridge from '../grist/bridge.js';
 import { tablesInConfig } from '../data/provider.js';
 import { openBlockEditor } from './block-editor.js';
+import { newBlock } from './new-block.js';
 import { openGuidedWizard } from './wizard.js';
 import { openBlockChooser } from './chooser.js';
 import { openTemplatePicker } from './template-picker.js';
-import { guessInvoiceConfig } from '../render/invoice.js';
 import { makeBlocksSortable, makeTabsSortable, makePagesSortable } from './dnd.js';
 import { openDrawer, closeDrawer, field, textInput, selectInput, checkboxRow, segmented, colorInput, subhead, divider, primaryBtn, ghostBtn } from './ui.js';
 import { heroEditorBody } from './hero-editor.js';
@@ -134,74 +132,8 @@ const ghostBtnWhite = (label, on) => el('button', { class: 'ap-btn ap-btn--sm', 
 const primaryWhite = (label, on) => el('button', { class: 'ap-btn ap-btn--primary ap-btn--sm', onClick: on }, [icon('save'), label]);
 
 // ---------------- Blocks ----------------
-function defaultBlock(type, tabId) {
-  const table = working.dataTable || provider.defaultTable();
-  const cols = provider.columns(table);
-  if (type === 'stat') {
-    const m = cols.filter(isMeasure)[0];
-    const col = m || cols[0];
-    // deltaBy is deliberately absent, not null: unset means "automatic", so a new stat picks up
-    // the table's date column and shows a trend without anyone finding the setting. An explicit
-    // null would mean the author had switched it off. See resolveDeltaBy in stats/aggregate.js.
-    return { id: uid('blk'), type: 'stat', span: 3, __isNew: true, config: { table, label: 'New metric', column: col?.id, agg: m ? 'sum' : 'count', icon: 'pulse', format: { compact: true } } };
-  }
-  if (type === 'text') return { id: uid('blk'), type: 'text', span: 12, __isNew: true, config: { heading: 'New section', html: 'Write something here…' } };
-  if (type === 'breakdown') {
-    const dim = cols.filter(isDimension)[0] || cols[0];
-    return { id: uid('blk'), type: 'breakdown', span: 4, __isNew: true, config: { table, title: dim?.label || 'Breakdown', column: dim?.id, limit: 12 } };
-  }
-  if (type === 'map') {
-    const det = detectLatLon(cols);
-    const label = cols.find((c) => /name|code|title|label/i.test(c.id)) || cols.filter(isDimension)[0] || cols[0];
-    return { id: uid('blk'), type: 'map', span: 12, __isNew: true, config: { table, title: 'Map', latColumn: det.lat || '', lonColumn: det.lon || '', labelColumn: label?.id || null, colorBy: null } };
-  }
-  if (type === 'spacer') return { id: uid('blk'), type: 'spacer', span: 12, __isNew: true, config: { height: 40 } };
-  if (type === 'button') return { id: uid('blk'), type: 'button', span: 3, __isNew: true, config: { label: 'Click here', style: 'primary', align: 'left', target: { kind: null, tab: null, url: null, newTab: true } } };
-  if (type === 'icon') return { id: uid('blk'), type: 'icon', span: 3, __isNew: true, config: { icon: 'sparkles', iconData: null, size: 'm', color: null, bg: null, align: 'left', target: { kind: null, tab: null, url: null, newTab: true } } };
-  if (type === 'progress') {
-    const m = cols.filter(isMeasure)[0];
-    return { id: uid('blk'), type: 'progress', span: 4, __isNew: true, config: { title: 'Progress', mode: 'manual', value: 40, target: 100, table, valueColumn: (m || cols[0])?.id, agg: 'sum', prefix: '', suffix: '', color: null } };
-  }
-  if (type === 'counter') return { id: uid('blk'), type: 'counter', span: 3, __isNew: true, config: { label: 'Happy customers', start: 0, end: 100, duration: 1400, prefix: '', suffix: '', decimals: 0, icon: 'sparkles', iconData: null } };
-  if (type === 'accordion') return { id: uid('blk'), type: 'accordion', span: 12, __isNew: true, config: { title: 'Frequently asked questions', items: [{ q: 'Question one', a: 'Answer goes here.' }], openFirst: true } };
-  if (type === 'image') return { id: uid('blk'), type: 'image', span: 6, __isNew: true, config: { mode: 'upload', imageData: null, ref: { table: null, column: null, row: null }, alt: '', fit: 'cover', caption: '', link: { kind: null, tab: null, url: null, newTab: true } } };
-  if (type === 'testimonials') return { id: uid('blk'), type: 'testimonials', span: 12, __isNew: true, config: { title: 'What people are saying', mode: 'manual', entries: [{ name: '', quote: '', rating: 5, photoData: null }], table: null, nameColumn: null, quoteColumn: null, ratingColumn: null, photoColumn: null, limit: 6 } };
-  if (type === 'livetable') return { id: uid('blk'), type: 'livetable', span: 12, __isNew: true, config: { title: '', table, columns: cols.slice(0, 5).map((c) => c.id), pageSize: 10, searchable: true, sortable: true, defaultSort: null, highlights: [] } };
-  // The column guesses matter more here than elsewhere: an invoice with the wrong column in the
-  // "amount" slot is not a slightly-off chart, it is a wrong bill. guessInvoiceConfig() names the
-  // usual suspects so the block draws something correct immediately, and every guess is a visible
-  // dropdown in the editor rather than a hidden default.
-  if (type === 'invoice') {
-    const guess = guessInvoiceConfig(cols, provider.tables());
-    return { id: uid('blk'), type: 'invoice', span: 12, __isNew: true, config: {
-      title: 'Invoice', documentTitle: 'Invoice', style: 'classic', footerText: null, table, ...guess,
-      clientNameColumn: 'Name', clientAddressColumns: [],
-      itemsTable: null, itemsLinkColumn: null, itemDescColumn: null, itemQtyColumn: null,
-      itemPriceColumn: null, itemTotalColumn: null,
-      singleLineLabel: 'Services rendered',
-      from: { name: '', address: '', email: '', phone: '', taxId: '', logoData: null },
-      terms: 'Payment due within 30 days of the issue date.',
-      referenceColumn: null, referenceLabel: 'Your reference', totalLabel: 'Amount due',
-      paymentDetails: '', paymentDetailsLabel: 'Payment details', preparedBy: '', thanksText: '',
-      currency: '$', taxRate: 0, taxLabel: 'Tax', taxIdLabel: 'Tax ID', accent: null, rowId: null,
-    } };
-  }
-  if (type === 'embed') return { id: uid('blk'), type: 'embed', span: 12, __isNew: true, config: { html: '', css: '', js: '', height: 300 } };
-  if (type === 'qrcode') return { id: uid('blk'), type: 'qrcode', span: 3, __isNew: true, config: { text: 'https://', level: 'M', fg: '#000000', bg: '#ffffff', size: 200, caption: '' } };
-  if (type === 'countdown') return { id: uid('blk'), type: 'countdown', span: 4, __isNew: true, config: { title: '', targetDate: new Date(Date.now() + 7 * 86400000).toISOString(), expiredText: 'This has ended.', color: null } };
-  if (type === 'timeline') return { id: uid('blk'), type: 'timeline', span: 12, __isNew: true, config: { title: 'Our history', items: [{ date: '', title: 'Milestone one', description: '' }] } };
-  if (type === 'divider') return { id: uid('blk'), type: 'divider', span: 12, __isNew: true, config: { style: 'solid', thickness: 1, color: null } };
-  if (type === 'pricing') return { id: uid('blk'), type: 'pricing', span: 12, __isNew: true, config: { title: 'Choose your plan', plans: [
-    { name: 'Basic', price: '$9', period: '/mo', features: ['Feature one', 'Feature two'], highlighted: false, buttonLabel: 'Choose', buttonTarget: { kind: null, tab: null, url: null, newTab: true } },
-    { name: 'Pro', price: '$29', period: '/mo', features: ['Everything in Basic', 'Feature three', 'Feature four'], highlighted: true, buttonLabel: 'Choose', buttonTarget: { kind: null, tab: null, url: null, newTab: true } },
-  ] } };
-  if (type === 'calendar') {
-    const dateCol = cols.find((c) => /date/i.test(c.type)) || cols[0];
-    const titleCol = cols.find((c) => c.id !== dateCol?.id && /text|choice/i.test(c.type)) || cols.find((c) => c.id !== dateCol?.id) || cols[0];
-    return { id: uid('blk'), type: 'calendar', span: 12, __isNew: true, config: { title: 'Calendar', table, dateColumn: dateCol?.id, titleColumn: titleCol?.id, detailColumns: [], colorBy: null, draggable: true } };
-  }
-  return { id: uid('blk'), type: 'chart', span: 6, __isNew: true, config: { table, title: 'New chart', ...autoPick(cols) } };
-}
+// The per-type starting shapes live in new-block.js, where a test holds them against the catalog.
+const defaultBlock = (type) => newBlock(type, { table: working.dataTable || provider.defaultTable(), provider });
 
 function chooseNewBlock(tabId) {
   openBlockChooser({

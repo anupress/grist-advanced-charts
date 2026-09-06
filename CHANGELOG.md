@@ -3,6 +3,22 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.2.3] — 2026-09-06
+
+Picking **Slicer** in the Add Element chooser opened "Add chart". Reported on the
+community thread within a day of 3.2.0.
+
+The builder's per-type starting shapes were a hand-maintained chain of branches
+ending in the chart fallback, and neither the slicer nor the barcode had been
+given one, so both new types fell through to it. Editing an existing slicer was
+fine, which is why the demo (whose slicer is part of the design) never showed
+it. The defaults now live in their own module with a branch for every catalog
+entry, an unknown type throws instead of quietly becoming a chart, and a test
+holds the defaults against the catalog: a block type can no longer be added to
+the chooser without a starting shape. A new slicer starts on a Choice column
+where the table has one, then a reference column, then the first text-like
+column, so its chips appear the moment the editor opens.
+
 ## [3.2.2] — 2026-09-05
 
 Embedded in a web page's iframe without `?demo`, the widget stayed blank.
