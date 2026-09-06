@@ -12,6 +12,10 @@ import path from 'node:path';
 
 const OUT = 'dist';
 const root = process.cwd();
+// The one version string, from package.json, stamped into the bundle (src/version.js reads the
+// define), into index.html as a meta tag, and onto the script URL so a new index never pairs
+// with a cached bundle from the build before it.
+const VERSION = JSON.parse(fs.readFileSync('package.json', 'utf8')).version;
 
 function rmrf(p) { fs.rmSync(p, { recursive: true, force: true }); }
 function cp(src, dest) {
@@ -34,6 +38,7 @@ const result = await build({
   minify: true,
   legalComments: 'none',
   target: ['es2019'],
+  define: { __AP_VERSION__: JSON.stringify(VERSION) },
   outdir: path.join(OUT, 'assets'),
   metafile: true,
   write: false,
@@ -98,6 +103,7 @@ const indexHtml = `<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Advanced Charts — by ANUPRESS</title>
+<meta name="ap-version" content="${VERSION}"/>
 <link rel="icon" href="assets/media/brand/favicon.png" type="image/png"/>
 <link rel="apple-touch-icon" href="assets/media/brand/favicon.png"/>
 <link rel="stylesheet" href="assets/styles/tokens.css"/>
@@ -114,7 +120,7 @@ const indexHtml = `<!DOCTYPE html>
 <script src="vendor/leaflet.markercluster.js"></script>
 <script>window.__apLeaflet = window.L;</script>
 </head><body><div id="anupress-root" class="ap-root" aria-live="polite"></div>
-<script src="assets/app.js"></script></body></html>`;
+<script src="assets/app.js?v=${VERSION}"></script></body></html>`;
 fs.writeFileSync(path.join(OUT, 'index.html'), indexHtml);
 
 console.log('\\nBuild complete -> dist/');

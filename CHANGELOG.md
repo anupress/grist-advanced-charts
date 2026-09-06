@@ -3,6 +3,17 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.2.4] — 2026-09-06
+
+The widget now says which build it is. After 3.2.3 went live, a reader's
+browser kept serving the previous bundle from cache (GitHub Pages allows ten
+minutes), and nothing on screen or in the console could settle whether the fix
+had arrived. Now the boot line in the console reads
+`[ANUPRESS] Advanced Charts v3.2.4 · live document`, the Settings panel ends
+with the same version, `index.html` carries it in a meta tag, and the bundle is
+loaded as `app.js?v=3.2.4`, so a fresh index can never pair with a stale bundle
+from the build before it.
+
 ## [3.2.3] — 2026-09-06
 
 Picking **Slicer** in the Add Element chooser opened "Add chart". Reported on the

@@ -11,6 +11,7 @@ import { TEMPLATES } from './data/templates/index.js';
 import { TEMPLATE_SAMPLE_DATA } from './data/templates/sample-data.js';
 import { renderSite } from './render/site.js';
 import { showConsent } from './consent/modal.js';
+import { VERSION } from './version.js';
 
 const root = document.getElementById('anupress-root');
 
@@ -24,6 +25,9 @@ const app = {
 async function boot() {
   // Timed handshake: true only when actually embedded in a live Grist document.
   const live = await bridge.connect();
+  // One line in the console that says which build answered. Pages caches the bundle for ten
+  // minutes, so "still broken after the fix" needs this to be answerable.
+  console.info(`[ANUPRESS] Advanced Charts v${VERSION} · ${live ? 'live document' : 'demo'}`);
   if (live) {
     try {
       const saved = await bridge.loadConfig();

@@ -17,6 +17,7 @@ import { makeBlocksSortable, makeTabsSortable, makePagesSortable } from './dnd.j
 import { openDrawer, closeDrawer, field, textInput, selectInput, checkboxRow, segmented, colorInput, subhead, divider, primaryBtn, ghostBtn } from './ui.js';
 import { heroEditorBody } from './hero-editor.js';
 import { readFileAsDataURL } from './imageutil.js';
+import { VERSION } from '../version.js';
 
 let working, provider, live, root, onExit, activeTabId, dirty = false;
 
@@ -115,6 +116,8 @@ function openSettingsPanel() {
         tile.addEventListener('click', s.open);
         return tile;
       })),
+      // The build in use, where a person answering "which version do you see?" can find it.
+      el('p', { class: 'ap-muted ap-version', style: { fontSize: '12px', marginTop: '16px' }, text: `Advanced Charts v${VERSION}` }),
     ],
     footer: [ghostBtn('Close', () => closeDrawer())],
   });
