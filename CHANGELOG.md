@@ -3,6 +3,15 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.3.1] — 2026-09-06
+
+The table snapshot now fills the whole space beside the drawer, from the left
+edge to the drawer and from under the edit bar to the bottom, and shows as many
+rows and columns as that space holds instead of six by eight. A card in the
+corner read as a tooltip; the question is "what is in this table?", and the
+answer is as much of it as fits. Also fixed: a table whose rows all fit printed
+the word "null" under itself, a null child handed to replaceChildren.
+
 ## [3.3.0] — 2026-09-06
 
 ### Added

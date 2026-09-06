@@ -469,15 +469,15 @@
 .ap-tpick__opt.is-missing { color: #c0392b; }
 
 /* ---- table peek: the snapshot on the left while a table is being chosen ---- */
-.ap-peek { position: fixed; z-index: 79; display: none; pointer-events: none; flex-direction: column; background: var(--ap-surface); color: var(--ap-text); border: 1px solid var(--ap-border); border-radius: 16px; box-shadow: var(--ap-shadow-lg); overflow: hidden; }
+.ap-peek { position: fixed; z-index: 79; display: none; pointer-events: none; flex-direction: column; background: var(--ap-surface); color: var(--ap-text); border-right: 1px solid var(--ap-border); box-shadow: var(--ap-shadow-lg); overflow: hidden; }
 .ap-peek.is-open { display: flex; }
-.ap-peek__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--ap-border); }
+.ap-peek__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 18px; border-bottom: 1px solid var(--ap-border); }
 .ap-peek__name { font-weight: 800; font-size: var(--ap-fs-md); }
 .ap-peek__meta { font-size: var(--ap-fs-xs); color: var(--ap-text-mute); white-space: nowrap; }
-.ap-peek__scroll { overflow: hidden; }
+.ap-peek__scroll { overflow: hidden; flex: 0 1 auto; }
 .ap-peek__table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 12.5px; }
 .ap-peek__table th, .ap-peek__table td { padding: 7px 10px; border-bottom: 1px solid var(--ap-border); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ap-peek__table th { background: var(--ap-bg-soft); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ap-text-soft); vertical-align: top; }
 .ap-peek__type { display: block; font-size: 10px; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--ap-text-mute); }
 .ap-peek__table tbody tr:last-child td { border-bottom: 0; }
-.ap-peek__foot { padding: 8px 16px; font-size: var(--ap-fs-xs); color: var(--ap-text-mute); border-top: 1px solid var(--ap-border); }
+.ap-peek__foot { padding: 9px 18px; font-size: var(--ap-fs-xs); color: var(--ap-text-mute); border-top: 1px solid var(--ap-border); }

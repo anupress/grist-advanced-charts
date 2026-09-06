@@ -65,18 +65,24 @@ function ensureHost() {
   return host;
 }
 
-// Left of the drawer, under the edit bar, never over either. On a viewport too narrow to leave
-// room beside the drawer there is nothing sensible to show, so the panel stays hidden.
+// The whole space beside the drawer: from the left edge to the drawer, from under the edit bar to
+// the bottom. A card in the corner showed six rows of eight columns and left most of the page
+// visible behind it, which read as a tooltip; the question is "what is in this table?", and the
+// honest answer is as much of it as fits. Returns how many rows and columns that is, or false on
+// a viewport too narrow to leave room beside the drawer.
+const HEAD_PX = 48, FOOT_PX = 34, THEAD_PX = 46, ROW_PX = 33, COL_PX = 118;
 function place(node) {
   const drawer = document.querySelector('.ap-drawer');
   const bar = document.querySelector('.ap-editbar');
-  const left = 16;
-  const top = (bar ? bar.getBoundingClientRect().bottom : 0) + 14;
-  const rightEdge = drawer ? drawer.getBoundingClientRect().left - 18 : window.innerWidth - 16;
-  const width = Math.min(780, rightEdge - left);
-  if (width < 300) return false;
-  Object.assign(node.style, { left: left + 'px', top: top + 'px', width: width + 'px', maxHeight: (window.innerHeight - top - 16) + 'px' });
-  return true;
+  const top = bar ? bar.getBoundingClientRect().bottom : 0;
+  const width = (drawer ? drawer.getBoundingClientRect().left : window.innerWidth);
+  const height = window.innerHeight - top;
+  if (width < 320 || height < 200) return false;
+  Object.assign(node.style, { left: '0px', top: top + 'px', width: width + 'px', height: height + 'px' });
+  return {
+    maxRows: Math.max(3, Math.min(60, Math.floor((height - HEAD_PX - FOOT_PX - THEAD_PX) / ROW_PX))),
+    maxCols: Math.max(4, Math.min(16, Math.floor(width / COL_PX))),
+  };
 }
 
 function render(node, m, note) {
@@ -93,15 +99,18 @@ function render(node, m, note) {
   else if (!m.rowCount) foot.push('No rows in this table yet.');
   else if (m.rowCount > m.rows.length) foot.push(`Showing the first ${m.rows.length} of ${m.rowCount} rows.`);
   if (m.moreCols > 0) foot.push(`${m.moreCols} more column${m.moreCols === 1 ? '' : 's'} not shown.`);
-  node.replaceChildren(head, el('div', { class: 'ap-peek__scroll' }, [table]),
-    foot.length ? el('div', { class: 'ap-peek__foot', text: foot.join(' ') }) : null);
+  // replaceChildren(null) writes the text "null"; a table whose rows all fit has no footer at all.
+  const parts = [head, el('div', { class: 'ap-peek__scroll' }, [table])];
+  if (foot.length) parts.push(el('div', { class: 'ap-peek__foot', text: foot.join(' ') }));
+  node.replaceChildren(...parts);
 }
 
 /** Show the snapshot for `tableId`; anything the provider does not know hides the panel. */
 export function peekTable(provider, tableId) {
   const node = ensureHost();
-  const m = provider && tableId ? peekModel(provider, tableId) : null;
-  if (!m || !place(node)) { hidePeek(); return; }
+  const fit = provider && tableId ? place(node) : false;
+  const m = fit ? peekModel(provider, tableId, fit) : null;
+  if (!m) { hidePeek(); return; }
   showing = tableId;
   const token = ++load;
   // A live table that has not been read yet has no rows to show. Ask for them and redraw if the
@@ -112,7 +121,7 @@ export function peekTable(provider, tableId) {
   if (pending) {
     Promise.resolve(provider.prime([tableId])).then(() => {
       if (token !== load || showing !== tableId) return;
-      render(node, peekModel(provider, tableId), null);
+      render(node, peekModel(provider, tableId, fit), null);
     }).catch(() => { /* the panel already shows the columns; rows can stay absent */ });
   }
 }
