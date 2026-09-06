@@ -3,7 +3,7 @@
 
 import { el, clone, debounce, toast } from '../util.js';
 import { icon, chartIcon } from '../assets/icons.js';
-import { openDrawer, closeDrawer, field, textInput, selectInput, checkboxRow, segmented, subhead, divider, primaryBtn, ghostBtn, iconPickerField, linkTargetField, colorInput } from './ui.js';
+import { openDrawer, closeDrawer, field, textInput, selectInput, tablePicker, checkboxRow, segmented, subhead, divider, primaryBtn, ghostBtn, iconPickerField, linkTargetField, colorInput } from './ui.js';
 import { CHART_TYPES, getChartType, CARTESIAN } from '../charts/catalog.js';
 import { evaluateTypes, isMeasure, autoPick } from '../charts/recommend.js';
 import { AGGREGATIONS, autoDeltaColumn } from '../stats/aggregate.js';
@@ -196,7 +196,7 @@ function openChartEditor(block, ctx) {
   const body = [
     field('Title', textInput(wb.config.title || '', (v) => { wb.config.title = v; }, { placeholder: 'Chart title' })),
     subtitleField(wb, 'chart', () => {}, 'Auto, or e.g. %count rows across %groups groups'),
-    field('Data table', selectInput(provider.tables().map((t) => ({ value: t.id, label: t.label })), wb.config.table,
+    field('Data table', tablePicker(provider, wb.config.table,
       (v) => { wb.config.table = v; const cols = provider.columns(v); Object.assign(wb.config, autoPick(cols)); ensureRows(provider, v).then(update); })),
     editDataRow(() => wb.config.table, ctx, () => openChartEditor(block, ctx)),
     dynHost,
@@ -295,7 +295,7 @@ function openStatEditor(block, ctx) {
 
   const body = [
     field('Label', textInput(wb.config.label || '', (v) => { wb.config.label = v; refreshPreview(); }, { placeholder: 'e.g. Total samples' })),
-    field('Data table', selectInput(provider.tables().map((t) => ({ value: t.id, label: t.label })), wb.config.table,
+    field('Data table', tablePicker(provider, wb.config.table,
       async (v) => { wb.config.table = v; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
     editDataRow(() => wb.config.table, ctx, () => openStatEditor(block, ctx)),
     dynHost,
@@ -354,7 +354,7 @@ function openBreakdownEditor(block, ctx) {
       { value: 'list', label: 'List' }, { value: 'doughnut', label: 'Donut' }, { value: 'pie', label: 'Pie' },
       { value: 'bar', label: 'Bar' }, { value: 'column', label: 'Column' },
     ], showAs(), (v) => { if (v === 'list') wb.config.display = 'list'; else { wb.config.display = 'chart'; wb.config.chartType = v; } refreshPreview(); })),
-    field('Data table', selectInput(provider.tables().map((t) => ({ value: t.id, label: t.label })), wb.config.table,
+    field('Data table', tablePicker(provider, wb.config.table,
       async (v) => { wb.config.table = v; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
     editDataRow(() => wb.config.table, ctx, () => openBreakdownEditor(block, ctx)),
     dynHost,
@@ -406,7 +406,7 @@ function openMapEditor(block, ctx) {
   const body = [
     field('Title', textInput(wb.config.title || '', (v) => { wb.config.title = v; refreshPreview(); }, { placeholder: 'Map' })),
     subtitleField(wb, 'map', refreshPreview, 'e.g. %count mapped · %missing without coordinates'),
-    field('Data table', selectInput(provider.tables().map((t) => ({ value: t.id, label: t.label })), wb.config.table,
+    field('Data table', tablePicker(provider, wb.config.table,
       async (v) => { wb.config.table = v; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
     editDataRow(() => wb.config.table, ctx, () => openMapEditor(block, ctx)),
     dynHost,
@@ -526,7 +526,7 @@ function openProgressEditor(block, ctx) {
       const cols = provider.columns(wb.config.table);
       if (cols.length && !cols.find((c) => c.id === wb.config.valueColumn)) wb.config.valueColumn = cols[0].id;
       dynHost.replaceChildren(
-        field('Data table', selectInput(provider.tables().map((t) => ({ value: t.id, label: t.label })), wb.config.table,
+        field('Data table', tablePicker(provider, wb.config.table,
           async (v) => { wb.config.table = v; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
         editDataRow(() => wb.config.table, ctx, () => openProgressEditor(block, ctx)),
         field('Value column', selectInput(cols.map((c) => ({ value: c.id, label: c.label })), wb.config.valueColumn, (v) => { wb.config.valueColumn = v; refreshPreview(); })),
@@ -665,7 +665,7 @@ function openImageEditor(block, ctx) {
     const rows = provider.records(wb.config.ref.table);
     if (cols.length && rows.length && wb.config.ref.row == null) wb.config.ref.row = rows[0].id;
     dynHost.replaceChildren(
-      field('Data table', selectInput(tables.map((t) => ({ value: t.id, label: t.label })), wb.config.ref.table,
+      field('Data table', tablePicker(provider, wb.config.ref.table,
         async (v) => { wb.config.ref.table = v; wb.config.ref.column = null; wb.config.ref.row = null; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
       editDataRow(() => wb.config.ref.table, ctx, () => openImageEditor(block, ctx)),
       !cols.length
@@ -728,7 +728,7 @@ function openTestimonialsEditor(block, ctx) {
     if (cols.length && !cols.find((c) => c.id === wb.config.nameColumn)) wb.config.nameColumn = cols[0].id;
     const optional = (label) => [{ value: '', label }].concat(cols.map((c) => ({ value: c.id, label: c.label })));
     dynHost.replaceChildren(
-      field('Data table', selectInput(tables.map((t) => ({ value: t.id, label: t.label })), wb.config.table,
+      field('Data table', tablePicker(provider, wb.config.table,
         async (v) => { wb.config.table = v; wb.config.nameColumn = null; wb.config.quoteColumn = null; wb.config.ratingColumn = null; wb.config.photoColumn = null; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
       editDataRow(() => wb.config.table, ctx, () => openTestimonialsEditor(block, ctx)),
       field('Name column', selectInput(cols.map((c) => ({ value: c.id, label: c.label })), wb.config.nameColumn, (v) => { wb.config.nameColumn = v; refreshPreview(); })),
@@ -856,7 +856,7 @@ function openLiveTableEditor(block, ctx) {
 
   const body = [
     field('Title (optional)', textInput(wb.config.title || '', (v) => { wb.config.title = v; refreshPreview(); }, { placeholder: 'e.g. All submissions' })),
-    field('Data table', selectInput(provider.tables().map((t) => ({ value: t.id, label: t.label })), wb.config.table,
+    field('Data table', tablePicker(provider, wb.config.table,
       async (v) => { wb.config.table = v; wb.config.columns = null; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
     editDataRow(() => wb.config.table, ctx, () => openLiveTableEditor(block, ctx)),
     dynHost,
@@ -925,7 +925,6 @@ function openSlicerEditor(block, ctx) {
   const tab = (site.tabs || []).find((t) => t.id === ctx.tabId)
     || (site.tabs || []).find((t) => (t.blocks || []).some((b) => b.id === block.id))
     || { blocks: [] };
-  const tables = ctx.provider.tables();
   if (!wb.config.table) wb.config.table = ctx.provider.defaultTable();
   const previewHost = el('div', { class: 'ap-preview' });
   const reach = el('div', { class: 'ap-muted', style: { fontSize: '12px', marginTop: '6px' } });
@@ -967,7 +966,7 @@ function openSlicerEditor(block, ctx) {
   };
 
   const body = [
-    field('Table', selectInput(tables.map((t) => ({ value: t.id, label: t.label || t.id })), wb.config.table, (v) => {
+    field('Table', tablePicker(ctx.provider, wb.config.table, (v) => {
       wb.config.table = v; wb.config.column = '';
       columnHost.replaceChildren(columnField());
       refreshPreview();
@@ -1261,7 +1260,7 @@ function openCalendarEditor(block, ctx) {
 
   const body = [
     field('Title', textInput(wb.config.title || '', (v) => { wb.config.title = v; refreshPreview(); }, { placeholder: 'e.g. Task calendar' })),
-    field('Data table', selectInput(provider.tables().map((t) => ({ value: t.id, label: t.label })), wb.config.table,
+    field('Data table', tablePicker(provider, wb.config.table,
       async (v) => { wb.config.table = v; wb.config.dateColumn = null; wb.config.titleColumn = null; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
     editDataRow(() => wb.config.table, ctx, () => openCalendarEditor(block, ctx)),
     dynHost,
@@ -1296,7 +1295,6 @@ function openInvoiceEditor(block, ctx) {
     previewHost.replaceChildren(renderBlock(clone(wb), { provider, config: { dataTable: c.table } }));
   }, 200);
 
-  const tableOpts = () => provider.tables().map((t) => ({ value: t.id, label: t.label }));
   const colOpts = (table, allowNone = true, noneLabel = '— none —') => {
     const opts = (provider.columns(table) || []).map((x) => ({ value: x.id, label: x.label }));
     return allowNone ? [{ value: '', label: noneLabel }].concat(opts) : opts;
@@ -1334,9 +1332,9 @@ function openInvoiceEditor(block, ctx) {
   function buildItems() {
     const t = c.itemsTable;
     itemsHost.replaceChildren(
-      field('Line items table', selectInput(
-        [{ value: '', label: '— no line items, bill the amount —' }].concat(tableOpts()), t || '',
-        async (v) => { c.itemsTable = v || null; if (v) await ensureRows(provider, v); buildItems(); refreshPreview(); })),
+      field('Line items table', tablePicker(provider, t || '',
+        async (v) => { c.itemsTable = v || null; if (v) await ensureRows(provider, v); buildItems(); refreshPreview(); },
+        { blank: '— no line items, bill the amount —' })),
       t ? field('Links back to the invoice by', selectInput(colOpts(t), c.itemsLinkColumn || '', set('itemsLinkColumn'))) : null,
       t ? field('Description', selectInput(colOpts(t), c.itemDescColumn || '', set('itemDescColumn'))) : null,
       t ? twoUp(
@@ -1353,9 +1351,9 @@ function openInvoiceEditor(block, ctx) {
   function buildClient() {
     const t = c.clientTable;
     clientHost.replaceChildren(
-      field('Client address book', selectInput(
-        [{ value: '', label: '— just use the name on the invoice —' }].concat(tableOpts()), t || '',
-        async (v) => { c.clientTable = v || null; if (v) await ensureRows(provider, v); buildClient(); refreshPreview(); })),
+      field('Client address book', tablePicker(provider, t || '',
+        async (v) => { c.clientTable = v || null; if (v) await ensureRows(provider, v); buildClient(); refreshPreview(); },
+        { blank: '— just use the name on the invoice —' })),
       t ? field('Name column', selectInput(colOpts(t, false), c.clientNameColumn || '', set('clientNameColumn'))) : null,
       // columnPicker reports the whole selection, in table order. This handler once expected
       // (id, on) and so never changed anything: an address line could not be added or removed.
@@ -1376,7 +1374,7 @@ function openInvoiceEditor(block, ctx) {
     hint('Four mastheads over the same document. Banded suits a strong logo, Letterhead reads like printed stationery, Minimal drops the colour entirely.'),
 
     subhead('Where the invoices are'),
-    field('Invoice table', selectInput(tableOpts(), c.table, async (v) => {
+    field('Invoice table', tablePicker(provider, c.table, async (v) => {
       c.table = v; await ensureRows(provider, v);
       Object.assign(c, guessInvoiceConfig(provider.columns(v) || [], provider.tables()));
       buildMap(); buildClient(); refreshPreview();

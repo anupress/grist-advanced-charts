@@ -454,3 +454,30 @@
 .ap-dataedit__pager { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 8px; }
 .ap-dataedit__status { font-size: var(--ap-fs-xs); text-align: center; }
 .ap-dataedit__status.is-dirty { color: var(--ap-link); font-weight: 700; }
+
+/* ---- table picker: a select whose open list can show the table it is over ---- */
+.ap-tpick { position: relative; }
+.ap-tpick__btn { display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; cursor: pointer; appearance: none; -webkit-appearance: none; }
+.ap-tpick__text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ap-tpick__btn::after { content: ""; flex: 0 0 auto; width: 7px; height: 7px; margin: -4px 4px 0 0; border-right: 1.8px solid currentColor; border-bottom: 1.8px solid currentColor; transform: rotate(45deg); opacity: .6; }
+.ap-tpick.is-open .ap-tpick__btn { border-color: var(--ap-primary); box-shadow: var(--ap-ring); }
+.ap-tpick__list { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30; max-height: 264px; overflow: auto; display: none; padding: 4px; background: var(--ap-surface); border: 1px solid var(--ap-border); border-radius: 10px; box-shadow: var(--ap-shadow-lg); }
+.ap-tpick.is-open .ap-tpick__list { display: block; }
+.ap-tpick__opt { display: block; width: 100%; text-align: left; appearance: none; -webkit-appearance: none; background: none; border: 0; border-radius: 7px; padding: 8px 10px; font: inherit; font-size: var(--ap-fs-sm); color: var(--ap-text); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ap-tpick__opt:hover, .ap-tpick__opt:focus-visible { background: var(--ap-bg-soft); outline: none; }
+.ap-tpick__opt[aria-selected="true"] { color: var(--ap-link); font-weight: 600; }
+.ap-tpick__opt.is-missing { color: #c0392b; }
+
+/* ---- table peek: the snapshot on the left while a table is being chosen ---- */
+.ap-peek { position: fixed; z-index: 79; display: none; pointer-events: none; flex-direction: column; background: var(--ap-surface); color: var(--ap-text); border: 1px solid var(--ap-border); border-radius: 16px; box-shadow: var(--ap-shadow-lg); overflow: hidden; }
+.ap-peek.is-open { display: flex; }
+.ap-peek__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--ap-border); }
+.ap-peek__name { font-weight: 800; font-size: var(--ap-fs-md); }
+.ap-peek__meta { font-size: var(--ap-fs-xs); color: var(--ap-text-mute); white-space: nowrap; }
+.ap-peek__scroll { overflow: hidden; }
+.ap-peek__table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 12.5px; }
+.ap-peek__table th, .ap-peek__table td { padding: 7px 10px; border-bottom: 1px solid var(--ap-border); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ap-peek__table th { background: var(--ap-bg-soft); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ap-text-soft); vertical-align: top; }
+.ap-peek__type { display: block; font-size: 10px; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--ap-text-mute); }
+.ap-peek__table tbody tr:last-child td { border-bottom: 0; }
+.ap-peek__foot { padding: 8px 16px; font-size: var(--ap-fs-xs); color: var(--ap-text-mute); border-top: 1px solid var(--ap-border); }

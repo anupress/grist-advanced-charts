@@ -5,6 +5,7 @@
 import { el, clone, uid, debounce } from '../util.js';
 import { icon, chartIcon } from '../assets/icons.js';
 import { openDrawer, closeDrawer, primaryBtn, ghostBtn, subhead, divider } from './ui.js';
+import { peekTable, hidePeek } from './table-peek.js';
 import { evaluateTypes, isMeasure, isTemporal, isDimension } from '../charts/recommend.js';
 import { getChartType, CHART_TYPES } from '../charts/catalog.js';
 import { renderChart } from '../charts/echarts-adapter.js';
@@ -67,11 +68,18 @@ export function openGuidedWizard({ provider, onCreate }) {
       el('p', { class: 'ap-wiz-hint', text: 'Pick the table that has the numbers or entries you want to display.' }),
       el('div', { class: 'ap-wiz-list' }, tables.map((t) => {
         const cols = provider.columns(t.id);
-        return el('button', { class: 'ap-wiz-item' + (state.table === t.id ? ' is-selected' : ''),
-          onClick: () => { state.table = t.id; state.xCol = null; state.yCol = null; state.chartType = null; render(); } }, [
+        const item = el('button', { class: 'ap-wiz-item' + (state.table === t.id ? ' is-selected' : ''),
+          onClick: () => { hidePeek(); state.table = t.id; state.xCol = null; state.yCol = null; state.chartType = null; render(); } }, [
           el('span', { class: 'ap-wiz-item__title', text: t.label || t.id }),
           el('span', { class: 'ap-wiz-item__meta', text: `${cols.length} column${cols.length === 1 ? '' : 's'}` }),
         ]);
+        // The same glance the table picker gives: hover or focus a table and its snapshot appears
+        // on the left, so "which of these has the numbers?" is answered by looking.
+        item.addEventListener('mouseenter', () => peekTable(provider, t.id));
+        item.addEventListener('focus', () => peekTable(provider, t.id));
+        item.addEventListener('mouseleave', hidePeek);
+        item.addEventListener('blur', hidePeek);
+        return item;
       })),
     ]);
   }

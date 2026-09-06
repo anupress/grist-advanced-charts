@@ -4,6 +4,7 @@ import { el, uid, debounce } from '../util.js';
 import { icon, allIconNames, searchIcons } from '../assets/icons.js';
 import { pickImage, readFileAsDataURL } from './imageutil.js';
 import { getMediaLibrary, addMediaAsset } from './media.js';
+import { peekTable, hidePeek } from './table-peek.js';
 
 export function field(labelText, control, hint, infoHtml) {
   const label = labelText
@@ -100,6 +101,96 @@ export function selectInput(options, value, onChange) {
   return sel;
 }
 
+/**
+ * A table chooser that shows the table.
+ *
+ * It looks like the select it replaces; the difference is what happens before the click. Hovering
+ * or arrowing onto a table opens a snapshot of it on the left of the page (table-peek.js): its
+ * columns, their types, the first rows. A native <select> cannot do that — its open list belongs to
+ * the browser, not the page, and reports nothing until a choice is made.
+ *
+ * `options` defaults to the provider's tables. Pass your own for wording like "Use my Sales"; an
+ * entry's `peek` names the table to preview when that differs from its value, and `peek: null`
+ * marks an entry that is not a table at all. `blank` adds a leading empty choice.
+ */
+export function tablePicker(provider, value, onChange, { options, blank } = {}) {
+  const opts = options ? options.slice() : (provider.tables() || []).map((t) => ({ value: t.id, label: t.label || t.id }));
+  if (blank) opts.unshift({ value: '', label: blank, peek: null });
+  const has = (v) => v !== null && v !== undefined && v !== '';
+  // Same rule as selectInput: a saved table this document does not have is shown as such, so the
+  // field never looks set to something it is not.
+  if (has(value) && !opts.some((o) => String(o.value) === String(value))) {
+    opts.unshift({ value: String(value), label: `${value} — not in this document`, peek: null, missing: true });
+  }
+  let cur = has(value) ? String(value) : '';
+  const labelOf = (v) => opts.find((o) => String(o.value) === v)?.label ?? (v || '');
+  const peekOf = (o) => ('peek' in o ? o.peek : (has(o.value) ? String(o.value) : null));
+
+  const text = el('span', { class: 'ap-tpick__text', text: labelOf(cur) });
+  const btn = el('button', { class: 'ap-select ap-tpick__btn', type: 'button', 'aria-haspopup': 'listbox', 'aria-expanded': 'false' }, [text]);
+  const list = el('div', { class: 'ap-tpick__list', role: 'listbox', tabindex: '-1' });
+  const wrap = el('div', { class: 'ap-tpick' }, [btn, list]);
+  const items = [];
+
+  const onDoc = (e) => { if (!wrap.contains(e.target)) close(); };
+  const close = ({ focusBtn = false } = {}) => {
+    if (!wrap.classList.contains('is-open')) return;
+    wrap.classList.remove('is-open');
+    btn.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('mousedown', onDoc, true);
+    hidePeek();
+    if (focusBtn) btn.focus();
+  };
+  // Focus an option and show its table. Shown explicitly rather than through the focus event: a
+  // document without system focus (a background tab, a headless run) moves activeElement but
+  // fires no focus event, and the snapshot would then lag one step behind the keyboard.
+  const land = (it) => { if (!it) return; it.focus(); it.__show(); };
+  const open = () => {
+    if (wrap.classList.contains('is-open')) return;
+    wrap.classList.add('is-open');
+    btn.setAttribute('aria-expanded', 'true');
+    document.addEventListener('mousedown', onDoc, true);
+    // Land on the current table so the keyboard has somewhere to start — and so the snapshot of
+    // the table already chosen appears at once, which is often the question being asked.
+    land(items.find((i) => i.dataset.v === cur) || items[0]);
+  };
+  const pick = (o) => {
+    cur = String(o.value);
+    text.textContent = o.label;
+    for (const i of items) i.setAttribute('aria-selected', i.dataset.v === cur ? 'true' : 'false');
+    // Close first: onChange may rebuild the editor around this control.
+    close({ focusBtn: true });
+    onChange(o.value);
+  };
+
+  for (const o of opts) {
+    const it = el('button', {
+      class: 'ap-tpick__opt' + (o.missing ? ' is-missing' : ''), type: 'button', role: 'option',
+      dataset: { v: String(o.value) }, 'aria-selected': String(o.value) === cur ? 'true' : 'false', text: o.label,
+    });
+    const show = () => { const p = peekOf(o); if (p) peekTable(provider, p); else hidePeek(); };
+    it.__show = show;
+    it.addEventListener('mouseenter', show);
+    it.addEventListener('focus', show);
+    it.addEventListener('click', () => pick(o));
+    items.push(it);
+    list.append(it);
+  }
+  list.addEventListener('mouseleave', hidePeek);
+  list.addEventListener('keydown', (e) => {
+    const i = items.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') { e.preventDefault(); land(items[Math.min(items.length - 1, i + 1)]); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); land(items[Math.max(0, i - 1)]); }
+    else if (e.key === 'Home') { e.preventDefault(); land(items[0]); }
+    else if (e.key === 'End') { e.preventDefault(); land(items[items.length - 1]); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close({ focusBtn: true }); }
+    else if (e.key === 'Tab') close();
+  });
+  btn.addEventListener('click', () => (wrap.classList.contains('is-open') ? close() : open()));
+  btn.addEventListener('keydown', (e) => { if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); open(); } });
+  return wrap;
+}
+
 export function checkboxRow(labelText, checked, onChange) {
   const id = uid('cb');
   const box = el('input', { type: 'checkbox', id, checked: !!checked });
@@ -143,6 +234,7 @@ export function openDrawer({ title, body, footer, wide = false }) {
   // back into Settings, replacement is the common case.
   closeDrawer();
   document.querySelectorAll('.ap-drawer').forEach((d) => d.remove());
+  hidePeek();
   const bodyEl = el('div', { class: 'ap-drawer__body' }, [].concat(body));
   const drawer = el('aside', { class: 'ap-drawer' + (wide ? ' ap-drawer--wide' : ''), role: 'dialog', 'aria-label': title }, [
     el('div', { class: 'ap-drawer__head' }, [
@@ -164,6 +256,7 @@ export function openDrawer({ title, body, footer, wide = false }) {
 }
 
 export function closeDrawer() {
+  hidePeek();
   if (!current) return;
   const d = current; current = null;
   d.classList.remove('is-open');

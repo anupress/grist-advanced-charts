@@ -3,6 +3,27 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.3.0] — 2026-09-06
+
+### Added
+
+- **A look at the table while choosing it.** Every "Data table" chooser in the
+  block editors, the guided wizard's first step and the template table setup
+  now show a snapshot on the left of the page for the table under the mouse
+  or the keyboard: its columns with their types, the first six rows with
+  references resolved to names, and a line saying how much is not shown. It is
+  a look, not a control: the panel takes no clicks, so the mouse can pass over
+  it on the way to anything else.
+
+  The chooser itself is no longer a native select. A native select's open list
+  belongs to the browser and reports nothing until a choice is made, so it
+  cannot say which entry the mouse is over. The replacement keeps arrow keys,
+  Home and End, Escape, and closing on a click outside, and it lands on the
+  current table when it opens, so the first snapshot shown is the one already
+  chosen. On a live document a table not yet read says "Loading rows…" and
+  fills in when they arrive. Asked for after choosing between Members, People
+  and Contacts by name alone, twice, and guessing wrong once.
+
 ## [3.2.5] — 2026-09-06
 
 Three faults in the block editors' column pickers, found while a reader tried

@@ -13,7 +13,7 @@
 
 import { el, clone, toast, escapeHtml, designSignature } from '../util.js';
 import { icon } from '../assets/icons.js';
-import { openDrawer, closeDrawer, primaryBtn, ghostBtn, subhead, divider, field, selectInput, checkboxRow } from './ui.js';
+import { openDrawer, closeDrawer, primaryBtn, ghostBtn, subhead, divider, field, selectInput, tablePicker, checkboxRow } from './ui.js';
 import { emptySite } from '../data/default-site.js';
 import { TEMPLATES } from '../data/templates/index.js';
 import { adaptTemplateToTable, DummyProvider } from '../data/provider.js';
@@ -508,15 +508,17 @@ export function openTemplatePicker(opts) {
       const cols = templateTableColumns(t, name);
       const choice = state.tableChoices[name] || (state.tableChoices[name] = { target: OWN, columns: {} });
       const infoHtml = 'Columns this template uses:<br>' + cols.map((c) => `&bull; <b>${escapeHtml(c.label || c.id)}</b> <span style="opacity:.6">(${escapeHtml(c.type)})</span>`).join('<br>');
+      // Hovering an entry shows that table on the left, so "use my Contacts or my People?" can be
+      // settled by looking. The sample-data entry previews the existing table only when there is one.
       const options = [
-        { value: OWN, label: haveIds.has(name) ? `Use “${name}” (already in your document)` : `Create “${name}” with sample data` },
+        { value: OWN, peek: haveIds.has(name) ? name : null, label: haveIds.has(name) ? `Use “${name}” (already in your document)` : `Create “${name}” with sample data` },
         ...docTables.filter((x) => x.id !== name).map((x) => ({ value: x.id, label: `Use my “${x.label || x.id}”` })),
       ];
-      const sel = selectInput(options, choice.target, (v) => {
+      const sel = tablePicker(provider, choice.target, (v) => {
         choice.target = v;
         if (v !== OWN) { const tc = provider.columns(v) || []; choice.columns = {}; for (const c of cols) choice.columns[c.id] = bestMatch(c.id, c.label, tc); }
         render();
-      });
+      }, { options });
       const row = el('div', { class: 'ap-maptable' }, [field(name, sel, null, infoHtml)]);
 
       if (choice.target && choice.target !== OWN) {
