@@ -262,7 +262,7 @@ export const DEFAULT_SITE = {
             note: 'Real HTML, CSS and JavaScript running in a sandboxed frame — try changing the numbers. The defaults are the first and last month of revenue in this demo.',
           }),
         spacer('e18', 20),
-        button('e19', 'See every block in the Add Element panel', 'ghost', 'center', urlTarget(GUIDE), 12),
+        button('e19', 'See every block in the Add Section panel', 'ghost', 'center', urlTarget(GUIDE), 12),
       ],
     },
     {

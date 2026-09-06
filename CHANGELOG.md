@@ -3,6 +3,28 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.5.0] — 2026-09-06
+
+### Added
+
+- **Add Section.** The tile at the end of every page now says Add Section and
+  opens with a row of layouts: 1×2 (a slicer above a chart), 2×1, 2×2, 3×2,
+  3×3, 4×2, or custom. Pick one and the grid lands on the page with the chooser
+  already open for its first cell, so "a slicer over a chart" is three clicks.
+  The single-element list sits right below, unchanged, for the one-block case.
+  Inside a cell the chooser is titled "Add to this cell" and offers no grid.
+- **Undo, redo and a history panel.** Two arrows in the edit bar and Ctrl+Z /
+  Ctrl+Y (Ctrl+Shift+Z), which stay out of text fields. Every change the editor
+  makes was already reported through one function; each now becomes a step with
+  a plain-language label — "Added slicer to a cell", "Changed theme",
+  "Reordered pages". A burst of marks from one gesture, typing a title or
+  dragging a slider, collapses into one step. The History button lists the
+  steps newest first, marks the current one and the last saved one, and
+  clicking any step restores it; the later steps stay until a new change
+  replaces them. The list lives while the editor is open and clears when Done
+  closes it. Going back to the saved step clears the unsaved flag, so Done
+  does not republish a design that was undone back to what was published.
+
 ## [3.4.0] — 2026-09-06
 
 ### Added

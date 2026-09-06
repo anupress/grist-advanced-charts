@@ -10,7 +10,7 @@ import * as bridge from '../grist/bridge.js';
 import { tablesInConfig } from '../data/provider.js';
 import { openBlockEditor } from './block-editor.js';
 import { newBlock } from './new-block.js';
-import { findBlockIn, flattenBlocks } from '../data/grid.js';
+import { findBlockIn, flattenBlocks, emptyCells } from '../data/grid.js';
 import { openGuidedWizard } from './wizard.js';
 import { openBlockChooser } from './chooser.js';
 import { openTemplatePicker } from './template-picker.js';
@@ -22,15 +22,106 @@ import { VERSION } from '../version.js';
 
 let working, provider, live, root, onExit, activeTabId, dirty = false;
 
+// ---------------- History (undo / redo) ----------------
+// Every change the editor makes already goes through mark(); the snapshot taken after it is one
+// step in this list. Session-scoped on purpose: it lives while the editor is open and is cleared
+// when Done closes it, so "undo" means "since I started editing", which is what people mean by
+// it. Entries hold the design as JSON — a copy no later edit can reach into.
+const HISTORY_MAX = 100;
+let history = [], cursor = -1, savedCursor = 0;
+let markContext = 'Change';          // the label a panel's many small marks fall back to
+let markTimer = null, pendingLabel = null;
+
 export function openBuilder(opts) {
   working = clone(opts.config);
   provider = opts.provider; live = !!opts.live; root = opts.root; onExit = opts.onExit;
   activeTabId = working.tabs?.[0]?.id || null;
   dirty = false;
+  history = [{ label: 'Opened the editor', at: Date.now(), json: JSON.stringify(working) }];
+  cursor = 0; savedCursor = 0; markContext = 'Change';
+  document.removeEventListener('keydown', onHistoryKey);
+  document.addEventListener('keydown', onHistoryKey);
   rerender();
 }
 
-function mark() { dirty = true; }
+// Called after a change to `working`. The snapshot is taken on the next tick, so a caller that
+// marks before its last assignment still gets the finished state, and a burst of marks from one
+// gesture (typing a title, dragging a slider) collapses into one step.
+function mark(label = markContext) {
+  dirty = true;
+  pendingLabel = label;
+  if (markTimer) return;
+  markTimer = setTimeout(() => { markTimer = null; pushHistory(pendingLabel); }, 0);
+}
+function pushHistory(label) {
+  const json = JSON.stringify(working);
+  const now = Date.now();
+  const cur = history[cursor];
+  if (cur && cur.json === json) return;   // marked, but nothing actually changed
+  // The same kind of change again within a moment is the same step — unless that step is the
+  // saved one, which must stay exactly what was saved.
+  if (cur && cur.label === label && now - cur.at < 1500 && cursor !== savedCursor && cursor === history.length - 1) {
+    history[cursor] = { label, at: now, json };
+  } else {
+    history = history.slice(0, cursor + 1);
+    history.push({ label, at: now, json });
+    if (history.length > HISTORY_MAX) { history.shift(); savedCursor = Math.max(-1, savedCursor - 1); }
+    cursor = history.length - 1;
+  }
+  syncHistoryButtons();
+}
+function goTo(i) {
+  if (i < 0 || i >= history.length || i === cursor) return;
+  cursor = i;
+  working = JSON.parse(history[i].json);
+  if (!(working.tabs || []).some((t) => t.id === activeTabId)) activeTabId = working.tabs?.[0]?.id || null;
+  dirty = cursor !== savedCursor;
+  applyTheme(working.theme, root);
+  applyDesign(working.design, root);
+  closeDrawer();
+  rerender();
+}
+const undo = () => goTo(cursor - 1);
+const redo = () => goTo(cursor + 1);
+function syncHistoryButtons() {
+  root.querySelectorAll('.ap-editbar [data-history]').forEach((b) => {
+    b.disabled = b.dataset.history === 'undo' ? cursor <= 0 : cursor >= history.length - 1;
+  });
+}
+function onHistoryKey(e) {
+  if (!(e.ctrlKey || e.metaKey)) return;
+  if (e.target?.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+  const k = String(e.key).toLowerCase();
+  if (k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+  else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); redo(); }
+}
+const timeAgo = (t) => {
+  const s = Math.round((Date.now() - t) / 1000);
+  if (s < 10) return 'just now';
+  if (s < 60) return `${s} s ago`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m} min ago`;
+  return new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+function openHistoryPanel() {
+  const rows = history.map((h, i) => ({ h, i })).reverse().map(({ h, i }) => el('button', {
+    class: 'ap-hist' + (i === cursor ? ' is-current' : '') + (i > cursor ? ' is-ahead' : ''), type: 'button',
+    'aria-current': i === cursor ? 'step' : null,
+    onClick: () => { goTo(i); openHistoryPanel(); },
+  }, [
+    el('span', { class: 'ap-hist__label', text: h.label }),
+    el('span', { class: 'ap-hist__meta', text: [timeAgo(h.at), i === savedCursor ? 'saved' : null, i === cursor ? 'current' : null].filter(Boolean).join(' · ') }),
+  ]));
+  openDrawer({
+    title: 'History',
+    body: [
+      el('p', { class: 'ap-muted', style: { fontSize: '13px', marginBottom: '12px' },
+        text: 'Every change since you opened the editor, newest first. Click a step to go back to it; the steps after it stay here until you make a new change. Undo is Ctrl+Z, redo Ctrl+Y. The list is cleared when you leave the editor.' }),
+      el('div', { class: 'ap-histlist' }, rows),
+    ],
+    footer: [ghostBtn('Close', () => closeDrawer())],
+  });
+}
 const findTab = (id) => (working.tabs || []).find((t) => t.id === id);
 // Where a block is: on a tab's page list, or in a cell of a Grid block on that tab (then `parent`
 // is the grid and `idx` the cell).
@@ -53,7 +144,7 @@ function rerender() {
     onToggleTheme: () => {
       const next = (root.getAttribute('data-mode') === 'dark') ? 'light' : 'dark';
       working.theme = { ...(working.theme || {}), mode: next };
-      applyTheme(working.theme, root); mark(); rerender();
+      applyTheme(working.theme, root); mark('Switched light and dark'); rerender();
     },
     edit: {
       active: true,
@@ -79,20 +170,28 @@ function setupDnd() {
     makeBlocksSortable(grid, (orderIds) => {
       const tab = findTab(tabId); if (!tab) return;
       tab.blocks.sort((a, b) => orderIds.indexOf(a.id) - orderIds.indexOf(b.id));
-      mark();
+      mark('Reordered blocks');
     });
   });
   const nav = root.querySelector('#ap-nav');
-  makeTabsSortable(nav, (orderIds) => { working.tabs.sort((a, b) => orderIds.indexOf(a.id) - orderIds.indexOf(b.id)); mark(); });
+  makeTabsSortable(nav, (orderIds) => { working.tabs.sort((a, b) => orderIds.indexOf(a.id) - orderIds.indexOf(b.id)); mark('Reordered pages'); });
 }
 
 // Everything that configures the SITE lives behind one button; the bar keeps only the two actions
 // that end the session. Five separate buttons made the bar the busiest thing on screen and put
 // "Templates" — which replaces the entire design — one stray click from "Save & Publish".
 function buildEditBar() {
+  const hist = (kind, title) => el('button', {
+    class: 'ap-btn ap-btn--icon ap-btn--sm', type: 'button', title, 'aria-label': title,
+    dataset: { history: kind }, disabled: kind === 'undo' ? cursor <= 0 : cursor >= history.length - 1,
+    onClick: kind === 'undo' ? undo : redo,
+  }, [icon(kind)]);
   return el('div', { class: 'ap-editbar' }, [
     el('div', { class: 'ap-editbar__brand' }, [ brandLogo(24), el('span', { class: 'ap-editbar__tag', text: 'EDITING' }) ]),
     el('div', { class: 'ap-row' }, [
+      hist('undo', 'Undo (Ctrl+Z)'),
+      hist('redo', 'Redo (Ctrl+Y)'),
+      barBtn('history', 'History', openHistoryPanel),
       barBtn('settings', 'Settings', openSettingsPanel),
       ghostBtnWhite('Done', finish),
       primaryWhite('Save & Publish', save),
@@ -153,9 +252,28 @@ const defaultBlock = (type) => newBlock(type, { table: working.dataTable || prov
 function chooseNewBlock(tabId) {
   openBlockChooser({
     onPick: (type) => { closeDrawer(); addBlock(tabId, type); },
-    onGuided: () => { closeDrawer(); openGuidedWizard({ provider, onCreate: (block) => { const tab = findTab(tabId); (tab.blocks ||= []).push(block); mark(); rerender(); } }); },
+    onLayout: (cols, rows) => { closeDrawer(); addLayout(tabId, cols, rows); },
+    onGuided: () => { closeDrawer(); openGuidedWizard({ provider, onCreate: (block) => { const tab = findTab(tabId); (tab.blocks ||= []).push(block); mark('Added chart'); rerender(); } }); },
     onTemplates: () => { closeDrawer(); openTemplatesPanel(); },
   });
+}
+// A section laid out first and filled second. The grid lands on the page at once and the chooser
+// opens for its first cell, so "a slicer above a chart" is: pick 1 × 2, pick Slicer, pick Chart.
+// Custom (no size) goes through the grid editor, where columns and rows are chosen by hand.
+function addLayout(tabId, cols, rows) {
+  const grid = defaultBlock('grid');
+  if (!cols) {
+    openBlockEditor(grid, { provider, site: working, tabId, onApply: (nb) => {
+      delete nb.__isNew; const tab = findTab(tabId); (tab.blocks ||= []).push(nb);
+      mark(`Added a ${nb.config.cols} × ${nb.config.rows} section`); rerender();
+    } });
+    return;
+  }
+  delete grid.__isNew;
+  grid.config.cols = cols; grid.config.rows = rows; grid.config.cells = emptyCells(cols, rows);
+  const tab = findTab(tabId); (tab.blocks ||= []).push(grid);
+  mark(`Added a ${cols} × ${rows} section`); rerender();
+  addBlockInGrid(grid.id, 0);
 }
 
 function openTemplatesPanel() {
@@ -165,7 +283,7 @@ function openTemplatesPanel() {
     onApply: (newConfig) => {
       working = newConfig;
       activeTabId = working.tabs?.[0]?.id || null;
-      mark();
+      mark('Applied a template');
       rerender();
     },
     // Applying a template writes the design itself, so once that lands there is nothing left
@@ -175,24 +293,24 @@ function openTemplatesPanel() {
     // edited while it was in flight is genuinely unsaved — clearing the flag regardless would let
     // Done discard it. templateSig is the fingerprint taken at the instant it was written, so any
     // change since shows up here.
-    onSaved: () => { if (designSignature(working) === working.templateSig) dirty = false; },
+    onSaved: () => { if (designSignature(working) === working.templateSig) { dirty = false; savedCursor = cursor; } },
   });
 }
 
 function addBlock(tabId, type) {
   const block = defaultBlock(type, tabId);
-  openBlockEditor(block, { provider, site: working, tabId, onApply: (nb) => { delete nb.__isNew; const tab = findTab(tabId); (tab.blocks ||= []).push(nb); mark(); rerender(); } });
+  openBlockEditor(block, { provider, site: working, tabId, onApply: (nb) => { delete nb.__isNew; const tab = findTab(tabId); (tab.blocks ||= []).push(nb); mark(`Added ${nb.type}`); rerender(); } });
 }
 function editBlock(blockId) {
   const found = findBlock(blockId); if (!found) return;
-  openBlockEditor(found.block, { provider, site: working, tabId: found.tab.id, onApply: (nb) => { delete nb.__isNew; placeBlock(found, nb); mark(); rerender(); } });
+  openBlockEditor(found.block, { provider, site: working, tabId: found.tab.id, onApply: (nb) => { delete nb.__isNew; placeBlock(found, nb); mark(`Edited ${nb.type}`); rerender(); } });
 }
 function deleteBlock(blockId) {
   const found = findBlock(blockId); if (!found) return;
   // A deleted cell stays a cell: the grid keeps its shape and the cell goes back to empty.
   if (found.parent) found.parent.config.cells[found.idx] = null;
   else found.tab.blocks.splice(found.idx, 1);
-  mark(); rerender();
+  mark(`Deleted ${found.block.type}`); rerender();
 }
 // The Add button in an empty cell of a Grid block. Same chooser and same editors as the page's
 // Add Element, landing in the cell instead of at the end of the page. One level only: the chooser
@@ -200,9 +318,9 @@ function deleteBlock(blockId) {
 function addBlockInGrid(gridId, cell) {
   const found = findBlock(gridId); if (!found || found.block.type !== 'grid') return;
   const grid = found.block;
-  const put = (nb) => { delete nb.__isNew; (grid.config.cells ||= [])[cell] = nb; mark(); rerender(); };
+  const put = (nb) => { delete nb.__isNew; (grid.config.cells ||= [])[cell] = nb; mark(`Added ${nb.type} to a cell`); rerender(); };
   openBlockChooser({
-    exclude: ['grid'],
+    exclude: ['grid'], title: 'Add to this cell',
     onPick: (type) => { closeDrawer(); openBlockEditor(defaultBlock(type), { provider, site: working, tabId: found.tab.id, onApply: put }); },
     onGuided: () => { closeDrawer(); openGuidedWizard({ provider, onCreate: put }); },
     onTemplates: () => { closeDrawer(); openTemplatesPanel(); },
@@ -211,6 +329,7 @@ function addBlockInGrid(gridId, cell) {
 
 // ---------------- Theme ----------------
 function openThemePanel() {
+  markContext = 'Changed theme';
   const t = working.theme || (working.theme = {});
   const cards = el('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' } },
     PALETTES.map((p) => {
@@ -234,6 +353,7 @@ function readPrimary() { const p = PALETTES.find((x) => x.id === (working.theme?
 
 // ---------------- Global design ----------------
 function openDesignPanel() {
+  markContext = 'Changed design';
   const d = working.design || (working.design = {});
   const apply = () => { applyDesign(working.design, root); mark(); rerenderSoon(); };
   openDrawer({ title: 'Design', body: [
@@ -248,6 +368,7 @@ function openDesignPanel() {
 
 // ---------------- Header ----------------
 function openHeaderPanel() {
+  markContext = 'Edited header';
   const h = working.header || (working.header = {});
   const logoPreview = el('div', { class: 'ap-row', style: { marginBottom: '10px' } }, [logoThumb(h)]);
   const fileInput = el('input', { type: 'file', accept: 'image/*', style: { display: 'none' } });
@@ -269,6 +390,7 @@ function logoThumb(h) {
 
 // ---------------- Footer ----------------
 function openFooterPanel() {
+  markContext = 'Edited footer';
   const f = working.footer || (working.footer = {});
   const linksHost = el('div');
   function renderLinks() {
@@ -297,6 +419,7 @@ function openFooterPanel() {
 
 // ---------------- Tabs / pages ----------------
 function openTabsPanel() {
+  markContext = 'Edited pages';
   const host = el('div');
   function render() {
     host.replaceChildren(subhead('Pages (tabs)'));
@@ -336,6 +459,7 @@ function openTabsPanel() {
 }
 
 function openHeroEditor(tabOrId) {
+  markContext = 'Edited hero';
   const tab = typeof tabOrId === 'string' ? findTab(tabOrId) : tabOrId;
   if (!tab) return;
   openDrawer({
@@ -384,10 +508,14 @@ async function save() {
     toast('Demo mode — connect inside Grist to save', '');
   }
   dirty = false;
+  savedCursor = cursor;
+  syncHistoryButtons();
 }
 
 async function finish() {
   if (live && dirty) await save();
   closeDrawer();
+  // The session's history goes with the editor; the next Edit starts a fresh one.
+  document.removeEventListener('keydown', onHistoryKey);
   onExit?.(cleanConfig());
 }

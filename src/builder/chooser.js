@@ -12,15 +12,46 @@ import { icon } from '../assets/icons.js';
 import { openDrawer, closeDrawer, ghostBtn, infoButton } from './ui.js';
 import { CATEGORIES, BLOCK_CATALOG } from './block-catalog.js';
 
+// The layouts offered at the top of "Add Section": a Grid block of that shape, created at once and
+// filled cell by cell. Small, and named for what people build with them.
+const LAYOUTS = [
+  { cols: 1, rows: 2, name: 'Stacked', desc: 'A slicer on top, a chart underneath' },
+  { cols: 2, rows: 1, name: 'Side by side', desc: 'Two blocks sharing one row' },
+  { cols: 2, rows: 2, name: 'Four up', desc: 'Two by two' },
+  { cols: 3, rows: 2, name: 'Six', desc: 'Three across, two down' },
+  { cols: 3, rows: 3, name: 'Nine', desc: 'Three by three' },
+  { cols: 4, rows: 2, name: 'Eight', desc: 'Four across, two down' },
+];
+
 // `exclude` hides block types that make no sense where the chooser was opened from — a grid's
-// cell does not offer another grid.
-export function openBlockChooser({ onPick, onGuided, onTemplates, exclude = [] }) {
+// cell does not offer another grid. `onLayout(cols, rows)` adds the layout row at the top and
+// titles the drawer "Add Section"; `onLayout(null, null)` means "custom", for the grid editor.
+export function openBlockChooser({ onPick, onGuided, onTemplates, onLayout, exclude = [], title }) {
   let query = '';
   render();
 
   function render() {
-    openDrawer({ title: 'Add Element', body: body(), footer: [ghostBtn('Cancel', () => closeDrawer())] });
+    openDrawer({ title: title || (onLayout ? 'Add Section' : 'Add Element'), body: body(), footer: [ghostBtn('Cancel', () => closeDrawer())] });
     document.querySelector('.ap-el-search')?.focus();
+  }
+
+  function layoutSection() {
+    const glyph = (cols, rows) => el('span', { class: 'ap-laytile__glyph', style: { gridTemplateColumns: `repeat(${cols}, 1fr)` } },
+      Array.from({ length: cols * rows }, () => el('i')));
+    const tiles = LAYOUTS.map((L) => el('button', {
+      class: 'ap-laytile', type: 'button', title: L.desc, 'aria-label': `${L.cols} by ${L.rows}: ${L.desc}`,
+      onClick: () => onLayout(L.cols, L.rows),
+    }, [glyph(L.cols, L.rows), el('span', { class: 'ap-laytile__name', text: `${L.cols} × ${L.rows}` }), el('span', { class: 'ap-laytile__desc', text: L.name })]));
+    tiles.push(el('button', { class: 'ap-laytile ap-laytile--custom', type: 'button', title: 'Choose columns and rows yourself, up to 4 × 4', onClick: () => onLayout(null, null) }, [
+      el('span', { class: 'ap-laytile__glyph ap-laytile__glyph--icon' }, [icon('grid')]),
+      el('span', { class: 'ap-laytile__name', text: 'Custom' }),
+      el('span', { class: 'ap-laytile__desc', text: 'Up to 4 × 4' }),
+    ]));
+    return el('div', { class: 'ap-layouts' }, [
+      el('div', { class: 'ap-el-cat__label', text: 'Start with a layout' }),
+      el('div', { class: 'ap-muted', style: { fontSize: '12px', margin: '2px 0 8px' }, text: 'A section of cells you fill one by one: a slicer above a chart, four stat cards in one panel. Pick a shape, then pick what goes in the first cell.' }),
+      el('div', { class: 'ap-laytiles' }, tiles),
+    ]);
   }
 
   function body() {
@@ -48,6 +79,8 @@ export function openBlockChooser({ onPick, onGuided, onTemplates, exclude = [] }
     refreshList();
 
     return el('div', { style: { display: 'grid', gap: '14px' } }, [
+      onLayout ? layoutSection() : null,
+      onLayout ? el('div', { class: 'ap-addtile-sep' }, ['or one element on its own']) : null,
       guided,
       templatesLink,
       el('div', { class: 'ap-addtile-sep' }, ['or pick a specific element']),

@@ -488,3 +488,22 @@
 .ap-gridblock__add { flex: 1; appearance: none; -webkit-appearance: none; background: transparent; border: 0; border-radius: inherit; color: var(--ap-text-mute); font: inherit; font-size: var(--ap-fs-sm); font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
 .ap-gridblock__add:hover { color: var(--ap-link); background: color-mix(in srgb, var(--ap-primary) 6%, transparent); }
 .is-editing .ap-block--nested .ap-block__tools { top: 6px; right: 6px; }
+
+/* ---- "Add Section": layout tiles above the element list ---- */
+.ap-laytiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.ap-laytile { appearance: none; -webkit-appearance: none; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px 8px; border: 1.5px solid var(--ap-border); border-radius: 12px; background: var(--ap-surface); color: var(--ap-text); font: inherit; cursor: pointer; transition: all .14s var(--ap-ease); }
+.ap-laytile:hover, .ap-laytile:focus-visible { border-color: var(--ap-primary); background: color-mix(in srgb, var(--ap-primary) 6%, var(--ap-surface)); outline: none; }
+.ap-laytile__glyph { display: grid; gap: 3px; width: 40px; height: 30px; }
+.ap-laytile__glyph i { display: block; background: color-mix(in srgb, var(--ap-primary) 55%, var(--ap-surface)); border-radius: 3px; min-height: 0; }
+.ap-laytile__glyph--icon { display: flex; align-items: center; justify-content: center; color: var(--ap-primary); }
+.ap-laytile__name { font-size: var(--ap-fs-sm); font-weight: 700; }
+.ap-laytile__desc { font-size: 11px; color: var(--ap-text-mute); }
+
+/* ---- History panel ---- */
+.ap-histlist { display: flex; flex-direction: column; gap: 6px; }
+.ap-hist { appearance: none; -webkit-appearance: none; width: 100%; text-align: left; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 9px 12px; border: 1.5px solid var(--ap-border); border-radius: 10px; background: var(--ap-surface); color: var(--ap-text); font: inherit; font-size: var(--ap-fs-sm); cursor: pointer; }
+.ap-hist:hover { border-color: var(--ap-primary); }
+.ap-hist.is-current { border-color: var(--ap-primary); background: color-mix(in srgb, var(--ap-primary) 10%, var(--ap-surface)); font-weight: 700; }
+.ap-hist.is-ahead { opacity: .6; }
+.ap-hist__meta { font-size: 11px; color: var(--ap-text-mute); white-space: nowrap; }
+.ap-editbar .ap-btn[disabled] { opacity: .35; cursor: default; }
