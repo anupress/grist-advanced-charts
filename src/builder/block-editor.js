@@ -70,8 +70,9 @@ export function openBlockEditor(block, ctx) {
 function editDataRow(getTable, ctx, reopen) {
   const table = getTable();
   if (!ctx.provider?.isLive || !table) return null;
+  const label = el('span', { text: `Edit the data in ${table}` });
   const btn = el('button', { class: 'ap-btn ap-btn--soft ap-btn--sm ap-dataedit__open', type: 'button' },
-    [icon('database'), el('span', { text: `Edit the data in ${table}` })]);
+    [icon('database'), label]);
   btn.addEventListener('click', () => {
     openDataEditor({
       provider: ctx.provider,
@@ -80,11 +81,21 @@ function editDataRow(getTable, ctx, reopen) {
       onCancel: reopen,
     });
   });
-  return el('div', { class: 'ap-dataedit__openrow' }, [
+  const row = el('div', { class: 'ap-dataedit__openrow' }, [
     btn,
     el('div', { class: 'ap-muted', style: { fontSize: '11.5px', marginTop: '4px' },
       text: 'Correct a value or add a row without leaving the page. Writes to your Grist table.' }),
   ]);
+  // The button always opened the table currently picked, but its label was written once and kept
+  // naming the table the editor opened with. Any change in the drawer re-reads the picker, so the
+  // label follows without each editor having to wire it. Deferred one tick: the row is built
+  // before the drawer exists, and its own listeners run before this bubbled one, so the config
+  // holds the new table by the time it is read.
+  queueMicrotask(() => row.closest('.ap-drawer')?.addEventListener('change', () => {
+    const t = getTable();
+    if (t) label.textContent = `Edit the data in ${t}`;
+  }));
+  return row;
 }
 
 async function ensureRows(provider, table) {
@@ -202,17 +213,28 @@ function openChartEditor(block, ctx) {
   refreshPreview();
 }
 
+// A list of column pills; `onToggle` receives the selected ids, in table order, after every click.
+//
+// Each pill repaints itself when clicked. It used to rely on the caller rebuilding the list, and
+// the data table editor never did: a click added the column to the block (the preview further
+// down changed) while the pill kept its "+", so the reader concluded the column could not be
+// chosen. The pill is the control; it must show its own state.
 function columnPicker(columns, selected, onToggle) {
   const sel = new Set(selected);
   const list = el('div', { class: 'ap-collist' });
   for (const c of columns) {
-    const pill = el('button', { class: 'ap-colpill' + (sel.has(c.id) ? ' is-on' : ''), dataset: { id: c.id } }, [
-      icon(sel.has(c.id) ? 'check' : 'plus'),
+    const on = sel.has(c.id);
+    const pill = el('button', { class: 'ap-colpill' + (on ? ' is-on' : ''), type: 'button', dataset: { id: c.id }, 'aria-pressed': on ? 'true' : 'false' }, [
+      icon(on ? 'check' : 'plus'),
       el('span', { text: c.label || c.id }),
       el('span', { class: 'ap-coltype', text: shortType(c.type) }),
     ]);
     pill.addEventListener('click', () => {
-      if (sel.has(c.id)) sel.delete(c.id); else sel.add(c.id);
+      const now = !sel.has(c.id);
+      if (now) sel.add(c.id); else sel.delete(c.id);
+      pill.classList.toggle('is-on', now);
+      pill.setAttribute('aria-pressed', now ? 'true' : 'false');
+      pill.firstChild.replaceWith(icon(now ? 'check' : 'plus'));
       onToggle([...columns.filter((x) => sel.has(x.id)).map((x) => x.id)]);
     });
     list.append(pill);
@@ -1335,10 +1357,10 @@ function openInvoiceEditor(block, ctx) {
         [{ value: '', label: '— just use the name on the invoice —' }].concat(tableOpts()), t || '',
         async (v) => { c.clientTable = v || null; if (v) await ensureRows(provider, v); buildClient(); refreshPreview(); })),
       t ? field('Name column', selectInput(colOpts(t, false), c.clientNameColumn || '', set('clientNameColumn'))) : null,
-      t ? field('Address lines', columnPicker(provider.columns(t) || [], c.clientAddressColumns || [], (id, on) => {
-        const list = new Set(c.clientAddressColumns || []);
-        if (on) list.add(id); else list.delete(id);
-        c.clientAddressColumns = [...list];
+      // columnPicker reports the whole selection, in table order. This handler once expected
+      // (id, on) and so never changed anything: an address line could not be added or removed.
+      t ? field('Address lines', columnPicker(provider.columns(t) || [], c.clientAddressColumns || [], (ids) => {
+        c.clientAddressColumns = ids;
         refreshPreview();
       })) : null,
       t ? hint('Matched by name, or followed directly when the invoice column is a Grist reference.') : null,

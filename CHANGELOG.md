@@ -3,6 +3,25 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.2.5] — 2026-09-06
+
+Three faults in the block editors' column pickers, found while a reader tried
+to choose columns for a Data table.
+
+### Fixed
+
+- **Column pills did not show their own state.** Clicking "+" on a column
+  added it to the block (the preview further down changed) but the pill kept
+  its "+", so the column looked unselectable. The data table editor was the
+  worst case because it never rebuilt the list. Pills now repaint on click and
+  carry `aria-pressed`.
+- **Invoice address lines could not be chosen.** The "Address lines" picker's
+  handler expected one id and an on/off flag while the picker reports the whole
+  selection, so every click was a no-op.
+- **"Edit the data in …" kept naming the table the editor opened with** after
+  the table dropdown was changed. The button already opened the right table;
+  only the label lagged. It follows the picker now.
+
 ## [3.2.4] — 2026-09-06
 
 The widget now says which build it is. After 3.2.3 went live, a reader's
