@@ -28,6 +28,24 @@ eq('registry: damaged row', D.parseRegistry('{nope'), [{ id: 'site', name: 'Main
 eq('registry: default first, found ids appended', D.parseRegistry('[{"id":"ops","name":"Operations"},{"id":"site","name":"Home"}]', ['fin', 'ops']),
   [{ id: 'site', name: 'Home' }, { id: 'ops', name: 'Operations' }, { id: 'fin', name: 'fin' }]);
 
+// When to ask a widget which dashboard to show, and what counts as a design worth keeping.
+ok(!D.shouldAskDashboard({ hasPointer: true, mainDesigned: true, dashboards: [{}, {}] }), 'a widget that has chosen is never asked');
+ok(!D.shouldAskDashboard({ hasPointer: false, mainDesigned: false, dashboards: [{ id: 'site' }] }), 'a fresh document with an empty main: nothing to ask');
+ok(D.shouldAskDashboard({ hasPointer: false, mainDesigned: true, dashboards: [{ id: 'site' }] }), 'main has a design: ask (the second-widget case)');
+ok(D.shouldAskDashboard({ hasPointer: false, mainDesigned: false, dashboards: [{ id: 'site' }, { id: 'ops' }] }), 'more than one dashboard: ask');
+ok(!D.isDesigned(null) && !D.isDesigned({ tabs: [{ blocks: [] }] }), 'no blocks, no template: not a design');
+ok(D.isDesigned({ tabs: [{ blocks: [{ type: 'text' }] }] }) && D.isDesigned({ templateId: 'legal', tabs: [] }), 'a block or a template stamp makes a design');
+
+// Tables other dashboards read, with a pretend document.
+{
+  const designs = { site: { tabs: [{ blocks: [{ type: 'stat', config: { table: 'Students' } }, { type: 'chart', config: { table: 'Courses' } }] }] }, ops: { tabs: [{ blocks: [{ type: 'stat', config: { table: 'Tasks' } }] }] }, broken: null };
+  const deps = { listDashboards: async () => [{ id: 'site' }, { id: 'ops' }, { id: 'broken' }], loadConfig: async (id) => designs[id], tablesInConfig: (c) => [...new Set(c.tabs.flatMap((t) => t.blocks.map((b) => b.config.table)))] };
+  eq('from ops, the main dashboard\'s tables are protected', (await D.tablesUsedElsewhere('ops', deps)).sort(), ['Courses', 'Students']);
+  eq('from main, ops\'s tables are protected', await D.tablesUsedElsewhere('site', deps), ['Tasks']);
+  eq('a dashboard that cannot be read protects nothing and blocks nothing', (await D.tablesUsedElsewhere('nope', deps)).sort(), ['Courses', 'Students', 'Tasks']);
+  eq('a registry that cannot be read protects nothing', await D.tablesUsedElsewhere('site', { ...deps, listDashboards: async () => { throw new Error('x'); } }), []);
+}
+
 // ---- the bridge against a pretend Grist ----
 // One config table as an array of {id, Key, Value}; applyUserActions edits it the way Grist would.
 function fakeGrist() {
@@ -70,9 +88,11 @@ const keys = (g) => g.rows.map((r) => r.Key).sort();
   const g = fakeGrist();
   const b = await bridgeWith(g);
   eq('boot: no pointer means the main dashboard', await b.initDashboard(), 'site');
+  ok(!b.hasDashboardPointer(), 'and counts as never having chosen');
   ok(await b.saveConfig({ tabs: [{ id: 't1', title: 'Main' }] }), 'main design saved');
+  ok(await b.setDashboard('site') && b.hasDashboardPointer() && g.options.anupressDashboard === 'site', 'choosing the main dashboard is recorded, not cleared');
   eq('main design lands under the key it always had', keys(g), ['site']);
-  eq('and in the option cache it always had', Object.keys(g.options), ['anupressSiteConfig']);
+  eq('and in the option cache it always had', Object.keys(g.options).filter((k) => k.startsWith('anupressSiteConfig')), ['anupressSiteConfig']);
 
   // A second dashboard, as a copy.
   const id = await b.createDashboard('Operations', { tabs: [{ id: 't1', title: 'Ops' }] });
@@ -102,7 +122,9 @@ const keys = (g) => g.rows.map((r) => r.Key).sort();
   ok(await b2.deleteDashboard('operations'), 'deleted operations');
   eq('its rows are gone, main and the registry stay', keys(g), ['dashboards', 'site']);
   eq('the instance that showed it now points at main', b2.currentDashboard(), 'site');
-  eq('and its pointer option is cleared', g.options.anupressDashboard, '');
+  eq('and its pointer option says so', g.options.anupressDashboard, 'site');
+  const b3 = await bridgeWith(g);
+  ok((await b3.initDashboard()) === 'site' && b3.hasDashboardPointer(), 'a later boot reads that explicit choice');
   eq('its cache is cleared', g.options['anupressSiteConfig:operations'], '');
 }
 

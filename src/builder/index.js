@@ -382,13 +382,24 @@ function addLayout(tabId, cols, rows) {
 }
 
 function openTemplatesPanel() {
+  // Set when the picker installed the template as a NEW dashboard: the history then starts over
+  // with the new design, so undo cannot carry the previous dashboard's design into the new key.
+  let installedAs = null;
   openTemplatePicker({
     provider,
     config: working,
+    onBeforeSwitch: keepCurrentDesign,
+    onSwitched: (id, name) => { installedAs = name; },
     onApply: (newConfig) => {
       working = newConfig;
       activeTabId = working.tabs?.[0]?.id || null;
-      mark('Applied a template');
+      if (installedAs) {
+        history = [{ label: `Installed ${installedAs} as a new dashboard`, at: Date.now(), json: JSON.stringify(working) }];
+        cursor = 0; savedCursor = 0; dirty = false; installedAs = null;
+        syncHistoryButtons();
+      } else {
+        mark('Applied a template');
+      }
       rerender();
     },
     // Applying a template writes the design itself, so once that lands there is nothing left

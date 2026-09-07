@@ -536,3 +536,11 @@
 .ap-dash__name { font-weight: 700; font-size: var(--ap-fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ap-dash__id { font-size: 11.5px; }
 .ap-dash__actions { flex: none; }
+
+/* ---- "Which dashboard should this widget show?" — the once-only choice for a new widget ---- */
+.ap-dash--pick { width: 100%; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+.ap-dash--pick:hover { border-color: color-mix(in srgb, var(--ap-primary) 45%, transparent); }
+.ap-dash--pick:focus-visible { outline: 2px solid var(--ap-primary); outline-offset: 2px; }
+.ap-dashchoice__new { padding: 6px 12px 12px; margin: -2px 0 10px; border-left: 2px solid color-mix(in srgb, var(--ap-primary) 40%, transparent); }
+.ap-dashchoice__new .ap-label { margin-top: 8px; }
+.ap-input.is-invalid { border-color: var(--ap-warn); }

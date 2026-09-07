@@ -13,10 +13,11 @@
 
 import { el, clone, toast, escapeHtml, designSignature } from '../util.js';
 import { icon } from '../assets/icons.js';
-import { openDrawer, closeDrawer, primaryBtn, ghostBtn, subhead, divider, field, selectInput, tablePicker, checkboxRow } from './ui.js';
+import { openDrawer, closeDrawer, primaryBtn, ghostBtn, subhead, divider, field, selectInput, tablePicker, checkboxRow, segmented } from './ui.js';
 import { emptySite } from '../data/default-site.js';
 import { TEMPLATES } from '../data/templates/index.js';
-import { adaptTemplateToTable, DummyProvider } from '../data/provider.js';
+import { adaptTemplateToTable, DummyProvider, tablesInConfig } from '../data/provider.js';
+import { tablesUsedElsewhere, isDesigned } from '../grist/dashboards.js';
 import { flattenBlocks } from '../data/grid.js';
 import { TEMPLATE_SAMPLE_DATA } from '../data/templates/sample-data.js';
 import { renderBlock, mountCharts } from '../render/blocks.js';
@@ -268,7 +269,12 @@ export function openTemplatePicker(opts) {
   // Default OWN for every table = "create it with sample data" (or backfill if a same-named empty
   // one exists) — the user can instead point any table at one of their own via the confirm step.
   const state = { picked: null, tableChoices: {}, applying: false, scratch: false,
-    scratchWanted: new Set(), cleanupWanted: new Set(), cleanupTouched: new Set(), createdRecord: null };
+    scratchWanted: new Set(), cleanupWanted: new Set(), cleanupTouched: new Set(), createdRecord: null,
+    // Several dashboards can share a document. `protectedTables` are read by dashboards other than
+    // the one this widget shows; nothing here may offer to remove them. `installTarget` is where
+    // the picked template goes: a new dashboard (the default when this one already has a design)
+    // or this one, replacing it.
+    protectedTables: [], currentDashName: '', installTarget: 'this' };
   let previewHost = null; // set by buildLivePreview(); mounted only once actually in the document
   render();
 
@@ -279,10 +285,24 @@ export function openTemplatePicker(opts) {
     if (state.createdRecord) return state.createdRecord;
     try { state.createdRecord = await bridge.loadCreatedTables(); }
     catch (e) { console.warn('[ANUPRESS] could not read the created-tables record', e); state.createdRecord = []; }
+    // Read alongside, for the same reason: both views need it in hand before they draw.
+    try {
+      const cur = bridge.currentDashboard();
+      const list = await bridge.listDashboards();
+      state.currentDashName = (list.find((d) => d.id === cur) || {}).name || 'this dashboard';
+      state.protectedTables = await tablesUsedElsewhere(cur, { listDashboards: async () => list, loadConfig: (id) => bridge.loadConfig(id), tablesInConfig });
+    } catch (e) { console.warn('[ANUPRESS] could not read the other dashboards', e); state.protectedTables = []; }
     return state.createdRecord;
   }
 
-  async function pick(t) { state.picked = t; await ensureCreatedRecord(); initChoices(t); render(); }
+  async function pick(t) {
+    state.picked = t;
+    await ensureCreatedRecord();
+    // A dashboard with a design on it is kept by default; the template becomes a new one.
+    state.installTarget = isDesigned(opts.config) ? 'new' : 'this';
+    initChoices(t);
+    render();
+  }
   function initChoices(t) {
     state.tableChoices = {};
     if (!provider.isLive) return; // demo mode loads sample data directly; no per-table choices
@@ -308,8 +328,14 @@ export function openTemplatePicker(opts) {
       ],
       present: (provider?.tables?.() || []).map((x) => x.id),
       // Never offer to delete a table the incoming template has been pointed AT — that would
-      // remove the data the new design is about to read.
-      inUse: Object.values(state.tableChoices || {}).map((c) => c.target).filter((x) => x && x !== OWN),
+      // remove the data the new design is about to read. Nor one another dashboard in this
+      // document reads, nor — when the template goes into a NEW dashboard — one this dashboard
+      // reads, since it stays exactly as it is.
+      inUse: [
+        ...Object.values(state.tableChoices || {}).map((c) => c.target).filter((x) => x && x !== OWN),
+        ...(state.protectedTables || []),
+        ...(state.installTarget === 'new' ? tablesInConfig(opts.config) : []),
+      ],
     });
   }
 
@@ -396,9 +422,12 @@ export function openTemplatePicker(opts) {
       ...(Array.isArray(opts.config?.createdTables) ? opts.config.createdTables : []),
     ])];
     const present = new Set((provider?.tables?.() || []).map((t) => t.id));
-    const confirmed = recorded.filter((id) => present.has(id));
+    // A table another dashboard in this document reads is not offered at all: scratch clears this
+    // dashboard's design, and must not take another dashboard's data with it.
+    const protectedSet = new Set(state.protectedTables || []);
+    const confirmed = recorded.filter((id) => present.has(id) && !protectedSet.has(id));
     // Inferred, minus anything already on the confirmed list.
-    const guessed = detectTemplateTables(provider).map((x) => x.name).filter((n) => !confirmed.includes(n));
+    const guessed = detectTemplateTables(provider).map((x) => x.name).filter((n) => !confirmed.includes(n) && !protectedSet.has(n));
     state.scratchWanted = new Set(confirmed); // confirmed on by default, inferred off
 
     const rows = (names, on) => el('div', { class: 'ap-scratch-list' }, names.map((id) => checkboxRow(id, on, (v) => {
@@ -420,7 +449,7 @@ export function openTemplatePicker(opts) {
     ];
 
     if (confirmed.length) {
-      body.push(subhead('Created by a template in this document'), rows(confirmed, true));
+      body.push(subhead('Created by a template in this document'), rows(confirmed, true), ...keptElsewhereNote());
     }
     if (guessed.length) {
       body.push(
@@ -591,8 +620,20 @@ export function openTemplatePicker(opts) {
     }
     out.push(el('div', { class: 'ap-muted', style: { fontSize: '11.5px', marginTop: '8px' }, text:
       'Only tables this widget created are listed. Your own tables are never touched.' }));
+    out.push(...keptElsewhereNote());
     out.push(divider());
     return out;
+  }
+
+  // Tables a template made that another dashboard in this document still reads: not offered for
+  // removal, and said so, or their absence from the list reads as the widget having forgotten them.
+  function keptElsewhereNote() {
+    const present = new Set((provider?.tables?.() || []).map((x) => x.id));
+    const recorded = new Set([...(state.createdRecord || []), ...(Array.isArray(opts.config?.createdTables) ? opts.config.createdTables : [])]);
+    const kept = (state.protectedTables || []).filter((id) => present.has(id) && recorded.has(id));
+    if (!kept.length) return [];
+    return [el('div', { class: 'ap-muted', style: { fontSize: '11.5px', marginTop: '6px' }, text:
+      `Not listed: ${kept.join(', ')} — read by another dashboard in this document, so ${kept.length === 1 ? 'it stays' : 'they stay'}.` })];
   }
 
   function confirmBody() {
@@ -644,19 +685,59 @@ export function openTemplatePicker(opts) {
       subhead('Preview with sample data'),
       buildLivePreview(t),
       divider(),
-      el('div', { class: 'ap-trust' }, [
+      ...installSection(t),
+    ];
+  }
+
+  // Where the template goes. A dashboard that already has a design is kept by default and the
+  // template becomes a new one — the second-widget case, where "install a template" used to
+  // overwrite the first widget's dashboard. An empty dashboard just takes it.
+  function installSection(t) {
+    const name = state.currentDashName || 'this dashboard';
+    if (!isDesigned(opts.config)) {
+      state.installTarget = 'this';
+      return [el('div', { class: 'ap-trust' }, [
+        icon('dashboards'),
+        el('div', {}, [
+          el('strong', { text: `Goes into “${name}”, which is empty.` }),
+          el('div', { class: 'ap-muted', text: 'Nothing is replaced. Other dashboards in this document are not touched.' }),
+        ]),
+      ])];
+    }
+    const seg = segmented([{ value: 'new', label: 'A new dashboard' }, { value: 'this', label: `This one, replacing it` }],
+      state.installTarget, (v) => { state.installTarget = v; state.cleanupTouched = new Set(); render(); });
+    const note = state.installTarget === 'new'
+      ? el('div', { class: 'ap-trust' }, [
+        icon('dashboards'),
+        el('div', {}, [
+          el('strong', { text: `“${name}” stays as it is.` }),
+          el('div', { class: 'ap-muted', text: `The template becomes a new dashboard named “${t.name}” and this widget switches to it. Every other widget in the document keeps showing what it shows now.` }),
+        ]),
+      ])
+      : el('div', { class: 'ap-trust ap-trust--warn' }, [
         icon('trash'),
         el('div', {}, [
-          el('strong', { text: 'This replaces your current design.' }),
-          el('div', { class: 'ap-muted', text: 'Applying a template overwrites your current pages, theme and blocks. This can\'t be undone once you save — Cancel to keep what you have.' }),
+          el('strong', { text: `This replaces the design of “${name}”.` }),
+          el('div', { class: 'ap-muted', text: 'Its pages, theme and blocks are overwritten, in every widget that shows it. This can\'t be undone once saved — Cancel to keep what you have.' }),
         ]),
-      ]),
-    ];
+      ]);
+    return [field('Install into', seg), note];
   }
   async function doApply() {
     if (state.applying) return;
     const t = state.picked;
     const sample = TEMPLATE_SAMPLE_DATA[t.id];
+
+    // Into a new dashboard: the current one is kept first (published if unsaved, remembered in
+    // the demo), the new one is registered, and this widget is pointed at it before anything is
+    // written — so the design below lands under the new key and never touches the old.
+    if (state.installTarget === 'new') {
+      try { await opts.onBeforeSwitch?.(); } catch (e) { console.warn('[ANUPRESS] could not keep the current design before switching', e); }
+      const id = await bridge.createDashboard(t.name, null);
+      if (!id) { toast('Could not create a dashboard for the template.', 'err'); return; }
+      await bridge.setDashboard(id);
+      opts.onSwitched?.(id, t.name);
+    }
 
     // Demo mode: no live Grist doc to write into, but the template ships its own sample tables.
     // Point the demo provider straight at them so every block on the applied page renders with

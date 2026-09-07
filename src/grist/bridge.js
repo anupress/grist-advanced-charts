@@ -17,8 +17,13 @@ export const THEME_TABLE = 'ANUPRESS_Theme';
 // keeps the keys the widget has always used. Outside Grist the same calls work against `mem`, so
 // the demo can make, switch and delete dashboards for the session.
 let _dashboard = DEFAULT_DASHBOARD;
-const mem = { pointer: DEFAULT_DASHBOARD, registry: null, configs: new Map() };
+// Whether this widget instance has ever chosen a dashboard. Unset means "never asked": a widget
+// added before dashboards existed, or one just pasted into a document. The editor asks such a
+// widget which dashboard to show the first time Edit is pressed, if there is a choice to make.
+let _pointerSet = false;
+const mem = { pointer: DEFAULT_DASHBOARD, pointerSet: false, registry: null, configs: new Map() };
 export const currentDashboard = () => _dashboard;
+export const hasDashboardPointer = () => _pointerSet;
 
 const g = () => (typeof window !== 'undefined' ? window.grist : undefined);
 
@@ -281,20 +286,26 @@ export async function setOption(value, key = optionKeyFor(_dashboard)) {
 /** Read which dashboard this widget instance shows. Called once at boot, before loadConfig. */
 export async function initDashboard() {
   let id = DEFAULT_DASHBOARD;
+  _pointerSet = false;
   if (hasGrist()) {
-    try { const v = await getOption(POINTER_OPTION); if (isValidId(v)) id = v; } catch { /* unset */ }
-  } else id = mem.pointer;
+    try { const v = await getOption(POINTER_OPTION); if (isValidId(v)) { id = v; _pointerSet = true; } } catch { /* unset */ }
+  } else { id = mem.pointer; _pointerSet = mem.pointerSet; }
   _dashboard = id;
   return id;
 }
 
-/** Point this widget instance at a dashboard. The design cache of the old one is left alone: it is keyed by dashboard too. */
+/**
+ * Point this widget instance at a dashboard. Written even for the main one, so "chosen the main
+ * dashboard" can be told apart from "never asked". The design cache of the old one is left alone:
+ * it is keyed by dashboard too.
+ */
 export async function setDashboard(id) {
   if (!isValidId(id)) return false;
   _dashboard = id;
-  mem.pointer = id;
+  _pointerSet = true;
+  mem.pointer = id; mem.pointerSet = true;
   if (!hasGrist()) return true;
-  return setOption(id === DEFAULT_DASHBOARD ? '' : id, POINTER_OPTION);
+  return setOption(id, POINTER_OPTION);
 }
 
 async function readRegistry() {

@@ -76,3 +76,42 @@ export function parseRegistry(json, foundIds = []) {
 }
 
 export const serializeRegistry = (list) => JSON.stringify((list || []).map((d) => ({ id: d.id, name: d.name })));
+
+/**
+ * Tables that dashboards OTHER than `currentId` read. A template's cleanup step and "Start from
+ * scratch" must never offer to remove these: the widget that showed the other dashboard would
+ * find its tables gone (which is exactly what happened to a second widget installing a template
+ * while the first still read the previous template's tables). Dependencies are passed in so the
+ * function stays pure enough to test with a fake document.
+ */
+export async function tablesUsedElsewhere(currentId, { listDashboards, loadConfig, tablesInConfig }) {
+  const used = new Set();
+  let list = [];
+  try { list = await listDashboards(); } catch { return []; }
+  for (const d of list) {
+    if (d.id === currentId) continue;
+    try {
+      const cfg = await loadConfig(d.id);
+      if (cfg) for (const t of tablesInConfig(cfg)) used.add(t);
+    } catch { /* a dashboard that cannot be read protects nothing, and blocks nothing */ }
+  }
+  return [...used];
+}
+
+/**
+ * Whether a widget instance that has never chosen a dashboard should be asked which one to show
+ * when Edit is first pressed. Only worth asking when there is a choice to make: the main dashboard
+ * already has a design, or more than one dashboard exists. A brand-new document has neither, and
+ * asking there would be a question with one answer.
+ */
+export function shouldAskDashboard({ hasPointer, mainDesigned, dashboards }) {
+  if (hasPointer) return false;
+  return !!mainDesigned || (Array.isArray(dashboards) && dashboards.length > 1);
+}
+
+/** A design with at least one block, or one stamped by a template: something worth not overwriting. */
+export function isDesigned(config) {
+  if (!config) return false;
+  if (config.templateId) return true;
+  return (config.tabs || []).some((tab) => (tab.blocks || []).length > 0);
+}

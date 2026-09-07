@@ -3,6 +3,31 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.7.2] — 2026-09-07
+
+### Fixed
+
+- **A second widget no longer overwrites the first one's dashboard.** A
+  widget pasted into a document that already had a dashboard showed the
+  main one by default, looked like "my new widget", and installing a
+  template into it replaced the design the first widget was showing — and
+  the template's cleanup step removed the previous template's tables, which
+  that first dashboard still read. Three changes close this:
+  - The first time Edit is pressed in a widget that has never chosen a
+    dashboard, and the document has one with a design (or more than one),
+    it asks which dashboard to show: an existing one, or a new one, blank
+    or as a copy. Asked once; the answer is kept with the widget. Choosing
+    the main dashboard is recorded too, so it is never asked again.
+  - Installing a template into a dashboard that already has a design now
+    defaults to **a new dashboard** named after the template; this widget
+    switches to it and every other widget keeps what it shows. "This one,
+    replacing it" is still there, one click away, and says plainly that
+    every widget showing that dashboard is affected.
+  - Neither a template's cleanup step nor Start from scratch offers to
+    remove a table that another dashboard in the document reads, nor — when
+    the template goes into a new dashboard — one the current dashboard
+    reads. Those tables are simply not listed.
+
 ## [3.7.1] — 2026-09-07
 
 ### Fixed

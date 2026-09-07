@@ -6,7 +6,9 @@
 import { clone, toast } from './util.js';
 import * as bridge from './grist/bridge.js';
 import { DummyProvider, GristProvider, tablesInConfig, adaptConfigToTable, adaptTemplateToTable } from './data/provider.js';
-import { DEFAULT_SITE } from './data/default-site.js';
+import { DEFAULT_SITE, emptySite } from './data/default-site.js';
+import { shouldAskDashboard, isDesigned } from './grist/dashboards.js';
+import { askDashboardForWidget } from './builder/dashboard-choice.js';
 import { TEMPLATES } from './data/templates/index.js';
 import { TEMPLATE_SAMPLE_DATA } from './data/templates/sample-data.js';
 import { renderSite } from './render/site.js';
@@ -191,6 +193,35 @@ async function startEdit() {
   }
 
   app.provider = provider; app.live = live;
+
+  // A widget that has never chosen a dashboard, in a document that already has one: ask before
+  // opening the editor on the main design, which a second widget would otherwise replace the
+  // moment someone installed a template into it. Asked once; the answer is kept with the widget.
+  if (live && !bridge.hasDashboardPointer()) {
+    try {
+      const dashboards = await bridge.listDashboards();
+      const main = await bridge.loadConfig('site');
+      if (shouldAskDashboard({ hasPointer: false, mainDesigned: isDesigned(main), dashboards })) {
+        const choice = await askDashboardForWidget({ dashboards, currentId: bridge.currentDashboard() });
+        if (!choice) return;   // "Not now": nothing opens, nothing is written
+        if (choice.action === 'show') {
+          await bridge.setDashboard(choice.id);
+          const cfg = await bridge.loadConfig(choice.id);
+          app.config = cfg || { ...emptySite(), theme: clone(app.config.theme || {}) };
+        } else {
+          const cfg = choice.mode === 'copy' ? clone(app.config) : { ...emptySite(), theme: clone(app.config.theme || {}) };
+          const id = await bridge.createDashboard(choice.name, cfg);
+          if (!id) { toast('Could not create the dashboard. Opening the current one instead.', 'err'); }
+          else { await bridge.setDashboard(id); app.config = cfg; }
+        }
+        try { await provider.prime?.(tablesInConfig(app.config)); } catch (e) { console.warn('[ANUPRESS] could not load the dashboard\'s tables', e); }
+      } else {
+        // One dashboard and it is empty: nothing to ask. Record the choice so it is never asked.
+        await bridge.setDashboard(bridge.currentDashboard());
+      }
+    } catch (e) { console.warn('[ANUPRESS] dashboard choice skipped', e); }
+  }
+
   try {
     const { openBuilder } = await import('./builder/index.js');
     openBuilder({
