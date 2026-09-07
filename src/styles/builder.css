@@ -507,3 +507,23 @@
 .ap-hist.is-ahead { opacity: .6; }
 .ap-hist__meta { font-size: 11px; color: var(--ap-text-mute); white-space: nowrap; }
 .ap-editbar .ap-btn[disabled] { opacity: .35; cursor: default; }
+
+/* ---- "Layout & style": the collapsible section at the foot of every block editor ---- */
+.ap-adv { border: 1px solid var(--ap-border); border-radius: 12px; padding: 0 14px; margin: 6px 0 14px; background: var(--ap-bg-soft); }
+.ap-adv > summary { cursor: pointer; list-style: none; padding: 11px 0; font-weight: 700; font-size: var(--ap-fs-sm); display: flex; align-items: center; justify-content: space-between; }
+.ap-adv > summary::-webkit-details-marker { display: none; }
+.ap-adv > summary::after { content: ""; width: 7px; height: 7px; border-right: 1.8px solid currentColor; border-bottom: 1.8px solid currentColor; transform: rotate(-45deg); opacity: .6; transition: transform .15s; }
+.ap-adv[open] > summary::after { transform: rotate(45deg); }
+.ap-adv__body { padding: 2px 0 12px; }
+.ap-adv .ap-subhead { margin-top: 10px; }
+.ap-box { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.ap-box label { display: flex; flex-direction: column; gap: 3px; font-size: 10.5px; color: var(--ap-text-mute); text-transform: uppercase; letter-spacing: .04em; }
+.ap-box input { width: 100%; padding: 6px 8px; font: inherit; font-size: var(--ap-fs-sm); color: var(--ap-text); background: var(--ap-surface); border: 1px solid var(--ap-border); border-radius: 8px; }
+.ap-box input:focus { outline: none; border-color: var(--ap-primary); box-shadow: var(--ap-ring); }
+.ap-adv .ap-input--sm { padding: 6px 9px; }
+/* A block hidden on this screen size stays reachable while editing: shown faded, with a label.
+   Also inside an editor's live preview, where the media query would otherwise blank it. */
+.is-editing .ap-hide-phone, .is-editing .ap-hide-tablet, .is-editing .ap-hide-desktop,
+.ap-preview .ap-hide-phone, .ap-preview .ap-hide-tablet, .ap-preview .ap-hide-desktop { display: block !important; }
+.is-editing .ap-block[data-ap-hidden] { opacity: .55; outline: 1.5px dashed var(--ap-text-mute); outline-offset: 3px; border-radius: 10px; }
+.is-editing .ap-block[data-ap-hidden]::before { content: attr(data-ap-hidden); position: absolute; top: -9px; left: 10px; z-index: 3; font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--ap-text-soft); background: var(--ap-surface); border: 1px solid var(--ap-border); border-radius: 6px; padding: 1px 7px; pointer-events: none; }

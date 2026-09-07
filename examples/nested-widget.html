@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rows at a glance</title>
+<!-- A small custom widget of its own: the plugin API, a ready() call that asks for two columns, and
+     onRecords. It lives here so the demo's Widget block has something honest to show, and so anyone
+     can point a Widget block (or Grist itself) at it and see the column mapping work. -->
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 0; font-family: var(--grist-theme-font-family, system-ui, -apple-system, "Segoe UI", sans-serif); font-size: 14px;
+    color: var(--grist-theme-text, #1f2233); background: var(--grist-theme-page-bg, transparent); }
+  main { padding: 14px 16px; }
+  h1 { font-size: 15px; margin: 0 0 4px; letter-spacing: -.01em; }
+  #note { margin: 0 0 12px; font-size: 12px; color: var(--grist-theme-text-light, #6b7085); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--grist-theme-table-body-border, #e4e6ef); vertical-align: middle; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--grist-theme-text-light, #6b7085); font-weight: 600; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .bar { height: 6px; border-radius: 3px; background: var(--grist-theme-accent, #16b378); min-width: 2px; }
+  td.barcell { width: 40%; }
+  .empty { padding: 18px 8px; color: var(--grist-theme-text-light, #6b7085); }
+</style>
+<script src="../vendor/grist-plugin-api.js"></script>
+</head>
+<body>
+<main>
+  <h1>Rows at a glance</h1>
+  <p id="note">Waiting for the document…</p>
+  <table id="t" aria-live="polite"></table>
+</main>
+<script>
+(function () {
+  var SAMPLE = [
+    { id: 1, Label: 'Northgate', Value: 148500 },
+    { id: 2, Label: 'Riverside', Value: 121300 },
+    { id: 3, Label: 'Harbour', Value: 96400 },
+    { id: 4, Label: 'Old Town', Value: 88936 },
+    { id: 5, Label: 'Westfield', Value: 61200 },
+  ];
+  var t = document.getElementById('t');
+  var note = document.getElementById('note');
+  var heard = false;
+
+  function pick(rows, mappings) {
+    // With a mapping, the widget's own names point at the document's columns. Without one, the
+    // first text-like and the first numeric column stand in, so the table is never blank.
+    var label = mappings && mappings.Label, value = mappings && mappings.Value;
+    // A mapping that names a column the rows do not have (a page moved to another table) is
+    // treated as no mapping, so the fallback below still shows something true.
+    if (rows.length && label && !(label in rows[0])) label = null;
+    if (rows.length && value && !(value in rows[0])) value = null;
+    if (!label && rows.length) {
+      var keys = Object.keys(rows[0]).filter(function (k) { return k !== 'id' && k !== 'manualSort'; });
+      label = keys.find(function (k) { return typeof rows[0][k] === 'string'; }) || keys[0];
+      value = value || keys.find(function (k) { return k !== label && typeof rows[0][k] === 'number'; }) || null;
+    }
+    return { label: label, value: value };
+  }
+
+  function text(v) {
+    if (v === null || v === undefined) return '';
+    if (Array.isArray(v)) return v.slice(v[0] === 'L' ? 1 : 0).join(', ');
+    if (typeof v === 'object') return v.toString();
+    return String(v);
+  }
+
+  function render(rows, mappings, why) {
+    var cols = pick(rows, mappings);
+    note.textContent = why;
+    if (!rows.length) { t.innerHTML = '<tr><td class="empty">No rows in this table.</td></tr>'; return; }
+    var max = 0;
+    rows.forEach(function (r) { var n = Number(cols.value ? r[cols.value] : 0); if (isFinite(n) && n > max) max = n; });
+    var html = '<tr><th>' + (cols.label || 'Label') + '</th>' + (cols.value ? '<th>' + cols.value + '</th><th></th>' : '') + '</tr>';
+    rows.slice(0, 8).forEach(function (r) {
+      var n = cols.value ? Number(r[cols.value]) : NaN;
+      html += '<tr><td>' + esc(text(r[cols.label])) + '</td>';
+      if (cols.value) {
+        html += '<td class="num">' + (isFinite(n) ? n.toLocaleString() : esc(text(r[cols.value]))) + '</td>';
+        html += '<td class="barcell"><div class="bar" style="width:' + (max && isFinite(n) ? Math.max(2, Math.round(n / max * 100)) : 0) + '%"></div></td>';
+      }
+      html += '</tr>';
+    });
+    if (rows.length > 8) html += '<tr><td class="empty" colspan="3">and ' + (rows.length - 8) + ' more</td></tr>';
+    t.innerHTML = html;
+  }
+  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  // Outside Grist there is nobody to answer, so after a moment the sample rows stand in.
+  var fallback = setTimeout(function () {
+    if (!heard) render(SAMPLE, null, 'Sample rows. Inside a Grist document this shows the table you map it to.');
+  }, 2500);
+
+  if (window.grist) {
+    grist.ready({
+      requiredAccess: 'read table',
+      columns: [
+        { name: 'Label', title: 'Label', type: 'Any', optional: false, description: 'Shown in the first column' },
+        { name: 'Value', title: 'Value', type: 'Numeric,Int,Any', optional: true, description: 'Shown as a number with a bar' },
+      ],
+    });
+    grist.onRecords(function (rows, mappings) {
+      heard = true; clearTimeout(fallback);
+      render(rows, mappings, mappings ? 'Live rows from your document.' : 'Live rows. Map the Label column to choose what is shown.');
+    });
+  }
+})();
+</script>
+</body>
+</html>

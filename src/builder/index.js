@@ -303,7 +303,9 @@ function addBlock(tabId, type) {
 }
 function editBlock(blockId) {
   const found = findBlock(blockId); if (!found) return;
-  openBlockEditor(found.block, { provider, site: working, tabId: found.tab.id, onApply: (nb) => { delete nb.__isNew; placeBlock(found, nb); mark(`Edited ${nb.type}`); rerender(); } });
+  // inGrid tells the editor's layout section how many columns and rows a cell block can span.
+  const inGrid = found.parent ? { cols: found.parent.config?.cols || 1, rows: found.parent.config?.rows || 1 } : null;
+  openBlockEditor(found.block, { provider, site: working, tabId: found.tab.id, inGrid, onApply: (nb) => { delete nb.__isNew; placeBlock(found, nb); mark(`Edited ${nb.type}`); rerender(); } });
 }
 function deleteBlock(blockId) {
   const found = findBlock(blockId); if (!found) return;
@@ -319,9 +321,10 @@ function addBlockInGrid(gridId, cell) {
   const found = findBlock(gridId); if (!found || found.block.type !== 'grid') return;
   const grid = found.block;
   const put = (nb) => { delete nb.__isNew; (grid.config.cells ||= [])[cell] = nb; mark(`Added ${nb.type} to a cell`); rerender(); };
+  const inGrid = { cols: grid.config?.cols || 1, rows: grid.config?.rows || 1 };
   openBlockChooser({
     exclude: ['grid'], title: 'Add to this cell',
-    onPick: (type) => { closeDrawer(); openBlockEditor(defaultBlock(type), { provider, site: working, tabId: found.tab.id, onApply: put }); },
+    onPick: (type) => { closeDrawer(); openBlockEditor(defaultBlock(type), { provider, site: working, tabId: found.tab.id, inGrid, onApply: put }); },
     onGuided: () => { closeDrawer(); openGuidedWizard({ provider, onCreate: put }); },
     onTemplates: () => { closeDrawer(); openTemplatesPanel(); },
   });

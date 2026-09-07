@@ -75,7 +75,10 @@ export function newBlock(type, { table, provider }) {
       currency: '$', taxRate: 0, taxLabel: 'Tax', taxIdLabel: 'Tax ID', accent: null, rowId: null,
     });
   }
-  if (type === 'embed') return blk(12, { html: '', css: '', js: '', height: 300 });
+  // `access` is 'none' until the author switches it on: an embed never gets at the document by
+  // default. `table`, `mappings` and `requested` only mean anything once it does.
+  if (type === 'embed') return blk(12, { html: '', css: '', js: '', height: 300, access: 'none', table: null, mappings: {}, requested: null });
+  if (type === 'widget') return blk(12, { title: '', url: '', height: 420, table: null, mappings: {}, requested: null });
   if (type === 'qrcode') return blk(3, { text: 'https://', level: 'M', fg: '#000000', bg: '#ffffff', size: 200, caption: '' });
   // Empty on purpose: the preview says "Add a number or code", which is the truth, where a made-up
   // sample code could be printed onto a label before anyone noticed it was ours.

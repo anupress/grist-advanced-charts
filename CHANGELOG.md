@@ -3,6 +3,76 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.6.0] — 2026-09-07
+
+### Added
+
+- **Layout & style on every block.** A collapsible section at the foot of all
+  twenty-six editors: margin and padding per side, a minimum height, row span
+  on the page (column span, row span and alignment inside a Grid cell), order,
+  background, border, corner radius, shadow, hide on phones / tablets /
+  desktops, a CSS id and classes, and a z-index. It edits a small `style`
+  object beside the block's `config`, so no block's own settings or behaviour
+  change; a block from before this existed reads exactly as it did. While
+  editing, a block hidden on the current screen stays visible, faded and
+  labelled, so it can still be reached. Reset clears the lot; undo brings it
+  back.
+- **Widget block: another custom widget inside this page.** Paste any Grist
+  custom widget's URL, the one you would give Grist. A message host carries
+  its plugin API calls to the document and back with request ids kept clear
+  of this widget's own, so Grist still sees one widget. Three things are
+  answered in the widget rather than forwarded, because Grist keeps one of
+  each per frame: `ready`, the column request (`grist.ready({ columns })`),
+  and widget options, which get their own key per block instead of landing
+  in this widget's store. The editor lists the columns the nested widget asks
+  for, learned from its own `ready` call in the live preview, with a picker
+  each; the block reads the table you choose or follows the table this
+  dashboard is linked to in Grist, change notifications included. A small
+  example widget ships in `examples/nested-widget.html` and appears on the
+  demo's Page elements page. Twenty-six block types now.
+- **HTML/CSS/JS with Grist access.** A switch on the embed editor loads the
+  plugin API ahead of the author's code, so an inline block can be a custom
+  widget written in place, with the same table choice and column mapping as
+  the Widget block. Off by default; the sandbox is unchanged either way.
+
+- **Adding to a printout is a visible moment.** The block gives a short
+  press, a token flies from it to the tray in the corner, and the count bumps
+  when it lands, so nobody wonders where the block went. The tray slides in
+  the first time something is added, and its count is read out by screen
+  readers. Under reduced motion the token is skipped; the outline and the
+  count still change.
+
+### Fixed
+
+- **Full document access is asked for once, when the URL is pasted.** The
+  widget used to ask Grist for read access at load and for full access from
+  the Edit flow, but the plugin API ignores every `ready()` after the first,
+  so that second request never reached Grist: the prompt on pasting said
+  "needs to read the current table", and full access could only be set by
+  hand in the widget panel. Now the one request asks for full access, the
+  level Grist actually grants is read back from its settings message, and a
+  widget still without it gets a plain instruction naming the dropdown to
+  change instead of a silent failure.
+
+### Changed
+
+- **Embed height up to 4000 px** (was 1200), so a whole form or page embedded
+  as a widget shows at its real height instead of scrolling inside a frame
+  inside the page.
+- **Block width inside a section.** In a Grid cell the cell sets the width, so
+  the Block width row is shown disabled there, with the reason and a pointer
+  to Column span under Layout & style. On the page it is unchanged.
+- **Nested widgets see references as what they point at.** A block reading a
+  table of its own hands a nested widget the referenced table's visible column
+  (a client's name, not its row id), lists included, as Grist's own
+  `fetchSelectedTable` does by default; `cellFormat: 'typed'` keeps the ids.
+- **Nested widgets follow the page's theme outside Grist.** Before Grist has
+  sent a theme (and in the demo, where it never will), a nested widget is
+  given this page's own colours in Grist's theme shape, and again whenever
+  the light/dark switch is used.
+- **Widget block frames load when their page is shown**, the way charts mount,
+  rather than every nested widget on every page loading at once.
+
 ## [3.5.0] — 2026-09-06
 
 ### Added

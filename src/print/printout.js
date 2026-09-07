@@ -223,12 +223,54 @@ export function selectButton(block, onToggled) {
   sync();
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
+    const blockEl = btn.closest('.ap-block');
     toggle(block.id);
     sync();
+    // The tray has re-rendered by now (it listens to the same change), so a token can fly to
+    // where the count really is.
+    if (isSelected(block.id)) { pressBlock(blockEl); flyToTray(blockEl); } else bumpTray();
     onToggled?.();
   });
   onChange(sync);
   return btn;
+}
+
+// ---- The moment of adding ----------------------------------------------------------------------
+//
+// Selecting a block used to change two things at once and quietly: an outline on the block, a
+// count in the corner. People missed the count, then wondered where the block had gone. So the
+// block gives a short press, a token flies from it to the tray, and the count bumps when the token
+// lands — the same motion a shop uses for "added to your basket", because it answers the same
+// question: it went there. Under reduced motion the token is skipped; the outline and the count
+// still change, and that is the part that carries the meaning.
+const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const restart = (node, cls) => { if (!node) return; node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls); };
+
+function pressBlock(blockEl) { if (!reducedMotion()) restart(blockEl, 'is-picked'); }
+
+function bumpTray() { restart(document.querySelector('.ap-tray__count'), 'is-bump'); }
+
+function flyToTray(fromEl) {
+  const tray = document.querySelector('.ap-tray:not([hidden]) .ap-tray__count');
+  if (!fromEl || !tray || reducedMotion() || typeof fromEl.animate !== 'function') { bumpTray(); return; }
+  const a = fromEl.getBoundingClientRect();
+  const b = tray.getBoundingClientRect();
+  const size = 36;
+  const x0 = a.left + a.width / 2 - size / 2, y0 = a.top + a.height / 2 - size / 2;
+  const dx = b.left + b.width / 2 - size / 2 - x0, dy = b.top + b.height / 2 - size / 2 - y0;
+  const token = el('div', { class: 'ap-flyer', 'aria-hidden': 'true', style: { left: x0 + 'px', top: y0 + 'px' } }, [icon('check')]);
+  document.body.appendChild(token);
+  // An arc rather than a straight line: up and over reads as "carried", a straight slide as "fell".
+  const anim = token.animate([
+    { transform: 'translate(0, 0) scale(1.35)', opacity: 0.95 },
+    { transform: `translate(${dx * 0.5}px, ${dy * 0.5 - 90}px) scale(1)`, opacity: 1, offset: 0.5 },
+    { transform: `translate(${dx}px, ${dy}px) scale(0.35)`, opacity: 0.25 },
+  ], { duration: 560, easing: 'cubic-bezier(.2, .7, .3, 1)' });
+  const done = () => { token.remove(); bumpTray(); };
+  anim.onfinish = done;
+  anim.oncancel = () => token.remove();
+  // A tab in the background never finishes an animation; the token must not outlive the moment.
+  setTimeout(() => { if (token.isConnected) done(); }, 900);
 }
 
 /**
@@ -250,7 +292,7 @@ export function mountTray(root, config, provider, onSaveLayout) {
         onClick: () => openLayout({ root, config, provider, onSaveLayout }) }, [
         icon('layout'),
         el('span', { class: 'ap-tray__count', text: String(n) }),
-        el('span', { class: 'ap-tray__label', text: n === 1 ? '1 selected' : `${n} selected` }),
+        el('span', { class: 'ap-tray__label', 'aria-live': 'polite', text: n === 1 ? '1 selected' : `${n} selected` }),
         el('span', { class: 'ap-tray__cta', text: 'Arrange & print' }),
       ]),
       el('button', { class: 'ap-btn ap-btn--icon ap-btn--sm ap-tray__clear', type: 'button',

@@ -676,7 +676,7 @@
 
   /* An embedded iframe cannot be relied on to print its contents; leave a labelled gap rather
      than a blank rectangle of unknown height. */
-  .ap-embed { display: none !important; }
+  .ap-embed, .ap-widget { display: none !important; }
 
   a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 10px; color: #555; }
 }
@@ -858,10 +858,21 @@
 .ap-block:has(.ap-pickbtn.is-on) .ap-block__pick { opacity: 1; }
 .ap-block:has(.ap-pickbtn.is-on) { outline: 2px solid var(--ap-primary); outline-offset: 3px; border-radius: var(--ap-radius); }
 
+/* The moment of adding: the block presses, a token flies to the tray, the count bumps. */
+.ap-block.is-picked { animation: ap-pick-press .38s var(--ap-ease); }
+@keyframes ap-pick-press { 0% { transform: scale(1); } 35% { transform: scale(1.018); } 100% { transform: scale(1); } }
+.ap-flyer { position: fixed; z-index: 70; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--ap-primary); color: #fff; box-shadow: 0 12px 30px -8px rgba(0,0,0,.5); pointer-events: none; will-change: transform, opacity; }
+.ap-flyer svg { width: 18px; height: 18px; }
+.ap-tray__count.is-bump { animation: ap-bump .45s var(--ap-ease); }
+@keyframes ap-bump { 0% { transform: scale(1); } 35% { transform: scale(1.45); background: #fff; color: var(--ap-primary); } 100% { transform: scale(1); } }
+
 /* The running count. Bottom-right, out of the way, only present once something is in it. */
 .ap-tray { position: fixed; right: 18px; bottom: 18px; z-index: 60; display: flex; align-items: center;
   gap: 6px; padding: 6px; border-radius: 999px; background: var(--ap-surface);
   border: 1px solid var(--ap-border); box-shadow: 0 8px 30px -8px rgba(0,0,0,.35); }
+.ap-tray:not([hidden]) { animation: ap-tray-in .35s var(--ap-ease) both; }
+@keyframes ap-tray-in { from { transform: translateY(14px) scale(.96); opacity: 0; } to { transform: none; opacity: 1; } }
 .ap-tray[hidden] { display: none; }
 .ap-tray__open { display: flex; align-items: center; gap: 9px; padding: 8px 14px 8px 12px; border: 0;
   border-radius: 999px; background: var(--ap-primary); color: #fff; font: inherit; font-weight: 700;
@@ -1063,3 +1074,15 @@
   .ap-gridblock .ap-gridblock__grid { grid-template-columns: minmax(0, 1fr); }
   .ap-gridblock__cell--blank { display: none; }
 }
+
+/* ---- per-block visibility (Layout & style → Visibility) ---- */
+@media (max-width: 640px) { .ap-hide-phone { display: none !important; } }
+@media (min-width: 641px) and (max-width: 1024px) { .ap-hide-tablet { display: none !important; } }
+@media (min-width: 1025px) { .ap-hide-desktop { display: none !important; } }
+
+/* ---- Widget block: another custom widget inside this page ---- */
+.ap-widget { padding: 0; overflow: hidden; }
+.ap-widget__frame { width: 100%; border: none; display: block; background: transparent; }
+.ap-widget--empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; color: var(--ap-text-mute); border-style: dashed; }
+.ap-widget--empty svg { width: 28px; height: 28px; opacity: .7; }
+.ap-widget__hint { font-size: var(--ap-fs-sm); text-align: center; }

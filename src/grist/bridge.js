@@ -40,6 +40,12 @@ function withTimeout(promise, ms, label) {
 // demo without ?demo. What proves a Grist host is a message FROM it: Grist answers ready with its
 // settings and theme straight away, at every access level, before the user has allowed anything.
 // That reply, within the timeout, is the handshake.
+//
+// Full access is asked for here, at the first and only ready() call, because the plugin API ignores
+// every ready() after the first: `_readyCalled` short-circuits it. This widget used to ask for
+// 'read table' here and 'full' from the Edit flow, and that second ask never reached Grist — so
+// Grist's prompt on pasting the URL said "needs to read the current table", and the only way to
+// full access was the widget panel's own dropdown. One ask, for what the widget actually needs.
 export async function connect(timeoutMs = 4000) {
   if (_connected) return true;
   if (!apiPresent()) return false;
@@ -50,28 +56,36 @@ export async function connect(timeoutMs = 4000) {
   try {
     const api = g();
     const hostAnswered = new Promise((resolve) => {
-      try { api.on('message', () => resolve(true)); } catch { /* no event bus: only ready() can tell us */ }
+      try { api.on('message', (msg) => { noteAccess(msg); resolve(true); }); } catch { /* no event bus: only ready() can tell us */ }
     });
     // ready() may itself return a promise in a future API; accept either, but never rely on it.
-    const readyRet = api.ready({ requiredAccess: 'read table' });
+    const readyRet = api.ready({ requiredAccess: 'full' });
     const proof = typeof api.on === 'function' ? hostAnswered : Promise.resolve(readyRet);
     await withTimeout(proof, timeoutMs, 'host');
-    _connected = true; _access = 'read table';
+    _connected = true;
     return true;
   } catch (e) { return false; }
 }
 
-// Call grist.ready with the requested access (escalation). Only meaningful once connected.
-// The timeout is generous: the user may take a while to click "Allow" in Grist's own prompt.
-export async function ready(requiredAccess = 'read table', timeoutMs = 120000) {
+// Grist reports the access it has actually granted with every settings message — at ready, and
+// again whenever the level changes in the widget panel. That report, not what was asked for, is
+// what accessLevel() answers with.
+function noteAccess(msg) {
+  const level = msg?.settings?.accessLevel;
+  if (typeof level === 'string' && level) _access = level;
+}
+
+// Confirm the widget holds the access a write needs. There is no second ask to make (see connect),
+// so this reads the level Grist reported; a widget still at read-only access gets a plain answer
+// and the caller says what to change in the panel.
+export async function ready(requiredAccess = 'full') {
   if (!apiPresent()) return false;
-  try {
-    await withTimeout(g().ready({ requiredAccess }), timeoutMs, 'ready');
-    _connected = true; _access = requiredAccess;
-    return true;
-  } catch (e) { console.warn('[ANUPRESS] grist.ready failed', e); return false; }
+  if (!_connected) return false;
+  return requiredAccess === 'full' ? _access === 'full' : _access !== 'none';
 }
 export const escalateToFull = () => ready('full');
+// What to tell someone when full access is missing: the fix is one dropdown in Grist's own panel.
+export const ACCESS_HELP = 'Grist has not allowed this widget full document access. In the widget panel on the right, set Access level to "Full document access", then try again.';
 
 // ---- Schema ----
 // The table list is memoised for the same reason the meta tables are. Grist answers

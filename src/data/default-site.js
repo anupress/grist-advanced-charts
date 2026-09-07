@@ -11,7 +11,7 @@
 //   Get started   — "how do I do this with my data?"      (the five steps, privacy, FAQ)
 //
 // It also doubles as the sensible starting point once a real user begins editing, and as the
-// coverage net for the block library: every one of the 25 block types and all 11 chart types
+// coverage net for the block library: every one of the 26 block types and all 11 chart types
 // appear here, each in a place where it makes sense rather than dumped on one "showcase" page.
 
 import {
@@ -83,7 +83,7 @@ export const DEFAULT_SITE = {
         slides: [
           { image: demoSlide(VIOLET, TEAL), title: 'This is a Grist table 👋', subtitle: 'Read live from 48 rows of demo data — nothing here is hard-coded.' },
           { image: demoSlide(TEAL, '#ff8a5b'), title: 'Point it at your own data', subtitle: 'Any table, any columns — text, number, choice, date, yes/no.' },
-          { image: demoSlide('#7048e8', '#e64980'), title: 'Publish it as a page', subtitle: 'Menus, themes, dark mode and twenty-five kinds of block.' },
+          { image: demoSlide('#7048e8', '#e64980'), title: 'Publish it as a page', subtitle: 'Menus, themes, dark mode and twenty-six kinds of block.' },
         ],
       },
       blocks: [
@@ -229,7 +229,7 @@ export const DEFAULT_SITE = {
           iconBlock('e2', 'target', 'l', TEAL, '#ffffff', 'center', 3),
           iconBlock('e3', 'shield', 'l', '#7048e8', '#ffffff', 'center', 3),
           iconBlock('e4', 'star', 'l', '#e64980', '#ffffff', 'center', 3),
-          counter('e5', 'Block types', 0, 25, {}, 3),
+          counter('e5', 'Block types', 0, 26, {}, 3),
           counter('e6', 'Chart types', 0, 11, {}, 3),
           counter('e7', 'Starter templates', 0, 9, {}, 3),
           counter('e8', 'Servers in the middle', 0, 0, {}, 3),
@@ -245,13 +245,13 @@ export const DEFAULT_SITE = {
           { name: 'A second reviewer', quote: 'Add as many as you like. They wrap onto their own row on a narrow screen.', rating: 4, photoData: null },
         ], 6),
         { id: 'e13', type: 'pricing', span: 8, config: { title: 'Pricing tables, if you need one', plans: [
-          { name: 'Advanced Charts', price: '$0', period: 'forever', features: ['All 25 block types', 'All 11 chart types', '9 starter templates', 'Open source and self-hostable'], highlighted: true, buttonLabel: 'Read the guide', buttonTarget: urlTarget(GUIDE) },
+          { name: 'Advanced Charts', price: '$0', period: 'forever', features: ['All 26 block types', 'All 11 chart types', '9 starter templates', 'Open source and self-hostable'], highlighted: true, buttonLabel: 'Read the guide', buttonTarget: urlTarget(GUIDE) },
           { name: 'Your dashboard', price: 'Yours', period: 'to keep', features: ['Lives in your own document', 'No account, no sign-up', 'No analytics, no tracking', 'Works on self-hosted Grist'], highlighted: false, buttonLabel: 'Get started', buttonTarget: tabTarget('tab-start') },
         ] } },
         { id: 'e14', type: 'countdown', span: 4, config: { title: 'Countdowns for launches & deadlines', targetDate: new Date(Date.now() + 21 * 86400000).toISOString(), expiredText: 'The date has passed — this message replaces the timer.', color: VIOLET } },
         { id: 'e15', type: 'divider', span: 12, config: { style: 'dashed', thickness: 1, color: null } },
         text('e16', 'And a sandbox for anything else',
-          'The embed block takes your own HTML, CSS and JavaScript and runs it in a sandboxed frame — useful for an iframe, a third-party snippet, or something small like the clock below. It is deliberately given no access to your Grist document.'),
+          'The embed block takes your own HTML, CSS and JavaScript and runs it in a sandboxed frame — useful for an iframe, a third-party snippet, or something small like the calculator below. It is given no access to your Grist document unless you switch that on, and then your code can use the Grist plugin API exactly as a custom widget would.'),
         calcEmbed('e17', {
             title: 'Percentage change', resultLabel: 'Change',
             fields: [
@@ -261,6 +261,16 @@ export const DEFAULT_SITE = {
             expr: 'v.before ? ((v.after - v.before) / v.before) * 100 : 0', suffix: '%', decimals: 1,
             note: 'Real HTML, CSS and JavaScript running in a sandboxed frame — try changing the numbers. The defaults are the first and last month of revenue in this demo.',
           }),
+        text('e20', 'A widget inside the widget',
+          'The Widget block puts any Grist custom widget on the page by its URL — the same address you would give Grist. It reads the table you choose for it, you map the columns it asks for in the editor, and it keeps its own settings with the page. Below, a small example widget that ships with this one; outside a document it shows sample rows.'),
+        // Relative on purpose: it resolves against wherever this widget is served from, so the demo
+        // works on the published page and on a self-hosted copy alike. Outside a document the host
+        // answers its data request with "not live" and the page falls back to its sample rows.
+        { id: 'e21', type: 'widget', span: 12, config: { title: 'Rows at a glance', url: 'examples/nested-widget.html', height: 330, table: 'Sales', mappings: { Label: 'Product', Value: 'Revenue' },
+          requested: { columns: [
+            { name: 'Label', title: 'Label', type: 'Any', optional: false, description: 'Shown in the first column' },
+            { name: 'Value', title: 'Value', type: 'Numeric,Int,Any', optional: true, description: 'Shown as a number with a bar' },
+          ], requiredAccess: 'read table' } } },
         spacer('e18', 20),
         button('e19', 'See every block in the Add Section panel', 'ghost', 'center', urlTarget(GUIDE), 12),
       ],
@@ -271,9 +281,9 @@ export const DEFAULT_SITE = {
       blocks: [
         { id: 'x1', type: 'timeline', span: 12, config: { title: 'From demo data to your own dashboard', items: [
           { date: 'Step 1', title: 'Add a custom widget in Grist', description: 'On any page choose Add New → Add Widget to Page, pick Custom, and select the table you want to start from.' },
-          { date: 'Step 2', title: 'Paste the widget URL', description: 'Open the three-dot menu → Widget options, and paste the Advanced Charts URL from the guide.' },
+          { date: 'Step 2', title: 'Paste the widget URL', description: 'Open the three-dot menu → Widget options, and paste the Advanced Charts URL from the guide. Grist asks whether to allow the widget full document access: accept, and it is settled once.' },
           { date: 'Step 3', title: 'Explore the sample data', description: 'This page. Nothing here has touched your document yet — click around, switch pages, try the calendar and the search box.' },
-          { date: 'Step 4', title: 'Grant access, once', description: 'Click Edit and accept the consent screen. Full document access is what lets blocks read any table, and what lets the calendar write a moved date back.' },
+          { date: 'Step 4', title: 'Click Edit and read the consent screen', description: 'It says what the widget writes into your document and what it never does. Full document access, allowed in step 2, is what lets blocks read any table and lets the calendar write a moved date back; if it was declined, set Access level to Full document access in the widget panel.' },
           { date: 'Step 5', title: 'Build and publish', description: 'Add elements, point them at your columns, pick a theme, and save. The layout is stored in the document itself, so anyone who can see the page sees the dashboard.' },
         ] } },
         text('x2', 'Or start from a template',

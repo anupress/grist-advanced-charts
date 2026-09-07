@@ -31,7 +31,7 @@ export function showConsent({ docName } = {}) {
           bullet('save', 'Save your design', 'back into that table, so it reloads next time.'),
           bullet('lock', 'Nothing leaves Grist', 'there is no ANUPRESS server, no analytics, and no third-party calls.'),
         ]),
-        el('p', { class: 'ap-fineprint', html: 'On the next step, Grist will also ask you to grant <b>full document access</b> — this is required to create the table above. You can revoke it anytime from the widget’s settings.' }),
+        el('p', { class: 'ap-fineprint', html: 'Grist asked you to allow <b>full document access</b> when this widget was added; creating the table above needs it. If that was declined, set <b>Access level</b> to “Full document access” in the widget panel. You can revoke it any time from the same place.' }),
       ]),
       el('div', { class: 'ap-modal__foot' }, [
         el('button', { class: 'ap-btn ap-btn--ghost', text: 'Not now', onClick: () => close(false) }),

@@ -12,6 +12,7 @@ import { mountCounters } from './counter.js';
 import { mountAttachmentImages } from './media-mount.js';
 import { mountCountdowns } from './countdown.js';
 import { mountCalendars } from './calendar.js';
+import { mountWidgets } from './widget.js';
 import { resizeChartsIn, wireGlobalResize } from '../charts/echarts-adapter.js';
 import { icon } from '../assets/icons.js';
 import { selectButton, mountTray } from '../print/printout.js';
@@ -146,6 +147,7 @@ export function renderSite(opts) {
       step(mountMaps, 'maps'); step(resizeMapsIn, 'map resize');
       step(mountCounters, 'counters'); step(mountAttachmentImages, 'images');
       step(mountCountdowns, 'countdowns'); step(mountCalendars, 'calendars');
+      step(mountWidgets, 'nested widgets');
     };
     go();
     setTimeout(go, 120);

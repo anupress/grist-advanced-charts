@@ -18,6 +18,7 @@ import { renderImage } from './image.js';
 import { renderTestimonials } from './testimonials.js';
 import { renderLiveTable } from './livetable.js';
 import { renderEmbed } from './embed.js';
+import { renderWidgetBlock } from './widget.js';
 import { renderQRCode } from './qrcode.js';
 import { renderBarcode } from './barcode.js';
 import { renderSlicer } from './slicer.js';
@@ -26,6 +27,7 @@ import { renderTimeline } from './timeline.js';
 import { renderPricing } from './pricing.js';
 import { renderCalendar } from './calendar.js';
 import { normalizeGrid } from '../data/grid.js';
+import { applyBlockStyle } from './block-style.js';
 
 function blockData(block, ctx) {
   const table = block.config?.table || ctx.config?.dataTable;
@@ -95,6 +97,7 @@ export function renderBlock(block, ctx) {
   else if (block.type === 'livetable') inner = renderLiveTable(block, ctx);
   else if (block.type === 'invoice') inner = renderInvoice(block, ctx);
   else if (block.type === 'embed') inner = renderEmbed(block);
+  else if (block.type === 'widget') inner = renderWidgetBlock(block, ctx);
   else if (block.type === 'qrcode') inner = renderQRCode(block);
   else if (block.type === 'barcode') inner = renderBarcode(block);
   else if (block.type === 'slicer') inner = renderSlicer(block, ctx);
@@ -125,7 +128,10 @@ function renderGridBlock(block, ctx) {
   c.cells.forEach((child, i) => {
     if (child) {
       const childCtx = ctx.cellContext ? ctx.cellContext(child) : { ...ctx, nested: true };
-      grid.append(el('div', { class: 'ap-gridblock__cell' }, [renderBlock(child, childCtx)]));
+      const cellEl = el('div', { class: 'ap-gridblock__cell' }, [renderBlock(child, childCtx)]);
+      // The cell is the grid item, so a child's column span, row span and alignment land here.
+      applyBlockStyle(child.style, { cell: cellEl, nested: true });
+      grid.append(cellEl);
     } else if (ctx.edit?.active) {
       const add = el('button', { class: 'ap-gridblock__add', type: 'button', 'aria-label': `Add a block to cell ${i + 1}` }, [icon('plus'), el('span', { text: 'Add' })]);
       add.addEventListener('click', (e) => { e.stopPropagation(); ctx.edit.onAddInGrid?.(block.id, i); });
@@ -142,6 +148,10 @@ function renderGridBlock(block, ctx) {
 // "needs a table" notice above, so an unconfigured block is still draggable/editable/deletable.
 function finishBlock(block, ctx, inner) {
   const wrap = el('div', { class: 'ap-block' + (ctx.nested ? ' ap-block--nested' : ''), dataset: { span: String(block.span || 12), blockId: block.id } }, [inner]);
+  // The block's own layout and style options: margin, order, row span and visibility on the
+  // wrapper, padding, background, border and shadow on the card. Cell spans are applied by the
+  // grid that owns the cell.
+  applyBlockStyle(block.style, { wrap, inner, nested: !!ctx.nested });
 
   if (ctx.edit?.active) {
     inner.classList.add('ap-editable');

@@ -12,8 +12,14 @@ import { TEMPLATE_SAMPLE_DATA } from './data/templates/sample-data.js';
 import { renderSite } from './render/site.js';
 import { showConsent } from './consent/modal.js';
 import { VERSION } from './version.js';
+import { installWidgetHost } from './grist/widget-host.js';
+import { hostThemeForWidgets } from './render/embed.js';
 
 const root = document.getElementById('anupress-root');
+
+// Before the handshake, so the first things Grist sends — theme, access, the linked table — are
+// on record for any nested widget that asks later.
+installWidgetHost({ isLive: bridge.isLive, getOption: bridge.getOption, setOption: bridge.setOption, getColumns: bridge.getColumns, hostTheme: hostThemeForWidgets });
 
 const app = {
   config: clone(DEFAULT_SITE),
@@ -94,7 +100,7 @@ function renderView() {
     onSaveLayout: bridge.isLive() ? async (tab) => {
       try {
         const ok = await bridge.escalateToFull();
-        if (!ok) { toast('Grist did not grant access, so the layout was not saved. You can still print it.', 'err'); return; }
+        if (!ok) { toast(bridge.ACCESS_HELP + ' You can still print the layout.', 'err'); return; }
         app.config = { ...app.config, tabs: [...(app.config.tabs || []), tab] };
         const saved = await bridge.saveConfig(app.config);
         if (!saved) { toast('Could not write the page to your document.', 'err'); return; }
@@ -166,7 +172,7 @@ async function startEdit() {
           toast('No data tables found — add a table in Grist, then reopen Edit.', 'err');
         }
       } else {
-        toast('Access not granted. You can still preview the editor.', 'err');
+        toast(bridge.ACCESS_HELP + ' Until then the editor is a preview and cannot save.', 'err');
       }
     } else {
       toast('Demo editor — changes are not saved outside Grist.', '');

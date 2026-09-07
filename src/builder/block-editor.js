@@ -21,8 +21,32 @@ import { currentSeriesColors } from '../theme/apply.js';
 import { openDataEditor } from './data-editor.js';
 import { guessInvoiceConfig, STYLES, STYLE_LABELS } from '../render/invoice.js';
 import { pickImage, readFileAsDataURL } from './imageutil.js';
+import { layoutStyleSection } from './style-section.js';
+import { clearNestedOptions, linkedTableId } from '../grist/widget-host.js';
+import { widgetHeight, WIDGET_MAX_HEIGHT, mountWidgets } from '../render/widget.js';
+
+// Every editor closes the same way: its own fields, then the shared "Layout & style" section
+// (margin, padding, spans, background, visibility and so on), then the drawer. `refresh` re-renders
+// the editor's live preview so padding, background and height changes show as they are typed; the
+// text editor has no preview and passes null. Kept out of each editor's own fields so the block's
+// settings and its placement never share a code path.
+function openEditor(title, body, footer, wb, ctx, refresh) {
+  openDrawer({ title, body: [...body, layoutStyleSection(wb, ctx, refresh)], footer });
+}
 
 const SPANS = [{ value: 3, label: 'XS' }, { value: 4, label: 'S' }, { value: 6, label: 'M' }, { value: 8, label: 'L' }, { value: 12, label: 'Full' }];
+
+// The Block width row. On the page it is the simple control it always was. Inside a Grid cell the
+// cell decides the width, so the chips are shown disabled with the reason, and Column span under
+// Layout & style is the control that applies there. Disabled rather than hidden: a person who
+// knows the row from every other editor should find it, and read why it is off.
+function widthField(wb, ctx, def) {
+  const seg = segmented(SPANS, wb.span || def, (v) => { wb.span = v; });
+  if (!ctx?.inGrid) return field('Block width', seg);
+  seg.classList.add('is-disabled');
+  seg.querySelectorAll('.ap-chip').forEach((c) => { c.disabled = true; c.tabIndex = -1; c.setAttribute('aria-disabled', 'true'); });
+  return field('Block width', seg, 'Inside a section the cell sets the width. To take more cells, use Column span under Layout & style below.');
+}
 
 const SUB_INFO = {
   chart: 'Type your own text, or use placeholders that fill in live:<br><code>%count</code> rows · <code>%groups</code> categories · <code>%total</code> sum of the value.',
@@ -49,6 +73,7 @@ export function openBlockEditor(block, ctx) {
   if (block.type === 'livetable') return openLiveTableEditor(block, ctx);
   if (block.type === 'invoice') return openInvoiceEditor(block, ctx);
   if (block.type === 'embed') return openEmbedEditor(block, ctx);
+  if (block.type === 'widget') return openWidgetEditor(block, ctx);
   if (block.type === 'qrcode') return openQRCodeEditor(block, ctx);
   if (block.type === 'barcode') return openBarcodeEditor(block, ctx);
   if (block.type === 'slicer') return openSlicerEditor(block, ctx);
@@ -202,7 +227,7 @@ function openChartEditor(block, ctx) {
       (v) => { wb.config.table = v; const cols = provider.columns(v); Object.assign(wb.config, autoPick(cols)); ensureRows(provider, v).then(update); })),
     editDataRow(() => wb.config.table, ctx, () => openChartEditor(block, ctx)),
     dynHost,
-    field('Block width', segmented(SPANS, wb.span || 6, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 6),
     subhead('Live preview'),
     preview,
   ];
@@ -210,7 +235,7 @@ function openChartEditor(block, ctx) {
     ghostBtn('Cancel', () => closeDrawer()),
     primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); }),
   ];
-  openDrawer({ title: block.__isNew ? 'Add chart' : 'Edit chart', body, footer });
+  openEditor(block.__isNew ? 'Add chart' : 'Edit chart', body, footer, wb, ctx, refreshPreview);
   rebuild();
   refreshPreview();
 }
@@ -305,12 +330,12 @@ function openStatEditor(block, ctx) {
     subhead('Number format'),
     checkboxRow('Compact (1.2K, 3.4M)', wb.config.format?.compact, (v) => { wb.config.format = { ...wb.config.format, compact: v }; refreshPreview(); }),
     field('Currency symbol', textInput(wb.config.format?.currency || '', (v) => { wb.config.format = { ...wb.config.format, currency: v }; refreshPreview(); }, { placeholder: 'e.g. $' })),
-    field('Block width', segmented(SPANS, wb.span || 3, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 3),
     subhead('Live preview'), previewHost,
   ];
   buildDyn();
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add stat' : 'Edit stat', body, footer });
+  openEditor(block.__isNew ? 'Add stat' : 'Edit stat', body, footer, wb, ctx, refreshPreview);
   refreshPreview();
 }
 
@@ -320,10 +345,10 @@ function openTextEditor(block, ctx) {
   const body = [
     field('Heading', textInput(wb.config.heading || '', (v) => { wb.config.heading = v; }, { placeholder: 'Section heading' })),
     field('Body (basic HTML allowed)', textInput(wb.config.html || '', (v) => { wb.config.html = v; }, { textarea: true, placeholder: 'Write something friendly…' })),
-    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 12),
   ];
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add text' : 'Edit text', body, footer });
+  openEditor(block.__isNew ? 'Add text' : 'Edit text', body, footer, wb, ctx, null);
 }
 
 // ---------------- Breakdown editor ----------------
@@ -360,12 +385,12 @@ function openBreakdownEditor(block, ctx) {
       async (v) => { wb.config.table = v; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
     editDataRow(() => wb.config.table, ctx, () => openBreakdownEditor(block, ctx)),
     dynHost,
-    field('Block width', segmented(SPANS, wb.span || 4, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 4),
     subhead('Live preview'), previewHost,
   ];
   buildDyn();
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add breakdown' : 'Edit breakdown', body, footer });
+  openEditor(block.__isNew ? 'Add breakdown' : 'Edit breakdown', body, footer, wb, ctx, refreshPreview);
   refreshPreview();
 }
 
@@ -429,12 +454,12 @@ function openMapEditor(block, ctx) {
     ),
     field('Attribution', textInput(wb.config.tileAttribution || '', (v) => { wb.config.tileAttribution = v; refreshPreview(); },
       { placeholder: 'e.g. Tiles © Esri' })),
-    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 12),
     subhead('Live preview'), previewHost,
   ];
   buildDyn();
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add map' : 'Edit map', body, footer });
+  openEditor(block.__isNew ? 'Add map' : 'Edit map', body, footer, wb, ctx, refreshPreview);
   refreshPreview();
 }
 
@@ -460,11 +485,11 @@ function openSpacerEditor(block, ctx) {
   const body = [
     field('Height (pixels)', textInput(String(wb.config.height ?? 40), (v) => { wb.config.height = Math.max(4, Math.min(240, Number(v) || 40)); refreshPreview(); }, { type: 'number' }),
       'Empty vertical space between other elements.'),
-    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 12),
     subhead('Live preview'), previewHost,
   ];
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add spacer' : 'Edit spacer', body, footer });
+  openEditor(block.__isNew ? 'Add spacer' : 'Edit spacer', body, footer, wb, ctx, refreshPreview);
   refreshPreview();
 }
 
@@ -479,11 +504,11 @@ function openButtonEditor(block, ctx) {
     field('Style', segmented([{ value: 'primary', label: 'Primary' }, { value: 'soft', label: 'Soft' }, { value: 'outline', label: 'Outline' }], wb.config.style || 'primary', (v) => { wb.config.style = v; refreshPreview(); })),
     field('Alignment', segmented([{ value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }], wb.config.align || 'left', (v) => { wb.config.align = v; refreshPreview(); })),
     field('Link', linkTargetField(wb.config.target, ctx.site?.tabs, refreshPreview)),
-    field('Block width', segmented(SPANS, wb.span || 3, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 3),
     subhead('Live preview'), previewHost,
   ];
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add button' : 'Edit button', body, footer });
+  openEditor(block.__isNew ? 'Add button' : 'Edit button', body, footer, wb, ctx, refreshPreview);
   refreshPreview();
 }
 
@@ -503,11 +528,11 @@ function openIconEditor(block, ctx) {
     ),
     field('Alignment', segmented([{ value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' }], wb.config.align || 'left', (v) => { wb.config.align = v; refreshPreview(); })),
     field('Link (optional)', linkTargetField(wb.config.target, site.tabs, refreshPreview)),
-    field('Block width', segmented(SPANS, wb.span || 3, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 3),
     subhead('Live preview'), previewHost,
   ];
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add icon' : 'Edit icon', body, footer });
+  openEditor(block.__isNew ? 'Add icon' : 'Edit icon', body, footer, wb, ctx, refreshPreview);
   refreshPreview();
 }
 
@@ -550,12 +575,12 @@ function openProgressEditor(block, ctx) {
     field('Prefix (optional)', textInput(wb.config.prefix || '', (v) => { wb.config.prefix = v; refreshPreview(); }, { placeholder: 'e.g. $, £ — goes before the number' })),
     field('Suffix (optional)', textInput(wb.config.suffix || '', (v) => { wb.config.suffix = v; refreshPreview(); }, { placeholder: 'e.g. signups, hrs — goes after' })),
     colorField('Bar color', wb.config.color, '#6d5efc', (v) => { wb.config.color = v; refreshPreview(); }),
-    field('Block width', segmented(SPANS, wb.span || 4, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 4),
     subhead('Live preview'), previewHost,
   ];
   buildDyn();
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add progress bar' : 'Edit progress bar', body, footer });
+  openEditor(block.__isNew ? 'Add progress bar' : 'Edit progress bar', body, footer, wb, ctx, refreshPreview);
   refreshPreview();
 }
 
@@ -581,11 +606,11 @@ function openCounterEditor(block, ctx) {
     field('Animation length (ms)', textInput(String(wb.config.duration ?? 1400), (v) => { wb.config.duration = Math.max(200, Number(v) || 1400); refreshPreview(); }, { type: 'number' }),
       'How long the count-up takes once it scrolls into view.'),
     subhead('Icon (optional)'), iconPickerField(ctx.site || {}, wb.config, refreshPreview),
-    field('Block width', segmented(SPANS, wb.span || 3, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 3),
     subhead('Live preview'), previewHost,
   ];
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add counter' : 'Edit counter', body, footer });
+  openEditor(block.__isNew ? 'Add counter' : 'Edit counter', body, footer, wb, ctx, refreshPreview);
   refreshPreview();
 }
 
@@ -623,11 +648,11 @@ function openAccordionEditor(block, ctx) {
     field('Title (optional)', textInput(wb.config.title || '', (v) => { wb.config.title = v; refreshPreview(); }, { placeholder: 'e.g. Frequently asked questions' })),
     checkboxRow('First question open by default', wb.config.openFirst !== false, (v) => { wb.config.openFirst = v; refreshPreview(); }),
     divider(), itemsHost,
-    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 12),
     subhead('Live preview'), previewHost,
   ];
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add accordion' : 'Edit accordion', body, footer });
+  openEditor(block.__isNew ? 'Add accordion' : 'Edit accordion', body, footer, wb, ctx, refreshPreview);
   refreshPreview();
 }
 
@@ -686,11 +711,11 @@ function openImageEditor(block, ctx) {
     field('Fit', segmented([{ value: 'cover', label: 'Fill & crop' }, { value: 'contain', label: 'Show whole image' }], wb.config.fit || 'cover', (v) => { wb.config.fit = v; refreshPreview(); })),
     field('Caption (optional)', textInput(wb.config.caption || '', (v) => { wb.config.caption = v; refreshPreview(); }, { placeholder: 'A short caption under the image' })),
     field('Link (optional)', linkTargetField(wb.config.link, ctx.site?.tabs, refreshPreview)),
-    field('Block width', segmented(SPANS, wb.span || 6, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 6),
     subhead('Live preview'), previewHost,
   ];
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add image' : 'Edit image', body, footer });
+  openEditor(block.__isNew ? 'Add image' : 'Edit image', body, footer, wb, ctx, refreshPreview);
   // Row records aren't guaranteed pre-loaded (unlike columns, which GristProvider.init() always
   // pre-fetches) — prime them before the first build so an existing attachment-mode image's row
   // picker isn't briefly empty.
@@ -798,11 +823,11 @@ function openTestimonialsEditor(block, ctx) {
     field('Section title (optional)', textInput(wb.config.title || '', (v) => { wb.config.title = v; refreshPreview(); }, { placeholder: 'e.g. What people are saying' })),
     field('Content comes from', segmented([{ value: 'manual', label: 'Type them in' }, { value: 'data', label: 'From my data' }], wb.config.mode, (v) => { wb.config.mode = v; buildDyn(); refreshPreview(); })),
     dynHost,
-    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 12),
     subhead('Live preview'), previewHost,
   ];
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add testimonials' : 'Edit testimonials', body, footer });
+  openEditor(block.__isNew ? 'Add testimonials' : 'Edit testimonials', body, footer, wb, ctx, refreshPreview);
   (async () => {
     if (wb.config.mode === 'data' && wb.config.table) await ensureRows(provider, wb.config.table);
     buildDyn();
@@ -868,12 +893,98 @@ function openLiveTableEditor(block, ctx) {
     field('Rows per page', textInput(String(wb.config.pageSize || 10), (v) => { wb.config.pageSize = Math.max(3, Math.min(100, Number(v) || 10)); refreshPreview(); }, { type: 'number' })),
     checkboxRow('Let viewers search', wb.config.searchable !== false, (v) => { wb.config.searchable = v; refreshPreview(); }),
     checkboxRow('Let viewers sort by clicking column headers', wb.config.sortable !== false, (v) => { wb.config.sortable = v; refreshPreview(); }),
-    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 12),
     subhead('Live preview'), previewHost,
   ];
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add data table' : 'Edit data table', body, footer });
+  openEditor(block.__isNew ? 'Add data table' : 'Edit data table', body, footer, wb, ctx, refreshPreview);
   (async () => { await ensureRows(provider, wb.config.table); buildDyn(); refreshPreview(); })();
+}
+
+// ---------------- Shared: what a nested widget reads ----------------
+// The table a nested widget reads (a Widget block, or an embed with Grist access) and the mapping
+// for the columns it asks for. The columns come from the widget itself: when the live preview
+// loads it, it tells the host which columns it wants — grist.ready({ columns }) — the host raises
+// ap:nested-configure, and this section repaints with a picker per column. The request is kept on
+// the block so the pickers are there next time without waiting for the widget to load.
+function nestedDataSection(wb, ctx, refresh) {
+  const provider = ctx.provider;
+  const mapHost = el('div');
+  const columnsFor = () => {
+    const table = wb.config.table || linkedTableId() || provider.defaultTable();
+    return table ? (provider.columns(table) || []) : [];
+  };
+  const paint = () => {
+    const raw = wb.config.requested?.columns;
+    const specs = Array.isArray(raw) ? raw.map((c) => (typeof c === 'string' ? { name: c } : c)).filter((c) => c && c.name) : [];
+    if (!specs.length) {
+      mapHost.replaceChildren(el('div', { class: 'ap-muted', style: { fontSize: '12px', marginBottom: '14px' },
+        text: wb.config.requested ? 'This widget does not ask for particular columns; it reads the table as it is.' : 'Once the widget loads in the preview below, the columns it asks for appear here, each with a picker.' }));
+      return;
+    }
+    const columns = columnsFor();
+    const parts = [subhead('Columns the widget asks for')];
+    for (const spec of specs) {
+      const label = (spec.title || spec.name) + (spec.optional ? ' (optional)' : '');
+      const cur = wb.config.mappings?.[spec.name];
+      let control;
+      if (spec.allowMultiple) {
+        control = columnPicker(columns, Array.isArray(cur) ? cur : (cur ? [cur] : []), (ids) => { (wb.config.mappings ||= {})[spec.name] = ids; refresh(); });
+      } else {
+        control = selectInput([{ value: '', label: 'Not mapped' }, ...columns.map((c) => ({ value: c.id, label: `${c.label || c.id} · ${c.type}` }))],
+          Array.isArray(cur) ? (cur[0] || '') : (cur || ''), (v) => { (wb.config.mappings ||= {})[spec.name] = v || null; refresh(); });
+      }
+      parts.push(field(label, control, spec.description || (spec.type ? `The widget expects ${spec.type}.` : null)));
+    }
+    mapHost.replaceChildren(...parts);
+  };
+  const onConfigure = (e) => {
+    if (!mapHost.isConnected) { document.removeEventListener('ap:nested-configure', onConfigure); return; }
+    if (e.detail?.blockId !== wb.id) return;
+    const s = e.detail.settings || {};
+    wb.config.requested = { columns: Array.isArray(s.columns) ? s.columns : null, requiredAccess: s.requiredAccess || null };
+    paint();
+  };
+  document.addEventListener('ap:nested-configure', onConfigure);
+  const tableField = field('Table it reads',
+    tablePicker(provider, wb.config.table || '', (v) => { wb.config.table = v || null; paint(); refresh(); }, { blank: 'The table this dashboard is linked to in Grist' }),
+    'Pick a table and the widget reads that one. Leave it blank and it follows the table chosen for this dashboard in Grist, changes included.');
+  const forget = ghostBtn('Forget the widget\'s saved settings', async () => {
+    await clearNestedOptions(wb.id);
+    toast('Cleared. The widget starts fresh the next time it loads.', 'ok');
+    refresh();
+  });
+  forget.classList.add('ap-btn--sm');
+  paint();
+  return [tableField, mapHost, el('div', { style: { margin: '0 0 14px' } }, [forget,
+    el('div', { class: 'ap-muted', style: { fontSize: '11.5px', marginTop: '4px' }, text: 'A widget keeps its own settings (a note, a chosen view) with this page. This clears them.' })])];
+}
+
+// ---------------- Widget editor ----------------
+function openWidgetEditor(block, ctx) {
+  const wb = clone(block); wb.config = wb.config || {};
+  const previewHost = el('div', { class: 'ap-preview' });
+  // Loading a whole widget on every keystroke of the URL would be a lot of loading.
+  const refreshPreview = debounce(() => { previewHost.replaceChildren(renderBlock(clone(wb), { provider: ctx.provider, config: {} })); mountWidgets(previewHost); }, 600);
+  const body = [
+    el('div', { class: 'ap-trust ap-trust--warn' }, [
+      icon('shield'),
+      el('div', {}, [
+        el('strong', { text: 'Runs with this dashboard\'s access to your document.' }),
+        el('div', { class: 'ap-muted', text: 'Whatever this dashboard can read, the nested widget can read; if this dashboard can write, so can it. Add only widgets you trust, from an address you know.' }),
+      ]),
+    ]),
+    field('Widget URL', textInput(wb.config.url || '', (v) => { wb.config.url = v.trim(); refreshPreview(); }, { placeholder: 'https://…' }),
+      'The same address you would paste into Grist\'s custom widget settings.'),
+    ...nestedDataSection(wb, ctx, refreshPreview),
+    field('Height (pixels)', textInput(String(wb.config.height ?? 420), (v) => { wb.config.height = widgetHeight(v); refreshPreview(); }, { type: 'number' }),
+      `Up to ${WIDGET_MAX_HEIGHT}. Give it the room it needs so it scrolls with the page, not inside its own frame.`),
+    widthField(wb, ctx, 12),
+    subhead('Live preview'), previewHost,
+  ];
+  const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
+  openEditor(block.__isNew ? 'Add widget' : 'Edit widget', body, footer, wb, ctx, refreshPreview);
+  refreshPreview();
 }
 
 // ---------------- Embed editor ----------------
@@ -884,23 +995,40 @@ function openEmbedEditor(block, ctx) {
   // editors keeps that from firing on every keystroke.
   const refreshPreview = debounce(() => { previewHost.replaceChildren(renderBlock(clone(wb), { provider: ctx.provider, config: {} })); }, 500);
 
-  const body = [
-    el('div', { class: 'ap-trust' }, [
-      icon('code'),
+  // The trust note and the data section follow the access switch: sandboxed code gets neither a
+  // table nor a mapping, because it cannot reach them.
+  const trustHost = el('div');
+  const dataHost = el('div');
+  const paintAccess = () => {
+    const on = wb.config.access === 'grist';
+    trustHost.replaceChildren(el('div', { class: 'ap-trust' + (on ? ' ap-trust--warn' : '') }, [
+      icon(on ? 'shield' : 'code'),
       el('div', {}, [
-        el('strong', { text: 'Runs in a sandboxed frame.' }),
-        el('div', { class: 'ap-muted', html: 'Your HTML, CSS and JavaScript run isolated from this widget and your Grist data — they can\'t read your tables, this widget\'s settings, or the page around them. You\'re responsible for whatever you put here.' }),
+        el('strong', { text: on ? 'Runs as a custom widget, with this dashboard\'s access to your document.' : 'Runs in a sandboxed frame.' }),
+        el('div', { class: 'ap-muted', html: on
+          ? 'The Grist plugin API is loaded ahead of your code, so it works exactly as in a widget of your own: call <code>grist.ready({ columns: [&hellip;] })</code>, then <code>grist.onRecords(&hellip;)</code>. Your code can read what this dashboard can read, and write if it can write. You\'re responsible for whatever you put here.'
+          : 'Your HTML, CSS and JavaScript run isolated from this widget and your Grist data — they can\'t read your tables, this widget\'s settings, or the page around them. You\'re responsible for whatever you put here.' }),
       ]),
-    ]),
+    ]));
+    dataHost.replaceChildren(...(on ? nestedDataSection(wb, ctx, refreshPreview) : []));
+  };
+  paintAccess();
+
+  const body = [
+    trustHost,
+    field('Access to your document', segmented([{ value: 'none', label: 'None (sandboxed)' }, { value: 'grist', label: 'Grist plugin API' }], wb.config.access || 'none', (v) => { wb.config.access = v; paintAccess(); refreshPreview(); }),
+      'With the plugin API, this block is a custom widget written in place.'),
+    dataHost,
     field('HTML', textInput(wb.config.html || '', (v) => { wb.config.html = v; refreshPreview(); }, { textarea: true, placeholder: '<div>Hello world</div>' })),
     field('CSS', textInput(wb.config.css || '', (v) => { wb.config.css = v; refreshPreview(); }, { textarea: true, placeholder: 'div { color: teal; }' })),
     field('JavaScript', textInput(wb.config.js || '', (v) => { wb.config.js = v; refreshPreview(); }, { textarea: true, placeholder: 'console.log("hello")' })),
-    field('Height (pixels)', textInput(String(wb.config.height ?? 300), (v) => { wb.config.height = Math.max(80, Math.min(1200, Number(v) || 300)); refreshPreview(); }, { type: 'number' })),
-    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    field('Height (pixels)', textInput(String(wb.config.height ?? 300), (v) => { wb.config.height = Math.max(80, Math.min(4000, Number(v) || 300)); refreshPreview(); }, { type: 'number' }),
+      'Up to 4000. Give an embedded form or page its full height so it scrolls with the dashboard, not inside its own frame.'),
+    widthField(wb, ctx, 12),
     subhead('Live preview'), previewHost,
   ];
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add embed' : 'Edit embed', body, footer });
+  openEditor(block.__isNew ? 'Add embed' : 'Edit embed', body, footer, wb, ctx, refreshPreview);
   refreshPreview();
 }
 
@@ -993,11 +1121,11 @@ function openSlicerEditor(block, ctx) {
       'Automatic reaches any block whose table shares this column, and follows reference columns both ways.'),
     targetsHost,
     reach,
-    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 12),
     subhead('Live preview'), previewHost,
   ];
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add slicer' : 'Edit slicer', body, footer });
+  openEditor(block.__isNew ? 'Add slicer' : 'Edit slicer', body, footer, wb, ctx, refreshPreview);
   drawTargets();
   refreshPreview();
 }
@@ -1038,11 +1166,11 @@ function openGridEditor(block, ctx) {
     field('Gap between cells', segmented([{ value: 'compact', label: 'Compact' }, { value: 'normal', label: 'Normal' }, { value: 'roomy', label: 'Roomy' }],
       wb.config.gap, (v) => { wb.config.gap = v; refreshPreview(); })),
     count,
-    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 12),
     subhead('Live preview'), previewHost,
   ];
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add grid' : 'Edit grid', body, footer });
+  openEditor(block.__isNew ? 'Add grid' : 'Edit grid', body, footer, wb, ctx, refreshPreview);
   refreshPreview();
 }
 
@@ -1078,11 +1206,11 @@ function openBarcodeEditor(block, ctx) {
       colorField('Background', wb.config.bg, '#ffffff', (v) => { wb.config.bg = v; refreshPreview(); }),
     ),
     field('Caption (optional)', textInput(wb.config.caption || '', (v) => { wb.config.caption = v; refreshPreview(); }, { placeholder: 'e.g. Asset tag' })),
-    field('Block width', segmented(SPANS, wb.span || 3, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 3),
     subhead('Live preview'), previewHost, hint,
   ];
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add barcode' : 'Edit barcode', body, footer });
+  openEditor(block.__isNew ? 'Add barcode' : 'Edit barcode', body, footer, wb, ctx, refreshPreview);
   refreshPreview();
 }
 
@@ -1103,11 +1231,11 @@ function openQRCodeEditor(block, ctx) {
     ),
     field('Size (pixels)', textInput(String(wb.config.size ?? 200), (v) => { wb.config.size = Math.max(80, Math.min(600, Number(v) || 200)); refreshPreview(); }, { type: 'number' })),
     field('Caption (optional)', textInput(wb.config.caption || '', (v) => { wb.config.caption = v; refreshPreview(); }, { placeholder: 'e.g. Scan to donate' })),
-    field('Block width', segmented(SPANS, wb.span || 3, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 3),
     subhead('Live preview'), previewHost,
   ];
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add QR code' : 'Edit QR code', body, footer });
+  openEditor(block.__isNew ? 'Add QR code' : 'Edit QR code', body, footer, wb, ctx, refreshPreview);
   refreshPreview();
 }
 
@@ -1131,11 +1259,11 @@ function openCountdownEditor(block, ctx) {
     field('Counts down to', textInput(localStr, (v) => { if (v) { wb.config.targetDate = new Date(v).toISOString(); refreshPreview(); } }, { type: 'datetime-local' })),
     field('Message once it ends', textInput(wb.config.expiredText || '', (v) => { wb.config.expiredText = v; refreshPreview(); }, { placeholder: 'e.g. This offer has ended.' })),
     colorField('Number color', wb.config.color, '#6d5efc', (v) => { wb.config.color = v; refreshPreview(); }),
-    field('Block width', segmented(SPANS, wb.span || 4, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 4),
     subhead('Live preview'), previewHost,
   ];
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add countdown' : 'Edit countdown', body, footer });
+  openEditor(block.__isNew ? 'Add countdown' : 'Edit countdown', body, footer, wb, ctx, refreshPreview);
   refreshPreview();
 }
 
@@ -1172,11 +1300,11 @@ function openTimelineEditor(block, ctx) {
   const body = [
     field('Title (optional)', textInput(wb.config.title || '', (v) => { wb.config.title = v; refreshPreview(); }, { placeholder: 'e.g. Our history' })),
     divider(), itemsHost,
-    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 12),
     subhead('Live preview'), previewHost,
   ];
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add timeline' : 'Edit timeline', body, footer });
+  openEditor(block.__isNew ? 'Add timeline' : 'Edit timeline', body, footer, wb, ctx, refreshPreview);
   refreshPreview();
 }
 
@@ -1189,11 +1317,11 @@ function openDividerEditor(block, ctx) {
     field('Style', segmented([{ value: 'solid', label: 'Solid' }, { value: 'dashed', label: 'Dashed' }, { value: 'dotted', label: 'Dotted' }], wb.config.style || 'solid', (v) => { wb.config.style = v; refreshPreview(); })),
     field('Thickness (pixels)', textInput(String(wb.config.thickness ?? 1), (v) => { wb.config.thickness = Math.max(1, Math.min(10, Number(v) || 1)); refreshPreview(); }, { type: 'number' })),
     colorField('Color', wb.config.color, '#d0d5dd', (v) => { wb.config.color = v; refreshPreview(); }),
-    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 12),
     subhead('Live preview'), previewHost,
   ];
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add divider' : 'Edit divider', body, footer });
+  openEditor(block.__isNew ? 'Add divider' : 'Edit divider', body, footer, wb, ctx, refreshPreview);
   refreshPreview();
 }
 
@@ -1255,11 +1383,11 @@ function openPricingEditor(block, ctx) {
   const body = [
     field('Section title (optional)', textInput(wb.config.title || '', (v) => { wb.config.title = v; refreshPreview(); }, { placeholder: 'e.g. Choose your plan' })),
     plansHost,
-    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 12),
     subhead('Live preview'), previewHost,
   ];
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add pricing table' : 'Edit pricing table', body, footer });
+  openEditor(block.__isNew ? 'Add pricing table' : 'Edit pricing table', body, footer, wb, ctx, refreshPreview);
   refreshPreview();
 }
 
@@ -1312,13 +1440,13 @@ function openCalendarEditor(block, ctx) {
     editDataRow(() => wb.config.table, ctx, () => openCalendarEditor(block, ctx)),
     dynHost,
     checkboxRow('Let viewers drag events to reschedule', wb.config.draggable !== false, (v) => { wb.config.draggable = v; refreshPreview(); }),
-    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 12),
     subhead('Live preview'),
     el('div', { class: 'ap-muted', style: { fontSize: '12px', marginBottom: '6px' }, text: 'Dragging only works on the real published page, not in this preview — and picks up direct Grist edits on its own every ~15s while open.' }),
     previewHost,
   ];
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add calendar' : 'Edit calendar', body, footer });
+  openEditor(block.__isNew ? 'Add calendar' : 'Edit calendar', body, footer, wb, ctx, refreshPreview);
   (async () => { await ensureRows(provider, wb.config.table); buildDyn(); refreshPreview(); })();
 }
 
@@ -1476,13 +1604,13 @@ function openInvoiceEditor(block, ctx) {
     field('Closing message', textInput(c.thanksText || '', (v) => { c.thanksText = v; refreshPreview(); },
       { textarea: true, rows: 2, placeholder: 'Thank you for your business.' })),
 
-    field('Block width', segmented(SPANS, wb.span || 12, (v) => { wb.span = v; })),
+    widthField(wb, ctx, 12),
     subhead('Live preview'), previewHost,
   ];
 
   buildMap(); buildClient(); buildItems();
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
-  openDrawer({ title: block.__isNew ? 'Add invoice' : 'Edit invoice', body, footer });
+  openEditor(block.__isNew ? 'Add invoice' : 'Edit invoice', body, footer, wb, ctx, refreshPreview);
   refreshPreview();
 }
 

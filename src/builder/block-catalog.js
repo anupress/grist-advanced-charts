@@ -132,8 +132,13 @@ export const BLOCK_CATALOG = [
   },
   {
     type: 'embed', category: 'advanced', icon: 'code', title: 'HTML/CSS/JS',
-    desc: 'Your own custom code, sandboxed',
-    info: 'For advanced users: write your own HTML, CSS and JavaScript, rendered in a sandboxed frame that cannot access your Grist data or this widget\'s settings.',
+    desc: 'Your own code, sandboxed or with Grist access',
+    info: 'For advanced users: write your own HTML, CSS and JavaScript. Sandboxed by default, with no access to your document. Switch on Grist access and the code can use the Grist plugin API exactly as a custom widget would: read the table you pick for it, map the columns it asks for, keep its own settings.',
+  },
+  {
+    type: 'widget', category: 'advanced', icon: 'widget', title: 'Widget',
+    desc: 'Another custom widget, by URL, inside this page',
+    info: 'Put any Grist custom widget on this page by pasting its URL, the same one you would give Grist. It reads the table you choose for it, or the one this dashboard is linked to, and you map the columns it asks for right in the editor. It runs with the same access to your document as this widget, so add only widgets you trust.',
   },
 ];
 

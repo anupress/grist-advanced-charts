@@ -31,6 +31,8 @@ function gristLike(calls) {
   return {
     ready: (opts) => { calls.push(`ready:${opts?.requiredAccess}`); setTimeout(() => listeners.forEach((f) => f({ settings: { accessLevel: 'none' } })), 5); },
     on: (evt, fn) => { if (evt === 'message') listeners.push(fn); },
+    // Grist sending a later message, e.g. after the access level changes in the panel.
+    push: (msg) => listeners.forEach((f) => f(msg)),
   };
 }
 /** Any other parent page: ready() posts into the void and nothing ever comes back. */
@@ -38,17 +40,26 @@ const silentParent = (calls) => ({ ready: (opts) => { calls.push(`ready:${opts?.
 
 {
   const calls = [];
-  const b = await freshBridge({ inFrame: true, grist: gristLike(calls) });
+  const host = gristLike(calls);
+  const b = await freshBridge({ inFrame: true, grist: host });
   eq('inside Grist: the host answers, so we are live', await b.connect(500), true);
-  eq('and it asked for read table first', calls, ['ready:read table']);
+  // One ask, for full access: the plugin API ignores every ready() after the first, so asking for
+  // less here and more later never reached Grist.
+  eq('and it asked for full access, once', calls, ['ready:full']);
   eq('isLive follows', b.isLive(), true);
+  eq('the level Grist reported is what accessLevel() answers', b.accessLevel(), 'none');
+  eq('so a write is refused until Grist grants full', await b.escalateToFull(), false);
+  host.push({ settings: { accessLevel: 'full' } });
+  eq('a later settings message updates the level', b.accessLevel(), 'full');
+  eq('and the write is allowed without a second ready()', await b.escalateToFull(), true);
+  eq('ready() was still called exactly once', calls, ['ready:full']);
 }
 {
   const calls = [];
   const t0 = Date.now();
   const b = await freshBridge({ inFrame: true, grist: silentParent(calls) });
   eq('inside a plain iframe: no answer, so demo', await b.connect(300), false);
-  eq('ready was still sent, in case the host is merely slow', calls, ['ready:read table']);
+  eq('ready was still sent, in case the host is merely slow', calls, ['ready:full']);
   eq('it gave up at the timeout rather than hanging', Date.now() - t0 < 2000, true);
   eq('isLive stays false', b.isLive(), false);
 }
