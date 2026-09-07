@@ -26,6 +26,7 @@ import { renderBlock, mountCharts } from '../render/blocks.js';
 import { mountMaps, settleMapsForPrint } from '../render/map.js';
 import { mountCounters } from '../render/counter.js';
 import { mountCountdowns } from '../render/countdown.js';
+import { isPrintable } from './printable.js';
 // Sortable is used directly rather than through builder/dnd.js: the sheet's items are
 // .ap-sheet__item, not .ap-block, and reordering here rewrites the selection rather than a tab.
 
@@ -130,7 +131,8 @@ export function restoreOpts(id, snapshot) {
  */
 export function blockForSheet(config, id) {
   const found = findBlock(config, id);
-  if (!found) return null;
+  // An embedded frame is never drawn on the sheet, even if it was picked before the rule existed.
+  if (!found || !isPrintable(found.block)) return null;
   const b = clone(found.block);
   const o = optsFor(id);
   if (o.span) b.span = o.span;
@@ -396,6 +398,12 @@ export function openLayout(opts) {
 
   const sheet = el('div', { class: 'ap-sheet__body' });
   const pageInfo = el('span', { class: 'ap-muted' });
+  // Picked but not printable (an embedded frame): said in the header line rather than shown as an
+  // empty card, which is what a reader took for a bug.
+  const leftOutNote = () => {
+    const n = selection().filter((id) => { const f = findBlock(config, id); return f && !isPrintable(f.block); }).length;
+    return n ? ` · ${n} embedded frame${n === 1 ? '' : 's'} left out (cannot be printed)` : '';
+  };
   // Which block has its options open, and what its overrides were when it opened. Survives the
   // redraw that every option change triggers; see toggleOptions.
   let openOpts = null;
@@ -528,7 +536,7 @@ export function openLayout(opts) {
         const per = records
           ? ` × ${records} record${records === 1 ? '' : 's'}${across > 1 ? `, ${across} across` : ''}`
           : '';
-        pageInfo.textContent = `${blocks}${per} · ${pages} page${pages === 1 ? '' : 's'} of ${paperOf().label}`;
+        pageInfo.textContent = `${blocks}${per} · ${pages} page${pages === 1 ? '' : 's'} of ${paperOf().label}` + leftOutNote();
       }, 140);
     }, 0);
   }
@@ -829,7 +837,7 @@ export function openLayout(opts) {
 
   if (canSave) {
     footerBtns[1].addEventListener('click', () => {
-      const blocks = selection().map((id) => findBlock(config, id)).filter(Boolean)
+      const blocks = selection().map((id) => findBlock(config, id)).filter((f) => f && isPrintable(f.block))
         .map((f) => ({ ...clone(f.block), id: uid('blk') })); // new ids: the originals still live on their own pages
       if (!blocks.length) { toast('Nothing selected to save.', 'err'); return; }
       onSaveLayout({

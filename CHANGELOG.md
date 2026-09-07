@@ -3,6 +3,18 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.7.1] — 2026-09-07
+
+### Fixed
+
+- **Embedded frames stay out of printouts.** A Widget block added to a
+  printout arrived on the sheet as an empty card: the sheet never loaded its
+  frame, and the print stylesheet hides every embedded frame anyway because
+  a frame's content prints as a blank rectangle of unknown height. The
+  Widget and HTML/CSS/JS blocks now show no "add to printout" control, a
+  selection that still names one is left out of the sheet with a note in
+  the header line, and saving the layout as a page skips them too.
+
 ## [3.7.0] — 2026-09-07
 
 ### Added

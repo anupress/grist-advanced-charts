@@ -173,8 +173,10 @@ function finishBlock(block, ctx, inner) {
   } else if (ctx.pickButton) {
     // View mode: the one control a viewer gets, for adding this block to a printout. Supplied
     // through ctx rather than imported, because print/printout.js renders blocks itself and
-    // importing it here would close the loop between the two modules.
-    wrap.append(el('div', { class: 'ap-block__pick' }, [ctx.pickButton(block)]));
+    // importing it here would close the loop between the two modules. Null for a block that
+    // cannot be printed (an embedded frame), which then simply has no control.
+    const pick = ctx.pickButton(block);
+    if (pick) wrap.append(el('div', { class: 'ap-block__pick' }, [pick]));
   }
   return wrap;
 }

@@ -16,6 +16,7 @@ import { mountWidgets } from './widget.js';
 import { resizeChartsIn, wireGlobalResize } from '../charts/echarts-adapter.js';
 import { icon } from '../assets/icons.js';
 import { selectButton, mountTray } from '../print/printout.js';
+import { isPrintable } from '../print/printable.js';
 import { slicersFor, filteredProvider } from '../data/slicer.js';
 
 export function renderSite(opts) {
@@ -73,7 +74,8 @@ export function renderSite(opts) {
     // carries its own controls, and someone arranging a design is not the person assembling a
     // printout. Passed as a factory so blocks.js never has to import the printout module.
     const shared = { config, onNav: showTab, tabId: tab.id,
-      pickButton: editing ? null : (b) => selectButton(b),
+      // An embedded frame (HTML/CSS/JS, Widget) prints as a blank rectangle, so it gets no control.
+      pickButton: editing ? null : (b) => (isPrintable(b) ? selectButton(b) : null),
       // What a slicer calls when its selection changes. Only on a live page: in the editor the
       // slicer is a preview of a control, and redrawing the tab under the author mid-edit would be
       // the block fighting the person configuring it.
