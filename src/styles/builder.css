@@ -527,3 +527,12 @@
 .ap-preview .ap-hide-phone, .ap-preview .ap-hide-tablet, .ap-preview .ap-hide-desktop { display: block !important; }
 .is-editing .ap-block[data-ap-hidden] { opacity: .55; outline: 1.5px dashed var(--ap-text-mute); outline-offset: 3px; border-radius: 10px; }
 .is-editing .ap-block[data-ap-hidden]::before { content: attr(data-ap-hidden); position: absolute; top: -9px; left: 10px; z-index: 3; font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--ap-text-soft); background: var(--ap-surface); border: 1px solid var(--ap-border); border-radius: 6px; padding: 1px 7px; pointer-events: none; }
+
+/* ---- Dashboards panel: one row per dashboard in the document ---- */
+.ap-dash { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--ap-border); border-radius: 12px; margin-bottom: 8px; background: var(--ap-surface); }
+.ap-dash.is-current { border-color: color-mix(in srgb, var(--ap-primary) 45%, transparent); background: color-mix(in srgb, var(--ap-primary) 6%, var(--ap-surface)); }
+.ap-dash > svg { width: 20px; height: 20px; flex: none; color: var(--ap-primary); }
+.ap-dash__text { flex: 1; min-width: 0; }
+.ap-dash__name { font-weight: 700; font-size: var(--ap-fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ap-dash__id { font-size: 11.5px; }
+.ap-dash__actions { flex: none; }

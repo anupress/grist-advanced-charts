@@ -4,11 +4,21 @@
 // all calls below talk only to the embedding Grist document.
 
 import { zoneOfType, toDayString } from './dates.js';
+import {
+  DEFAULT_DASHBOARD, DEFAULT_NAME, REGISTRY_KEY, POINTER_OPTION, isValidId, uniqueId,
+  configKeyFor, chunkPrefixFor, isChunkOf, optionKeyFor, dashboardOfKey, parseRegistry, serializeRegistry,
+} from './dashboards.js';
 
 export const CONFIG_TABLE = 'ANUPRESS_Config';
 export const THEME_TABLE = 'ANUPRESS_Theme';
-const CONFIG_KEY = 'site';
-const OPTION_KEY = 'anupressSiteConfig';
+
+// ---- Which dashboard this widget instance shows ----
+// See dashboards.js. `_dashboard` is the id every read and write below is keyed by; the default
+// keeps the keys the widget has always used. Outside Grist the same calls work against `mem`, so
+// the demo can make, switch and delete dashboards for the session.
+let _dashboard = DEFAULT_DASHBOARD;
+const mem = { pointer: DEFAULT_DASHBOARD, registry: null, configs: new Map() };
+export const currentDashboard = () => _dashboard;
 
 const g = () => (typeof window !== 'undefined' ? window.grist : undefined);
 
@@ -253,17 +263,111 @@ export async function getRecords(tableId, columns) {
 }
 
 // ---- Widget options (persist without needing full doc access) ----
-export async function getOption(key = OPTION_KEY) {
+export async function getOption(key = optionKeyFor(_dashboard)) {
   if (!hasGrist()) return null;
   try { if (g().getOption) return await g().getOption(key);
     if (g().widgetApi) { const o = await g().widgetApi.getOptions(); return o ? o[key] : null; } } catch {}
   return null;
 }
-export async function setOption(value, key = OPTION_KEY) {
+export async function setOption(value, key = optionKeyFor(_dashboard)) {
   if (!hasGrist()) return false;
   try { if (g().setOption) { await g().setOption(key, value); return true; }
     if (g().widgetApi) { await g().widgetApi.setOptions({ [key]: value }); return true; } } catch {}
   return false;
+}
+
+// ---- Dashboards: the pointer, the registry, and making/renaming/removing one ----
+
+/** Read which dashboard this widget instance shows. Called once at boot, before loadConfig. */
+export async function initDashboard() {
+  let id = DEFAULT_DASHBOARD;
+  if (hasGrist()) {
+    try { const v = await getOption(POINTER_OPTION); if (isValidId(v)) id = v; } catch { /* unset */ }
+  } else id = mem.pointer;
+  _dashboard = id;
+  return id;
+}
+
+/** Point this widget instance at a dashboard. The design cache of the old one is left alone: it is keyed by dashboard too. */
+export async function setDashboard(id) {
+  if (!isValidId(id)) return false;
+  _dashboard = id;
+  mem.pointer = id;
+  if (!hasGrist()) return true;
+  return setOption(id === DEFAULT_DASHBOARD ? '' : id, POINTER_OPTION);
+}
+
+async function readRegistry() {
+  if (!hasGrist()) return { list: parseRegistry(mem.registry, [...mem.configs.keys()]), row: null };
+  const ids = await safeListAll();
+  if (!ids.includes(CONFIG_TABLE)) return { list: parseRegistry(null), row: null };
+  const tbl = await g().docApi.fetchTable(CONFIG_TABLE);
+  let row = null;
+  const found = new Set();
+  for (let i = 0; i < (tbl.id?.length || 0); i++) {
+    const k = tbl.Key[i];
+    if (k === REGISTRY_KEY) row = { rowId: tbl.id[i], value: tbl.Value[i] };
+    const d = dashboardOfKey(k); if (d) found.add(d);
+  }
+  return { list: parseRegistry(row?.value, [...found]), row };
+}
+
+async function writeRegistry(list, row) {
+  const json = serializeRegistry(list);
+  if (!hasGrist()) { mem.registry = json; return true; }
+  await ensureTables();
+  if (row) await g().docApi.applyUserActions([['UpdateRecord', CONFIG_TABLE, row.rowId, { Value: json }]]);
+  else await g().docApi.applyUserActions([['AddRecord', CONFIG_TABLE, null, { Key: REGISTRY_KEY, Value: json }]]);
+  return true;
+}
+
+/** Every dashboard in this document, default first: [{ id, name }]. */
+export async function listDashboards() {
+  try { return (await readRegistry()).list; } catch (e) { console.warn('[ANUPRESS] listDashboards failed', e); return parseRegistry(null); }
+}
+
+/**
+ * Make a dashboard. `config` is what it starts as (a copy of the current design, or a blank site);
+ * null makes only the registry entry. Returns the new id, or null.
+ */
+export async function createDashboard(name, config) {
+  try {
+    const { list, row } = await readRegistry();
+    const id = uniqueId(name, list.map((d) => d.id));
+    list.push({ id, name: String(name || '').trim() || id });
+    await writeRegistry(list, row);
+    if (config) await saveConfig(config, id);
+    return id;
+  } catch (e) { console.warn('[ANUPRESS] createDashboard failed', e); return null; }
+}
+
+export async function renameDashboard(id, name) {
+  try {
+    const { list, row } = await readRegistry();
+    const d = list.find((x) => x.id === id);
+    if (!d) return false;
+    d.name = String(name || '').trim() || (id === DEFAULT_DASHBOARD ? DEFAULT_NAME : id);
+    await writeRegistry(list, row);
+    return true;
+  } catch (e) { console.warn('[ANUPRESS] renameDashboard failed', e); return false; }
+}
+
+/** Remove a dashboard's design rows and registry entry. The default cannot be removed, only cleared. */
+export async function deleteDashboard(id) {
+  if (!isValidId(id) || id === DEFAULT_DASHBOARD) return false;
+  try {
+    await clearStoredConfig(id);
+    mem.configs.delete(id);
+    const { list, row } = await readRegistry();
+    await writeRegistry(list.filter((d) => d.id !== id), row);
+    if (_dashboard === id) await setDashboard(DEFAULT_DASHBOARD);
+    return true;
+  } catch (e) { console.warn('[ANUPRESS] deleteDashboard failed', e); return false; }
+}
+
+/** Outside Grist, keep a design for the session so switching dashboards in the demo round-trips. */
+export function rememberConfig(configObj, id = _dashboard) {
+  try { mem.configs.set(id, JSON.parse(JSON.stringify(configObj))); } catch { /* not serialisable: nothing to keep */ }
 }
 
 // ---- Table creation + config persistence (needs full access) ----
@@ -303,7 +407,7 @@ async function safeListAll() { try { return await fetchTableList(); } catch { re
 // 1-3 GB attachment allowance instead; that remains the better long-term home for artwork.
 const CHUNK_BYTES = 300 * 1024;    // comfortably inside the 1 MB request cap, headroom for overhead
 const OPTION_MAX = 300 * 1024;     // widget options are a render cache, not the source of truth
-const CHUNK_PREFIX = 'site~';      // rows are site~<gen>~<index>
+// Rows are <configKey>~<gen>~<index>: site~… for the default dashboard, site:<id>~… for others.
 export const CONFIG_SOFT_LIMIT = 700 * 1024;   // informational: the design is getting heavy
 export const CONFIG_HARD_LIMIT = 1024 * 1024;  // one request's worth — above this we chunk
 
@@ -317,7 +421,8 @@ export function measureConfig(configObj) {
 const splitChunks = (s, n) => { const out = []; for (let i = 0; i < s.length; i += n) out.push(s.slice(i, i + n)); return out; };
 
 // Write one config across as many requests as it takes. Returns true only if the pointer flipped.
-async function saveChunked(json) {
+async function saveChunked(json, dash) {
+  const KEY = configKeyFor(dash), PREFIX = chunkPrefixFor(dash);
   const parts = splitChunks(json, CHUNK_BYTES);
   const gen = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const tbl = await g().docApi.fetchTable(CONFIG_TABLE);
@@ -326,15 +431,15 @@ async function saveChunked(json) {
 
   // 1. every part, one request each, under the new generation
   for (let i = 0; i < parts.length; i++) {
-    await g().docApi.applyUserActions([['AddRecord', CONFIG_TABLE, null, { Key: `${CHUNK_PREFIX}${gen}~${i}`, Value: parts[i] }]]);
+    await g().docApi.applyUserActions([['AddRecord', CONFIG_TABLE, null, { Key: `${PREFIX}${gen}~${i}`, Value: parts[i] }]]);
   }
   // 2. flip the pointer — the single moment the new config becomes the live one
   const pointer = JSON.stringify({ __apChunked: 1, gen, parts: parts.length });
-  if (byKey.has(CONFIG_KEY)) await g().docApi.applyUserActions([['UpdateRecord', CONFIG_TABLE, byKey.get(CONFIG_KEY), { Value: pointer }]]);
-  else await g().docApi.applyUserActions([['AddRecord', CONFIG_TABLE, null, { Key: CONFIG_KEY, Value: pointer }]]);
-  // 3. sweep older generations; failure here wastes space but breaks nothing
+  if (byKey.has(KEY)) await g().docApi.applyUserActions([['UpdateRecord', CONFIG_TABLE, byKey.get(KEY), { Value: pointer }]]);
+  else await g().docApi.applyUserActions([['AddRecord', CONFIG_TABLE, null, { Key: KEY, Value: pointer }]]);
+  // 3. sweep older generations of THIS dashboard; failure here wastes space but breaks nothing
   const stale = [];
-  for (const [key, id] of byKey) if (key.startsWith(CHUNK_PREFIX) && !key.startsWith(`${CHUNK_PREFIX}${gen}~`)) stale.push(id);
+  for (const [key, id] of byKey) if (isChunkOf(key, dash) && !key.startsWith(`${PREFIX}${gen}~`)) stale.push(id);
   if (stale.length) {
     try { await g().docApi.applyUserActions([['BulkRemoveRecord', CONFIG_TABLE, stale]]); }
     catch (e) { console.warn('[ANUPRESS] could not sweep old config chunks', e); }
@@ -347,16 +452,18 @@ async function saveChunked(json) {
 const REV_KEY = '__apRev';
 const revOf = (cfg) => { const r = Number(cfg?.[REV_KEY]); return isFinite(r) ? r : 0; };
 
-export async function saveConfig(configObj) {
+/** Write a design. `dash` is the dashboard it belongs to; by default the one this widget shows. */
+export async function saveConfig(configObj, dash = _dashboard) {
   const json = JSON.stringify({ ...configObj, [REV_KEY]: Date.now() });
+  if (!hasGrist()) { rememberConfig(configObj, dash); return false; }
+  const KEY = configKeyFor(dash);
   // The widget option is only a fast render cache. Past a sensible size it stops being a good
   // one, so it is cleared rather than stuffed — loadConfig then falls through to the table.
   // Clearing matters: a stale small option left behind would be preferred over the fresh data.
-  await setOption(json.length <= OPTION_MAX ? json : '');
-  if (!hasGrist()) return false;
+  await setOption(json.length <= OPTION_MAX ? json : '', optionKeyFor(dash));
   try {
     await ensureTables();
-    if (json.length > CHUNK_BYTES) return await saveChunked(json);
+    if (json.length > CHUNK_BYTES) return await saveChunked(json, dash);
 
     // Small enough for one request — the original single-row form, kept so ordinary designs
     // stay a single readable cell and older documents need no migration.
@@ -364,11 +471,11 @@ export async function saveConfig(configObj) {
     let rowId = null;
     const stale = [];
     for (let i = 0; i < (tbl.id?.length || 0); i++) {
-      if (tbl.Key[i] === CONFIG_KEY) rowId = tbl.id[i];
-      else if (String(tbl.Key[i] || '').startsWith(CHUNK_PREFIX)) stale.push(tbl.id[i]);
+      if (tbl.Key[i] === KEY) rowId = tbl.id[i];
+      else if (isChunkOf(tbl.Key[i], dash)) stale.push(tbl.id[i]);
     }
     if (rowId) await g().docApi.applyUserActions([['UpdateRecord', CONFIG_TABLE, rowId, { Value: json }]]);
-    else await g().docApi.applyUserActions([['AddRecord', CONFIG_TABLE, null, { Key: CONFIG_KEY, Value: json }]]);
+    else await g().docApi.applyUserActions([['AddRecord', CONFIG_TABLE, null, { Key: KEY, Value: json }]]);
     // A design that shrank back below the threshold leaves its old parts behind otherwise.
     if (stale.length) {
       try { await g().docApi.applyUserActions([['BulkRemoveRecord', CONFIG_TABLE, stale]]); }
@@ -413,7 +520,7 @@ export async function removeTables(tableIds) {
 // exactly what it looked like from the outside: press erase, tables stay.
 //
 // Its own key in the config table fixes both. clearStoredConfig() only removes the design rows
-// (CONFIG_KEY and its chunks), so this one survives, and it accumulates across installs.
+// (the current dashboard's key and its chunks), so this one survives, and it accumulates across installs.
 const CREATED_KEY = 'createdTables';
 
 async function readConfigRow(key) {
@@ -472,31 +579,34 @@ export async function forgetCreatedTables(names) {
 // Wipe the stored design: the row in our own config table plus the widget-option cache. The table
 // itself is left in place (it is ours, it is empty, and the next save needs it anyway). The
 // createdTables row is deliberately NOT touched — see above.
-export async function clearStoredConfig() {
-  await setOption('');
+export async function clearStoredConfig(dash = _dashboard) {
+  mem.configs.delete(dash);
   if (!hasGrist()) return false;
+  await setOption('', optionKeyFor(dash));
   try {
     const ids = await safeListAll();
     if (!ids.includes(CONFIG_TABLE)) return true;
     const tbl = await g().docApi.fetchTable(CONFIG_TABLE);
+    const KEY = configKeyFor(dash);
     const rowIds = [];
     for (let i = 0; i < (tbl.id?.length || 0); i++) {
       const k = String(tbl.Key[i] || '');
-      // The pointer AND every chunk row — clearing only the pointer would strand the parts.
-      if (k === CONFIG_KEY || k.startsWith(CHUNK_PREFIX)) rowIds.push(tbl.id[i]);
+      // The pointer AND every chunk row of this dashboard — clearing only the pointer would
+      // strand the parts. Other dashboards' rows are not touched.
+      if (k === KEY || isChunkOf(k, dash)) rowIds.push(tbl.id[i]);
     }
     if (rowIds.length) await g().docApi.applyUserActions([['BulkRemoveRecord', CONFIG_TABLE, rowIds]]);
     return true;
   } catch (e) { console.warn('[ANUPRESS] clearStoredConfig failed', e); return false; }
 }
 
-async function loadFromOption() {
-  const opt = await getOption();
+async function loadFromOption(dash) {
+  const opt = await getOption(optionKeyFor(dash));
   if (!opt) return null;
   try { return JSON.parse(opt); } catch { return null; }
 }
 
-async function loadFromTable() {
+async function loadFromTable(dash) {
   if (!hasGrist()) return null;
   try {
     // safeListAll, not docApi.listTables directly: it goes through the memo, and it returns the
@@ -504,11 +614,12 @@ async function loadFromTable() {
     const ids = await safeListAll();
     if (!ids.includes(CONFIG_TABLE)) return null;
     const tbl = await g().docApi.fetchTable(CONFIG_TABLE);
+    const KEY = configKeyFor(dash), PREFIX = chunkPrefixFor(dash);
     const values = new Map();
     let head = null;
     for (let i = 0; i < (tbl.id?.length || 0); i++) {
       const k = tbl.Key[i];
-      if (k === CONFIG_KEY) head = tbl.Value[i]; else values.set(k, tbl.Value[i]);
+      if (k === KEY) head = tbl.Value[i]; else values.set(k, tbl.Value[i]);
     }
     if (head == null) return null;
     const parsed = JSON.parse(head);
@@ -516,7 +627,7 @@ async function loadFromTable() {
     if (parsed && parsed.__apChunked) {
       const out = [];
       for (let i = 0; i < parsed.parts; i++) {
-        const part = values.get(`${CHUNK_PREFIX}${parsed.gen}~${i}`);
+        const part = values.get(`${PREFIX}${parsed.gen}~${i}`);
         // A missing part means an interrupted write or a manually edited table. Reassembling
         // around the hole would hand back silently corrupt JSON, so refuse instead.
         if (part == null) { console.warn(`[ANUPRESS] config part ${i + 1}/${parsed.parts} is missing — not loading a partial design`); return null; }
@@ -549,10 +660,11 @@ async function loadFromTable() {
  * before revisions existed scores 0, so the table wins that tie — which also means an old stale
  * option repairs itself on the next load rather than needing to be cleared by hand.
  */
-export async function loadConfig() {
+export async function loadConfig(dash = _dashboard) {
+  if (!hasGrist()) { const m = mem.configs.get(dash); return m ? JSON.parse(JSON.stringify(m)) : null; }
   const [fromOption, fromTable] = await Promise.all([
-    loadFromOption().catch(() => null),
-    loadFromTable().catch(() => null),
+    loadFromOption(dash).catch(() => null),
+    loadFromTable(dash).catch(() => null),
   ]);
   if (fromOption && fromTable) return revOf(fromOption) > revOf(fromTable) ? fromOption : fromTable;
   return fromTable || fromOption || null;

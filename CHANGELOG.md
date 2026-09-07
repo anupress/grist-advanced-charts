@@ -3,6 +3,26 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.7.0] — 2026-09-07
+
+### Added
+
+- **Several dashboards in one document.** Every widget instance used to read
+  the one design row, so two widgets in a document could only mirror each
+  other (asked for on the community forum: Operations and Finance wanted
+  their own). A dashboard is now a key in the same config table — the
+  default keeps `site`, the key it always had; others are `site:<id>` with
+  chunks under `site:<id>~…` — and each widget instance remembers which one
+  it shows in its own widget options, which Grist keeps per instance, so a
+  viewer with plain read access still lands on the right one. Settings →
+  Dashboards lists them, makes a new one as a copy of the current design or
+  as a blank page, points this widget at another, renames, and deletes with
+  a two-click confirmation; the main dashboard cannot be deleted. Switching
+  keeps the design being left (published on a live document, remembered
+  for the session in the demo), reloads the target's tables, and starts a
+  fresh undo history. A widget pointed at a dashboard that no longer exists
+  falls back to the main one. Existing documents read exactly as before.
+
 ## [3.6.0] — 2026-09-07
 
 ### Added

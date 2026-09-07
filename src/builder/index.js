@@ -19,6 +19,7 @@ import { openDrawer, closeDrawer, field, textInput, selectInput, checkboxRow, se
 import { heroEditorBody } from './hero-editor.js';
 import { readFileAsDataURL } from './imageutil.js';
 import { VERSION } from '../version.js';
+import { emptySite } from '../data/default-site.js';
 
 let working, provider, live, root, onExit, activeTabId, dirty = false;
 
@@ -208,6 +209,7 @@ const SETTINGS_ITEMS = [
   { ic: 'type', title: 'Header', desc: 'Site name, logo and the navigation menu', open: () => openHeaderPanel() },
   { ic: 'menu', title: 'Footer', desc: 'Footer text, links and the credit line', open: () => openFooterPanel() },
   { ic: 'copy', title: 'Templates', desc: 'Install a starting point, or start from scratch', open: () => openTemplatesPanel() },
+  { ic: 'dashboards', title: 'Dashboards', desc: 'Several dashboards in one document, one per widget', open: () => openDashboardsPanel() },
 ];
 
 function openSettingsPanel() {
@@ -240,6 +242,109 @@ const settingsFooter = () => [
   ghostBtn('Back', () => openSettingsPanel()),
   primaryBtn('Done', 'check', () => { closeDrawer(); rerender(); }),
 ];
+
+// ---------------- Dashboards ----------------
+// Each widget instance shows one dashboard; a document can hold several (grist/dashboards.js).
+// Switching changes what THIS widget shows and nothing else: other widgets keep theirs, and the
+// design being left is kept first — published on a live document, remembered for the session in
+// the demo — so a switch never costs work.
+const dashLabel = (d) => (d.id === 'site' ? 'The main dashboard' : `id ${d.id}`);
+const blankSite = () => { const s = emptySite(); if (working?.theme) s.theme = clone(working.theme); return s; };
+
+async function keepCurrentDesign() {
+  if (dirty && live) await save();
+  else if (!live) bridge.rememberConfig(cleanConfig());
+}
+
+async function switchDashboard(id) {
+  const list = await bridge.listDashboards();
+  const target = list.find((d) => d.id === id);
+  if (!target) { toast('That dashboard no longer exists.', 'err'); return openDashboardsPanel(); }
+  await keepCurrentDesign();
+  await bridge.setDashboard(id);
+  const cfg = (await bridge.loadConfig(id)) || blankSite();
+  if (live) { try { await provider.prime?.(tablesInConfig(cfg)); } catch (e) { console.warn('[ANUPRESS] could not load the dashboard\'s tables', e); } }
+  working = clone(cfg);
+  activeTabId = working.tabs?.[0]?.id || null;
+  // A fresh session: undo cannot lead back into another dashboard's design.
+  history = [{ label: `Switched to ${target.name}`, at: Date.now(), json: JSON.stringify(working) }];
+  cursor = 0; savedCursor = 0; dirty = false;
+  applyTheme(working.theme, root);
+  applyDesign(working.design, root);
+  rerender();
+  toast(`This widget now shows "${target.name}".`, 'ok');
+  openDashboardsPanel();
+}
+
+async function openDashboardsPanel() {
+  const list = await bridge.listDashboards();
+  const cur = bridge.currentDashboard();
+  const me = list.find((d) => d.id === cur) || list[0];
+  const row = (d, actions) => el('div', { class: 'ap-dash' + (d.id === cur ? ' is-current' : ''), dataset: { dashboard: d.id } }, [
+    icon('dashboards'),
+    el('div', { class: 'ap-dash__text' }, [el('div', { class: 'ap-dash__name', text: d.name }), el('div', { class: 'ap-muted ap-dash__id', text: dashLabel(d) })]),
+    el('div', { class: 'ap-row ap-dash__actions', style: { gap: '6px' } }, actions),
+  ]);
+  const deleteBtn = (d) => {
+    const b = el('button', { class: 'ap-btn ap-btn--icon ap-btn--sm', type: 'button', title: `Delete ${d.name}`, 'aria-label': `Delete ${d.name}` }, [icon('trash')]);
+    let armed = false;
+    // Two clicks, four seconds apart at most: deleting a dashboard is not undoable.
+    b.addEventListener('click', async () => {
+      if (!armed) {
+        armed = true; b.replaceChildren('Delete?'); b.classList.add('ap-btn--danger'); b.classList.remove('ap-btn--icon');
+        setTimeout(() => { if (armed) { armed = false; b.replaceChildren(icon('trash')); b.classList.remove('ap-btn--danger'); b.classList.add('ap-btn--icon'); } }, 4000);
+        return;
+      }
+      const ok = await bridge.deleteDashboard(d.id);
+      toast(ok ? `Deleted "${d.name}". Any widget that showed it now shows the main dashboard.` : 'Could not delete that dashboard.', ok ? 'ok' : 'err');
+      openDashboardsPanel();
+    });
+    return b;
+  };
+
+  const nameInput = textInput(me.name, () => {});
+  const rename = ghostBtn('Rename', async () => {
+    const ok = await bridge.renameDashboard(cur, nameInput.value);
+    toast(ok ? 'Renamed.' : 'Could not rename.', ok ? 'ok' : 'err');
+    openDashboardsPanel();
+  });
+  rename.classList.add('ap-btn--sm');
+
+  const others = list.filter((d) => d.id !== cur);
+  const newName = textInput('', () => {}, { placeholder: 'e.g. Operations' });
+  let from = 'copy';
+  const create = primaryBtn('Create and show it here', 'plus', async () => {
+    const name = newName.value.trim();
+    if (!name) { toast('Give the new dashboard a name first.', 'err'); newName.focus(); return; }
+    create.disabled = true;
+    await keepCurrentDesign();
+    const id = await bridge.createDashboard(name, from === 'copy' ? cleanConfig() : blankSite());
+    if (!id) { create.disabled = false; toast('Could not create the dashboard.', 'err'); return; }
+    await switchDashboard(id);
+  });
+
+  openDrawer({
+    title: 'Dashboards',
+    body: [
+      el('p', { class: 'ap-muted', style: { fontSize: '13px', marginBottom: '12px' },
+        text: 'Each widget on a page shows one dashboard, and a document can hold several: Operations on one page, Finance on another, a project of its own on a third. Everything stays in this document. Switching here changes what this widget shows; other widgets keep theirs.' }),
+      subhead('This widget shows'),
+      row(me, []),
+      field('Name', el('div', { class: 'ap-row', style: { gap: '8px' } }, [nameInput, rename])),
+      subhead('Other dashboards in this document'),
+      ...(others.length ? others.map((d) => {
+        const show = ghostBtn('Show here', () => switchDashboard(d.id));
+        show.classList.add('ap-btn--sm');
+        return row(d, [show, d.id !== 'site' ? deleteBtn(d) : null]);
+      }) : [el('div', { class: 'ap-muted', style: { fontSize: '13px', marginBottom: '12px' }, text: 'None yet. Make one below; it opens here, and any other widget can be pointed at it from its own Settings.' })]),
+      subhead('New dashboard'),
+      field('Name', newName),
+      field('Start from', segmented([{ value: 'copy', label: 'A copy of this one' }, { value: 'blank', label: 'A blank page' }], from, (v) => { from = v; })),
+      el('div', { style: { marginBottom: '14px' } }, [create]),
+    ],
+    footer: settingsFooter(),
+  });
+}
 
 const barBtn = (ic, label, on) => el('button', { class: 'ap-btn ap-btn--sm', onClick: on }, [icon(ic), label]);
 const ghostBtnWhite = (label, on) => el('button', { class: 'ap-btn ap-btn--sm', onClick: on, text: label });

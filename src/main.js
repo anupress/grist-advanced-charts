@@ -36,7 +36,15 @@ async function boot() {
   console.info(`[ANUPRESS] Advanced Charts v${VERSION} · ${live ? 'live document' : 'demo'}`);
   if (live) {
     try {
-      const saved = await bridge.loadConfig();
+      // Which dashboard this widget instance shows, then that dashboard's design. A pointer at a
+      // dashboard that no longer exists falls back to the main one rather than to a blank page.
+      const wanted = await bridge.initDashboard();
+      let saved = await bridge.loadConfig();
+      if (!saved && wanted !== 'site') {
+        console.warn(`[ANUPRESS] dashboard "${wanted}" has no design; showing the main dashboard`);
+        await bridge.setDashboard('site');
+        saved = await bridge.loadConfig();
+      }
       if (saved) {
         app.config = saved;
         const gp = new GristProvider();
