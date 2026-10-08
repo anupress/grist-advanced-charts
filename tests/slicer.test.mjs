@@ -167,5 +167,46 @@ eq('an empty reference is not offered', S.slicerOptions(base, 'Invoices', 'Clien
 eq('but a real zero in a numeric column is', S.slicerOptions({ ...base, records: () => [{ id: 1, N: 0 }, { id: 2, N: 5 }], columns: () => [{ id: 'N', type: 'Numeric' }] }, 'T', 'N').map((o) => o.key), ['0', '5']);
 eq('a list column counts each member', S.slicerOptions(base, 'Invoices', 'Tags').map((o) => `${o.label}:${o.count}`), ['Meridian Biotech:2', 'Cedar Mills:1', 'Harbour Freight:1']);
 
+// ---- what a page opens with ------------------------------------------------------------------
+console.log('applySlicerDefaults');
+const fakeStore = () => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k), m }; };
+const tabOf = (...blocks) => ({ blocks });
+S.clearAll(); S.resetSlicerDefaults();
+const withDefaults = { id: 'd1', type: 'slicer', config: { table: 'Sales', column: 'Region', defaults: ['North'] } };
+S.applySlicerDefaults(tabOf(withDefaults), { store: fakeStore() });
+eq('a slicer with defaults opens already picked', [...S.getSelection('d1')], ['North']);
+S.clearSelection('d1');
+S.applySlicerDefaults(tabOf(withDefaults), { store: fakeStore() });
+eq('...but only once per page load, so a reader clearing it stays cleared on redraw', [...S.getSelection('d1')], []);
+S.applySlicerDefaults(tabOf(withDefaults), { store: fakeStore(), force: true });
+eq('...unless forced (a fresh load)', [...S.getSelection('d1')], ['North']);
+S.clearSelection('d1');
+S.applySlicerDefaults(tabOf({ ...withDefaults, config: { ...withDefaults.config, defaults: ['South'] } }), { store: fakeStore() });
+eq('...or the author changed the defaults in the editor, which applies at once', [...S.getSelection('d1')], ['South']);
+
+S.clearAll(); S.resetSlicerDefaults();
+const remembering = { id: 'r1', type: 'slicer', config: { table: 'Sales', column: 'Region', defaults: ['North'], remember: true } };
+const store = fakeStore();
+store.setItem('ap-slicer:r1', JSON.stringify(['South']));
+S.applySlicerDefaults(tabOf(remembering), { store });
+eq('a remembered choice beats the author\'s default', [...S.getSelection('r1')], ['South']);
+S.setSelection('r1', ['North', 'South']); S.rememberSelection('r1', store);
+eq('rememberSelection writes the current choice', JSON.parse(store.getItem('ap-slicer:r1')), ['North', 'South']);
+S.clearSelection('r1'); S.rememberSelection('r1', store);
+S.clearAll(); S.resetSlicerDefaults();
+S.applySlicerDefaults(tabOf(remembering), { store });
+eq('a remembered EMPTY choice is kept, so a cleared default does not come back', [...S.getSelection('r1')], []);
+S.forgetSelection('r1', store);
+S.clearAll(); S.resetSlicerDefaults();
+S.applySlicerDefaults(tabOf(remembering), { store });
+eq('with nothing remembered the default applies again', [...S.getSelection('r1')], ['North']);
+S.clearAll(); S.resetSlicerDefaults();
+S.applySlicerDefaults(tabOf({ id: 'n1', type: 'slicer', config: { table: 'Sales', column: 'Region' } }, { id: 'c1', type: 'chart', config: {} }), { store: null });
+eq('no defaults, no store: nothing is selected and nothing throws', S.hasSelection('n1'), false);
+const inGrid = { id: 'g', type: 'grid', config: { cols: 1, rows: 1, cells: [{ id: 'd2', type: 'slicer', config: { table: 'Sales', column: 'Region', defaults: ['South'] } }] } };
+S.applySlicerDefaults(tabOf(inGrid), { store: null });
+eq('a slicer inside a Grid block gets its defaults too', [...S.getSelection('d2')], ['South']);
+S.clearAll(); S.resetSlicerDefaults();
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

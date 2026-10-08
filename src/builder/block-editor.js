@@ -3,7 +3,7 @@
 
 import { el, clone, debounce, toast } from '../util.js';
 import { icon, chartIcon } from '../assets/icons.js';
-import { openDrawer, closeDrawer, field, textInput, selectInput, tablePicker, checkboxRow, segmented, subhead, divider, primaryBtn, ghostBtn, iconPickerField, linkTargetField, colorInput } from './ui.js';
+import { openDrawer, closeDrawer, field, textInput, selectInput, tablePicker, checkboxRow, segmented, subhead, divider, primaryBtn, ghostBtn, iconPickerField, linkTargetField, colorInput, linesInput, pairsInput } from './ui.js';
 import { CHART_TYPES, getChartType, CARTESIAN } from '../charts/catalog.js';
 import { evaluateTypes, isMeasure, autoPick } from '../charts/recommend.js';
 import { AGGREGATIONS, autoDeltaColumn } from '../stats/aggregate.js';
@@ -14,7 +14,7 @@ import { mountCounters } from '../render/counter.js';
 import { mountAttachmentImages } from '../render/media-mount.js';
 import { mountCountdowns } from '../render/countdown.js';
 import { SYMBOLOGIES } from '../barcode/linear.js';
-import { affectedBlocks } from '../data/slicer.js';
+import { affectedBlocks, slicerOptions } from '../data/slicer.js';
 import { normalizeGrid, resizeCells, flattenBlocks, GRID_MIN, GRID_MAX } from '../data/grid.js';
 import { DEFAULT_MODULE_MM, MIN_MODULE_MM, MAX_MODULE_MM, DEFAULT_HEIGHT_MM } from '../render/barcode.js';
 import { currentSeriesColors } from '../theme/apply.js';
@@ -196,8 +196,10 @@ function openChartEditor(block, ctx) {
       box.append(checkboxRow('Stack series', wb.config.stacked, (v) => { wb.config.stacked = v; refreshPreview(); }));
       if (type === 'line' || type === 'area') box.append(checkboxRow('Smooth curve', wb.config.smooth !== false, (v) => { wb.config.smooth = v; refreshPreview(); }));
     }
-    if (['bar', 'column', 'pie', 'doughnut', 'treemap', 'funnel'].includes(type))
-      box.append(checkboxRow('Sort by value', wb.config.sortByValue, (v) => { wb.config.sortByValue = v; refreshPreview(); }));
+    if (type !== 'scatter' && type !== 'gauge' && (wb.config.dims || []).length) {
+      const columns = provider.columns(wb.config.table);
+      box.append(groupOrderFields(wb, columns, wb.config.dims[0], () => { rebuild(); refreshPreview(); }));
+    }
     return box;
   }
 
@@ -246,6 +248,35 @@ function openChartEditor(block, ctx) {
 // the data table editor never did: a click added the column to the block (the preview further
 // down changed) while the pill kept its "+", so the reader concluded the column could not be
 // chosen. The pill is the control; it must show its own state.
+// The order of a chart's groups and what they are called. Shared by the chart and breakdown
+// editors, so the two blocks read the same way. The Choice-list option only appears when the
+// column is a Choice column, because that is the only time it means anything.
+function groupOrderFields(wb, columns, dim, onChange) {
+  const col = (columns || []).find((c) => c.id === dim);
+  const hasChoices = Array.isArray(col?.widgetOptions?.choices) && col.widgetOptions.choices.length > 0;
+  const current = wb.config.order || (wb.config.sortByValue ? 'value' : 'auto');
+  const options = [
+    { value: 'auto', label: 'As the rows come (default)' },
+    { value: 'value', label: 'Largest first' },
+    { value: 'label', label: 'A to Z (numbers in order)' },
+    ...(hasChoices ? [{ value: 'choice', label: 'The column\'s Choice list' }] : []),
+    { value: 'custom', label: 'My own order…' },
+  ];
+  const box = el('div');
+  box.append(field('Order of groups', selectInput(options, current === 'source' ? 'auto' : current, (v) => {
+    wb.config.order = v; delete wb.config.sortByValue; onChange();
+  }), hasChoices && current !== 'choice'
+    ? 'Tip: "The column\'s Choice list" shows the groups in the order they are defined in Grist.'
+    : (!hasChoices && col?.type === 'Text' ? 'Tip: make this a Choice column in Grist and its Choice list becomes an option here.' : null)));
+  if (current === 'custom') {
+    box.append(field('Groups, one per line, in order', linesInput(wb.config.customOrder || [], (v) => { wb.config.customOrder = v; onChange(); }, { placeholder: '18–24\n25–34\n35–44' }),
+      'Groups you leave out follow at the end, in the order the rows come.'));
+  }
+  box.append(field('Rename groups (optional)', pairsInput(wb.config.labels || null, (v) => { wb.config.labels = v; onChange(); }, { placeholder: 'M = Male\nF = Female' }),
+    'One per line: the value as it appears, an equals sign, then the name to show. Two values renamed alike are added together.'));
+  return box;
+}
+
 function columnPicker(columns, selected, onToggle) {
   const sel = new Set(selected);
   const list = el('div', { class: 'ap-collist' });
@@ -368,8 +399,10 @@ function openBreakdownEditor(block, ctx) {
     const cols = provider.columns(wb.config.table);
     if (cols.length && !cols.find((c) => c.id === wb.config.column)) wb.config.column = cols[0].id;
     dynHost.replaceChildren(
-      field('Group by column', selectInput(cols.map((c) => ({ value: c.id, label: c.label })), wb.config.column, (v) => { wb.config.column = v; refreshPreview(); })),
+      field('Group by column', selectInput(cols.map((c) => ({ value: c.id, label: c.label })), wb.config.column, (v) => { wb.config.column = v; buildDyn(); refreshPreview(); })),
       field('Max rows shown', textInput(String(wb.config.limit || 12), (v) => { wb.config.limit = Math.max(3, Math.min(40, Number(v) || 12)); refreshPreview(); }, { type: 'number' })),
+      // A breakdown's own default is largest first; `order` is only written once the author picks.
+      groupOrderFields({ config: new Proxy(wb.config, { get: (t, k) => (k === 'order' ? (t.order || 'value') : t[k]) }) }, cols, wb.config.column, () => { buildDyn(); refreshPreview(); }),
     );
   }
 
@@ -1077,9 +1110,33 @@ function openSlicerEditor(block, ctx) {
 
   const columnField = () => {
     const cols = (ctx.provider.columns(wb.config.table) || []).map((c) => ({ value: c.id, label: c.label || c.id }));
-    return selectInput([{ value: '', label: 'Choose a column…' }, ...cols], wb.config.column || '', (v) => { wb.config.column = v; refreshPreview(); });
+    return selectInput([{ value: '', label: 'Choose a column…' }, ...cols], wb.config.column || '', (v) => { wb.config.column = v; delete wb.config.defaults; drawDefaults(); refreshPreview(); });
   };
   const columnHost = el('div', {}, [columnField()]);
+
+  // Asked for on the community forum: a master list of every applicant is right for the yearly
+  // review and wrong for the daily page, which should open already narrowed to this year's
+  // cohort. The author ticks the choices here; the reader can still widen or clear them.
+  const defaultsHost = el('div');
+  const drawDefaults = () => {
+    defaultsHost.replaceChildren();
+    if (!wb.config.table || !wb.config.column) return;
+    const options = slicerOptions(ctx.provider.baseProvider || ctx.provider, wb.config.table, wb.config.column, { limit: 60 });
+    const picked = new Set((wb.config.defaults || []).map(String));
+    const row = el('div', { class: 'ap-slicer__chips' }, options.map((o) => el('button', {
+      type: 'button', class: 'ap-chip ap-slicer__chip' + (picked.has(o.key) ? ' is-active' : ''), 'aria-pressed': picked.has(o.key) ? 'true' : 'false',
+      onClick: () => {
+        if (picked.has(o.key)) picked.delete(o.key); else if (wb.config.multi === false) { picked.clear(); picked.add(o.key); } else picked.add(o.key);
+        wb.config.defaults = [...picked];
+        if (!wb.config.defaults.length) delete wb.config.defaults;
+        drawDefaults(); refreshPreview();
+      },
+    }, [el('span', { text: o.label })])));
+    defaultsHost.append(field('Start with these picked', row, picked.size
+      ? `Opens narrowed to ${picked.size} choice${picked.size === 1 ? '' : 's'}. Readers can change or clear it.`
+      : 'Nothing picked: the page opens showing every row.'));
+  };
+  drawDefaults();
 
   const targetsHost = el('div', { class: 'ap-slicer-targets' });
   const drawTargets = () => {
@@ -1098,9 +1155,9 @@ function openSlicerEditor(block, ctx) {
 
   const body = [
     field('Table', tablePicker(ctx.provider, wb.config.table, (v) => {
-      wb.config.table = v; wb.config.column = '';
+      wb.config.table = v; wb.config.column = ''; delete wb.config.defaults;
       columnHost.replaceChildren(columnField());
-      refreshPreview();
+      drawDefaults(); refreshPreview();
     })),
     field('Column', columnHost, 'The values in this column become the choices. A Choice, Reference or Text column works best.'),
     field('Label (optional)', textInput(wb.config.label || '', (v) => { wb.config.label = v; refreshPreview(); }, { placeholder: 'Shown above the choices' })),
@@ -1111,6 +1168,9 @@ function openSlicerEditor(block, ctx) {
         wb.config.multi === false ? 'single' : 'multi', (v) => { wb.config.multi = v !== 'single'; refreshPreview(); })),
     ),
     checkboxRow('Show how many rows each choice has', wb.config.showCounts !== false, (v) => { wb.config.showCounts = v; refreshPreview(); }),
+    subhead('When the page opens'),
+    defaultsHost,
+    checkboxRow('Remember each reader\'s last choice on their device', !!wb.config.remember, (v) => { wb.config.remember = v; refreshPreview(); }),
     subhead('What it filters'),
     field('Blocks', segmented([{ value: 'auto', label: 'Automatic' }, { value: 'custom', label: 'Choose' }],
       Array.isArray(wb.config.targets) ? 'custom' : 'auto', (v) => {

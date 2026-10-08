@@ -80,9 +80,78 @@ function sortCategories(cats, isTemporal) {
   return cats;
 }
 
+const natural = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+// The Choice list of a column, in the order its owner wrote it — for an age group column that is
+// "18–24, 25–34, 35–44", which no sort of the labels themselves can recover. Null when the column
+// is not a Choice column or the document did not send its options.
+export function choiceOrder(cols, dim) {
+  const col = Array.isArray(cols) ? cols.find((c) => c.id === dim) : null;
+  const choices = col?.widgetOptions?.choices;
+  return Array.isArray(choices) && choices.length ? choices.map(String) : null;
+}
+
+// Rename groups. `labels` maps a group as it reads (the display key) to what it should read; two
+// groups renamed to the same thing become one, their numbers added. Asked for on the community
+// forum, where the workaround was a helper column holding the display names.
+export function relabelGroups(categories, series, labels) {
+  if (!labels || typeof labels !== 'object') return { categories, series };
+  const out = [];
+  const index = new Map();
+  const merged = series.map(() => []);
+  categories.forEach((c, i) => {
+    const name = Object.prototype.hasOwnProperty.call(labels, c) && String(labels[c]).trim() ? String(labels[c]).trim() : c;
+    let at = index.get(name);
+    if (at === undefined) { at = out.length; out.push(name); index.set(name, at); merged.forEach((m) => m.push(0)); }
+    merged.forEach((m, s) => { m[at] = round((m[at] || 0) + (Number(series[s].data[i]) || 0)); });
+  });
+  return { categories: out, series: series.map((s, i) => ({ ...s, data: merged[i] })) };
+}
+
+// Put groups in order. mode: 'value' (first series, largest first), 'label' (A to Z, numbers in
+// numeric order), 'custom' (the given list first, in that order, anything else after in source
+// order), 'choice' (the column's Choice list), 'source' (as the rows came). 'auto' is source
+// order, exactly what every chart did before this option existed, so no saved dashboard changes
+// shape on its own; the Choice list is one pick away in the editor.
+export function orderGroups(categories, series, { mode = 'auto', custom = [], choices = null, aliasOf = null } = {}) {
+  let idx = categories.map((c, i) => i);
+  const byList = (list) => {
+    const rank = new Map(list.map((v, i) => [String(v), i]));
+    const n = list.length;
+    // A group is found in the list under its own name or, when it is about to be renamed, under
+    // its new one — so "one per line" accepts whichever the author has in mind.
+    const place = (i) => {
+      const c = categories[i];
+      if (rank.has(c)) return rank.get(c);
+      const alias = aliasOf ? aliasOf(c) : null;
+      if (alias != null && rank.has(String(alias))) return rank.get(String(alias));
+      return n + i;
+    };
+    idx.sort((a, b) => place(a) - place(b));
+  };
+  const effective = mode === 'auto' ? 'source' : mode;
+  if (effective === 'value' && series.length) idx.sort((a, b) => (Number(series[0].data[b]) || 0) - (Number(series[0].data[a]) || 0));
+  else if (effective === 'label') idx.sort((a, b) => natural.compare(categories[a], categories[b]));
+  else if (effective === 'custom') byList(custom || []);
+  else if (effective === 'choice' && choices) byList(choices);
+  if (idx.every((v, i) => v === i)) return { categories, series };
+  return { categories: idx.map((i) => categories[i]), series: series.map((s) => ({ ...s, data: idx.map((i) => s.data[i]) })) };
+}
+
+// Order, then rename. Ordering runs on the values as they appear in the data, which is what the
+// Choice list refers to; renaming afterwards keeps each group's place (a merged group takes the
+// place of its first member). A custom list may name a group by its old or its new name.
+export function shapeGroups(categories, series, { mode = 'auto', custom = [], choices = null, labels = null } = {}) {
+  const aliasOf = labels && typeof labels === 'object' ? (c) => (Object.prototype.hasOwnProperty.call(labels, c) ? labels[c] : null) : null;
+  const g = orderGroups(categories, series, { mode, custom, choices, aliasOf });
+  return relabelGroups(g.categories, g.series, labels);
+}
+
 /**
  * Group rows and aggregate.
- * opts: { dims:[catDim, seriesDim?], measures:[...], agg, sortByValue, limit, temporalDim }
+ * opts: { dims:[catDim, seriesDim?], measures:[...], agg, sortByValue, limit, temporalDim,
+ *         order, customOrder, labels }
+ * `sortByValue` is the older spelling of order: 'value' and still works.
  * Returns: { categories:[...], series:[{name, data:[...]}], total }
  */
 export function groupAggregate(rows, opts) {
@@ -139,13 +208,13 @@ export function groupAggregate(rows, opts) {
     }));
   }
 
-  // Optional sort by total value of the first series (great for bar/pie ranking).
+  // Order, then rename. Dates keep their chronological order whatever the chart says, because a
+  // time axis sorted by value is not a time axis.
   let categories = cats;
-  if (sortByValue && !temporal && series.length) {
-    const order = categories.map((c, i) => i)
-      .sort((a, b) => (Number(series[0].data[b]) || 0) - (Number(series[0].data[a]) || 0));
-    categories = order.map((i) => categories[i]);
-    series = series.map((s) => ({ ...s, data: order.map((i) => s.data[i]) }));
+  if (temporal) ({ categories, series } = relabelGroups(categories, series, opts.labels));
+  else {
+    const mode = opts.order || (sortByValue ? 'value' : 'auto');
+    ({ categories, series } = shapeGroups(categories, series, { mode, custom: opts.customOrder, choices: choiceOrder(cols, catDim), labels: opts.labels }));
   }
   if (limit > 0 && categories.length > limit) {
     // With otherLabel set, the tail is pooled into one final category instead of being dropped —

@@ -41,7 +41,8 @@ function breakdownAsChart(block) {
   const c = block.config || {};
   return { id: block.id, span: block.span, type: 'chart', config: {
     table: c.table, title: c.title, subtitle: c.subtitle, chartType: c.chartType || 'doughnut',
-    dims: [c.column], measures: [], agg: 'count', sortByValue: true, limit: c.limit, colors: c.colors } };
+    dims: [c.column], measures: [], agg: 'count', order: c.order || 'value', customOrder: c.customOrder, labels: c.labels,
+    limit: c.limit, colors: c.colors } };
 }
 
 // Block types that read rows from a table; everything else (text, spacer, qrcode, …) renders the

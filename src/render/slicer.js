@@ -11,7 +11,7 @@
 
 import { el } from '../util.js';
 import { icon } from '../assets/icons.js';
-import { getSelection, toggleValue, clearSelection, slicerOptions, resolveFilter } from '../data/slicer.js';
+import { getSelection, toggleValue, clearSelection, slicerOptions, resolveFilter, rememberSelection } from '../data/slicer.js';
 
 const CHIP_LIMIT = 12;   // above this a row of chips stops being scannable and becomes a wall
 
@@ -42,7 +42,8 @@ export function renderSlicer(block, ctx) {
   const options = slicerOptions(base, table, column);
   const style = c.style === 'chips' || c.style === 'dropdown' ? c.style : (options.length > CHIP_LIMIT ? 'dropdown' : 'chips');
 
-  const apply = () => ctx.slicers?.refresh?.();
+  // With `remember` on, every change (a cleared one included) is kept on this device.
+  const apply = () => { if (c.remember && live) rememberSelection(block.id); ctx.slicers?.refresh?.(); };
 
   // The column name as a label; the choices follow on the same row.
   card.append(el('div', { class: 'ap-slicer__head' }, [

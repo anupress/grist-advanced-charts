@@ -3,6 +3,39 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.8.0] — 2026-10-09
+
+### Added
+
+Three things a community member asked for after running a training
+programme's dashboard off a master list of every applicant:
+
+- **A slicer can open already picked.** In the slicer editor, under "When
+  the page opens", tick the choices the page should start narrowed to.
+  Readers can still widen or clear the selection; the design only says what
+  the page starts with. A second switch, "Remember each reader's last choice
+  on their device", keeps whatever they picked (or cleared) in the browser
+  and restores it next time, which wins over the author's defaults.
+- **Order of groups.** Charts and breakdowns have an "Order of groups" field:
+  as the rows come (the default, unchanged), Largest first, A to Z (with
+  numbers in numeric order), the column's Choice list, or your own order
+  (one group per line). An age-group column drawn as 18–24, 25–34, 35–44 is
+  one pick away: choose the Choice list and it follows the order defined in
+  Grist. The old "Sort by value" tick is read as Largest first. A date axis
+  stays chronological whatever is chosen. Saved dashboards keep their shape.
+- **Rename groups.** The same editors take "value = New name" lines, one per
+  group, to change what a group is called on the chart without a helper
+  column. Two values renamed alike become one group with their numbers
+  added, which is also how to merge categories.
+
+### Fixed
+
+- **Numeric column headers in the data table now sit above their numbers.** A
+  sortable header is a button that fills the cell and lays its label out to
+  the left, while the digits below are right-aligned, so in a wide column the
+  label "Views, 7 days" stood at the far left and its numbers at the far
+  right, next to the next column's label. The label now follows the numbers.
+
 ## [3.7.2] — 2026-09-07
 
 ### Fixed

@@ -292,6 +292,10 @@
 .ap-livetable__table th.is-sorted[data-dir="desc"] .ap-livetable__sorticon { transform: rotate(180deg); }
 /* Numeric columns right-align so digits line up down the column. */
 .ap-livetable__table .is-num { text-align: right; font-variant-numeric: tabular-nums; }
+/* The sort button fills its header and lays out left, so without this a numeric column's label
+   sat at the far left while its digits sat at the far right, and the label looked like it
+   belonged to the column before. Seen on the ANUPRESS HQ Channels table, 2026-10-08. */
+.ap-livetable__table th.is-num .ap-livetable__sortbtn { justify-content: flex-end; text-align: right; }
 .ap-livetable__table td { padding: 9px 12px; border-bottom: 1px solid var(--ap-border); color: var(--ap-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
 .ap-livetable__table tr:last-child td { border-bottom: none; }
 .ap-livetable__table tbody tr:hover td { background: var(--ap-bg-soft); }

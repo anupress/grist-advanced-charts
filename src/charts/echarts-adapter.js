@@ -87,6 +87,7 @@ export function buildOption(block, ctx) {
     // So a chart grouped by a Reference column is labelled with names rather than row ids.
     cols: ctx.columns,
     sortByValue: cfg.sortByValue ?? SINGLE_SERIES.has(type), limit: cfg.limit || 0,
+    order: cfg.order, customOrder: cfg.customOrder, labels: cfg.labels,
     // A pie or doughnut asserts parts-of-a-whole by its shape, so truncating the tail draws a
     // complete circle out of incomplete data — an 8-category pie limited to 5 showed 83% of the
     // total and looked like all of it. Pooling the remainder keeps the circle honest. Bars and
@@ -225,7 +226,7 @@ export function measureFunnelData(cfg, rows, columns) {
 export const isMeasureFunnel = (cfg) =>
   (cfg?.chartType === 'funnel') && !(cfg.dims || []).length && (cfg.measures || []).length >= 2;
 function radarOption(cfg, rows, colors, cols) {
-  const g = groupAggregate(rows, { dims: [cfg.dims?.[0]].filter(Boolean), measures: cfg.measures || [], agg: cfg.agg || 'sum', cols });
+  const g = groupAggregate(rows, { dims: [cfg.dims?.[0]].filter(Boolean), measures: cfg.measures || [], agg: cfg.agg || 'sum', cols, order: cfg.order, customOrder: cfg.customOrder, labels: cfg.labels });
   const max = Math.max(1, ...g.series.flatMap((s) => s.data));
   const indicator = g.categories.map((c) => ({ name: c, max: max * 1.1 }));
   return { color: colors, tooltip: tooltipCfg('item'), legend: legendCfg(g.series.length > 1),

@@ -85,6 +85,28 @@ export function textInput(value, onInput, opts = {}) {
   return node;
 }
 
+// One entry per line, trimmed, blanks dropped: the plain way to type an order of groups.
+export function linesInput(values, onChange, opts = {}) {
+  return textInput((values || []).join('\n'), (v) => onChange(v.split('\n').map((s) => s.trim()).filter(Boolean)), { ...opts, textarea: true });
+}
+
+// "value = New name" per line -> {value: 'New name'}. The text is kept as typed while editing
+// (so a half-typed line is not lost) and only the complete pairs are stored.
+export function pairsInput(map, onChange, opts = {}) {
+  const text = Object.entries(map || {}).map(([k, v]) => `${k} = ${v}`).join('\n');
+  return textInput(text, (v) => {
+    const out = {};
+    for (const line of v.split('\n')) {
+      const at = line.indexOf('=');
+      if (at < 1) continue;
+      const key = line.slice(0, at).trim();
+      const name = line.slice(at + 1).trim();
+      if (key && name) out[key] = name;
+    }
+    onChange(Object.keys(out).length ? out : null);
+  }, { ...opts, textarea: true });
+}
+
 export function selectInput(options, value, onChange) {
   const opts = options.map((o) => el('option', { value: o.value, text: o.label, selected: String(o.value) === String(value) }));
   // A saved value that isn't among the options (a template block naming a table this document
