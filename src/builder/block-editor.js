@@ -175,7 +175,7 @@ function openChartEditor(block, ctx) {
   function update() { rebuild(); refreshPreview(); }
 
   function typeGrid(columns) {
-    const evals = evaluateTypes(columns, { dims: wb.config.dims || [], measures: wb.config.measures || [] });
+    const evals = evaluateTypes(columns, { dims: wb.config.dims || [], measures: wb.config.measures || [], agg: wb.config.agg || 'sum' });
     const map = Object.fromEntries(evals.map((e) => [e.id, e]));
     const grid = el('div', { class: 'ap-typegrid' });
     for (const t of CHART_TYPES) {
@@ -1121,10 +1121,13 @@ function openSlicerEditor(block, ctx) {
   const drawDefaults = () => {
     defaultsHost.replaceChildren();
     if (!wb.config.table || !wb.config.column) return;
-    const options = slicerOptions(ctx.provider.baseProvider || ctx.provider, wb.config.table, wb.config.column, { limit: 60 });
     const picked = new Set((wb.config.defaults || []).map(String));
+    // A default the data no longer has (last year's cohort) is still listed, so it can be unticked.
+    const options = slicerOptions(ctx.provider.baseProvider || ctx.provider, wb.config.table, wb.config.column, { limit: 60, keep: picked });
+    const gone = options.filter((o) => o.missing && picked.has(o.key)).length;
     const row = el('div', { class: 'ap-slicer__chips' }, options.map((o) => el('button', {
-      type: 'button', class: 'ap-chip ap-slicer__chip' + (picked.has(o.key) ? ' is-active' : ''), 'aria-pressed': picked.has(o.key) ? 'true' : 'false',
+      type: 'button', class: 'ap-chip ap-slicer__chip' + (picked.has(o.key) ? ' is-active' : '') + (o.missing ? ' is-missing' : ''), 'aria-pressed': picked.has(o.key) ? 'true' : 'false',
+      title: o.missing ? 'No rows have this value now' : null,
       onClick: () => {
         if (picked.has(o.key)) picked.delete(o.key); else if (wb.config.multi === false) { picked.clear(); picked.add(o.key); } else picked.add(o.key);
         wb.config.defaults = [...picked];
@@ -1134,6 +1137,7 @@ function openSlicerEditor(block, ctx) {
     }, [el('span', { text: o.label })])));
     defaultsHost.append(field('Start with these picked', row, picked.size
       ? `Opens narrowed to ${picked.size} choice${picked.size === 1 ? '' : 's'}. Readers can change or clear it.`
+        + (gone ? ` ${gone === 1 ? 'One of them is' : `${gone} of them are`} not in the data now (dashed), so ${gone === 1 ? 'it matches' : 'they match'} no rows.` : '')
       : 'Nothing picked: the page opens showing every row.'));
   };
   drawDefaults();

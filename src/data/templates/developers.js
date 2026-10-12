@@ -22,7 +22,7 @@ const CYAN = '#22d3ee';
 export const TEMPLATE = {
   id: 'developers',
   name: 'Developers',
-  tagline: 'Issues, releases, incidents and uptime — dark by default',
+  tagline: 'Issues, releases, incidents and uptime on one status page',
   config: {
     version: 1,
     theme: { paletteId: 'midnight', fontId: 'mono', mode: 'auto' },

@@ -1038,6 +1038,10 @@
 .ap-slicer__chip.is-active::before { content: ''; width: 5px; height: 9px; flex: none;
   border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(45deg); margin: -3px 1px 0 -1px; }
 .ap-slicer__chip[disabled] { opacity: 1; pointer-events: none; }   /* an inert preview is still readable */
+/* A picked value the data no longer has: still filtering, so still shown, but dashed so it reads
+   as "matches nothing" rather than as an ordinary choice. */
+.ap-slicer__chip.is-missing { border-style: dashed; }
+.ap-slicer__chip.is-missing.is-active { background: color-mix(in srgb, var(--ap-primary) 14%, var(--ap-surface)); color: var(--ap-text); box-shadow: none; }
 .ap-slicer__count { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px;
   background: color-mix(in srgb, var(--ap-text) 9%, transparent); color: var(--ap-text-mute);
   font-variant-numeric: tabular-nums; }

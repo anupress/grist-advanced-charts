@@ -15,9 +15,16 @@ export const isMeasure = (col) => roleOf(col.type) === 'measure';
 export const isTemporal = (col) => roleOf(col.type) === 'temporal';
 export const isDimension = (col) => roleOf(col.type) !== 'measure';
 
-// Count the column roles currently chosen for a chart.
+// Aggregations that turn any column into a number: a count of rows, of values, of distinct values.
+const COUNTING = new Set(['count', 'countv', 'countd']);
+
+// Count the column roles currently chosen for a chart. `sel.agg` matters: counted, a text column
+// IS the number. Without that, "Count rows of Name by Department" read as two groups and no
+// measure, no chart type fitted, and every type in the editor was greyed out, the one in use
+// included, so a count chart's type could not be changed at all.
 export function shapeOf(columns, sel) {
   const byId = Object.fromEntries(columns.map((c) => [c.id, c]));
+  const counting = COUNTING.has(sel.agg);
   let dims = 0, measures = 0, temporal = 0;
   for (const id of sel.dims || []) {
     const c = byId[id]; if (!c) continue;
@@ -25,8 +32,10 @@ export function shapeOf(columns, sel) {
   }
   for (const id of sel.measures || []) {
     const c = byId[id]; if (!c) continue;
-    if (isMeasure(c)) measures++; else dims++; // a text measure falls back to count-style dim
+    if (isMeasure(c) || counting) measures++; else dims++; // uncounted, a text measure falls back to a dim
   }
+  // Counting rows needs no column at all (the wizard's "Just count entries", a breakdown as a chart).
+  if (counting && !measures) measures = 1;
   return { dims, measures, temporal };
 }
 

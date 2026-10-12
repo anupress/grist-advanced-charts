@@ -3,6 +3,57 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.8.1] — 2026-10-12
+
+### Fixed
+
+- **An invoice's Accent colour and a calendar's "Color events by" now show.**
+  Both reach the page as CSS custom properties (`--ap-inv-accent`,
+  `--ap-cal-dot`), and the helper that builds elements copied style values
+  with `Object.assign`, which sets ordinary properties but silently drops
+  custom ones. So every invoice drew in the theme's primary colour whatever
+  accent was picked, and every calendar event had the same dot whatever
+  column it was coloured by (the demo's calendar showed one colour for three
+  priorities). Custom properties now go through `setProperty`.
+- **A count chart's type can be changed again.** The chart editor greys out
+  types that do not fit the chosen columns, and it read a counted text
+  column ("Count rows of Name by Department") as a second group with no
+  number, so no type fitted and every one was greyed out, the one in use
+  included. A column counted with Count rows, Count values or Distinct count
+  is now the chart's number, and counting rows needs no column at all, which
+  also gives the wizard's "Just count entries" a real recommendation instead
+  of a fallback. The demo's "Headcount by department" chart showed it.
+- **A horizontal bar chart reads from the top.** Its first group was the
+  bottom bar, because a category axis on the side starts at the bottom, so
+  Order of groups ran backwards on a bar chart: Largest first put the
+  largest bar last to a reader, A to Z read Z first, and a Choice list of
+  age groups climbed upwards. The first group is now the top bar, the way a
+  list and a breakdown read. Existing bar charts flip once to match their
+  own order (a "Largest first" ranking now has its largest bar on top).
+- **A picked slicer value the data no longer has stays visible.** A
+  default for last year's cohort, or a reader's remembered choice after the
+  rows changed, still filtered the page, but the slicer only drew chips for
+  values in the data: the page opened on "0 of 48 rows" with no chip lit and
+  nothing to untick but Clear. Such a value is now shown after the others as
+  a dashed chip with a count of 0 (in a menu, "not in the data now"), and
+  the editor's "Start with these picked" row lists it the same way, with a
+  line saying it matches no rows, so it can be unticked. A picked value
+  beyond the first 200 choices is kept on offer too, with its real count.
+
+### Changed
+
+- **The demo's Choice columns carry their Choice lists**, as a Grist
+  document's do, so "The column's Choice list" under Order of groups can be
+  tried in the demo. Without them the option never appeared there. Role
+  (Junior, Mid, Senior, Lead, Manager) shows why it exists: A to Z puts
+  Manager before Mid. Nothing in the demo changes order on its own.
+- **The Developers template's tagline no longer says "dark by default".**
+  Every template has followed the reader's light or dark setting since 3.0,
+  this one included, so the picker described a default it did not have.
+- **README** brought up to date: 26 block types (Slicer, Barcode, Grid and
+  Widget were missing), and the privacy note now says the HTML/CSS/JS block
+  reaches the document only when its Grist access is switched on.
+
 ## [3.8.0] — 2026-10-09
 
 ### Added

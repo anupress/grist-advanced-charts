@@ -166,6 +166,14 @@ eq('...keyed by the row id underneath', S.slicerOptions(base, 'Invoices', 'Clien
 eq('an empty reference is not offered', S.slicerOptions(base, 'Invoices', 'Client').some((o) => o.key === '0'), false);
 eq('but a real zero in a numeric column is', S.slicerOptions({ ...base, records: () => [{ id: 1, N: 0 }, { id: 2, N: 5 }], columns: () => [{ id: 'N', type: 'Numeric' }] }, 'T', 'N').map((o) => o.key), ['0', '5']);
 eq('a list column counts each member', S.slicerOptions(base, 'Invoices', 'Tags').map((o) => `${o.label}:${o.count}`), ['Meridian Biotech:2', 'Cedar Mills:1', 'Harbour Freight:1']);
+// A picked value has to stay on offer, or a stale default leaves the page empty with nothing lit.
+const keepOf = (keep, opts = {}) => S.slicerOptions(base, 'Sales', 'Region', { ...opts, keep }).map((o) => `${o.label}:${o.count}${o.missing ? ':missing' : ''}`);
+eq('keep: a picked value the data no longer has comes back last, count 0, marked missing', keepOf(new Set(['West'])), ['North:2', 'South:1', 'West:0:missing']);
+eq('keep: a picked value already offered is not repeated', keepOf(['North']), ['North:2', 'South:1']);
+eq('keep: a picked value below the cut-off comes back with its real count', keepOf(['South'], { limit: 1 }), ['North:2', 'South:1']);
+eq('keep: an empty selection changes nothing', keepOf(new Set()), ['North:2', 'South:1']);
+eq('keep: a reference picked by a row id that is gone falls back to the id',
+   S.slicerOptions(base, 'Invoices', 'Client', { keep: ['9'] }).map((o) => `${o.key}:${o.count}${o.missing ? ':missing' : ''}`).pop(), '9:0:missing');
 
 // ---- what a page opens with ------------------------------------------------------------------
 console.log('applySlicerDefaults');

@@ -64,11 +64,16 @@ function buildSales() {
   return rows;
 }
 
+// A Choice column in Grist carries its Choice list in widgetOptions, in the order its owner set.
+// The demo's do too, so a chart's "The column's Choice list" order can be tried without Grist: Role
+// (Junior to Manager) is the case it exists for, an order no sort of the labels can recover.
+const choice = (id, label, choices) => ({ id, label, type: 'Choice', widgetOptions: { choices } });
+
 const SALES_COLUMNS = [
   { id: 'Month', label: 'Month', type: 'Date' },
-  { id: 'Region', label: 'Region', type: 'Choice' },
-  { id: 'Category', label: 'Category', type: 'Choice' },
-  { id: 'Channel', label: 'Channel', type: 'Choice' },
+  choice('Region', 'Region', REGIONS),
+  choice('Category', 'Category', CATEGORIES),
+  choice('Channel', 'Channel', CHANNELS),
   { id: 'Product', label: 'Product', type: 'Text' },
   { id: 'Units', label: 'Units', type: 'Int' },
   { id: 'Revenue', label: 'Revenue', type: 'Numeric' },
@@ -122,9 +127,9 @@ function buildPeople() {
 
 const PEOPLE_COLUMNS = [
   { id: 'Name', label: 'Name', type: 'Text' },
-  { id: 'Department', label: 'Department', type: 'Choice' },
-  { id: 'Role', label: 'Role', type: 'Choice' },
-  { id: 'City', label: 'City', type: 'Choice' },
+  choice('Department', 'Department', DEPARTMENTS),
+  choice('Role', 'Role', ROLES),
+  choice('City', 'City', CITIES),
   { id: 'JoinDate', label: 'Join Date', type: 'Date' },
   { id: 'Age', label: 'Age', type: 'Int' },
   { id: 'Salary', label: 'Salary', type: 'Numeric' },
@@ -155,8 +160,8 @@ const TASK_TEMPLATES = [
 ];
 const TASKS_COLUMNS = [
   { id: 'Task', label: 'Task', type: 'Text' }, { id: 'Project', label: 'Project', type: 'Text' },
-  { id: 'Priority', label: 'Priority', type: 'Choice' }, { id: 'AssignedTo', label: 'Assigned To', type: 'Text' },
-  { id: 'DueDate', label: 'Due Date', type: 'Date' }, { id: 'Status', label: 'Status', type: 'Choice' },
+  choice('Priority', 'Priority', ['High', 'Medium', 'Low']), { id: 'AssignedTo', label: 'Assigned To', type: 'Text' },
+  { id: 'DueDate', label: 'Due Date', type: 'Date' }, choice('Status', 'Status', ['Not Started', 'Pending', 'In Progress', 'Done']),
   { id: 'Notes', label: 'Notes', type: 'Text' },
 ];
 function buildTasks(peopleRows) {

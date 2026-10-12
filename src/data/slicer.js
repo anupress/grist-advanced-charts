@@ -211,7 +211,13 @@ export function affectedBlocks(slicerBlock, tab, base) {
  * The choices a slicer offers: each distinct value in its column, with a label and a count, from
  * the UNFILTERED table so the menu never shrinks to only what is already picked.
  */
-export function slicerOptions(base, table, column, { limit = 200 } = {}) {
+// `keep` names values that must be offered whatever happens: the current selection. A picked value
+// below the cut-off is added back with its real count; one that is not in the data at all (a
+// default for last year's cohort, a reader's remembered choice after the rows changed, the same
+// block id remembered from another document) comes back with a count of 0 and `missing` set. It
+// still filters the page, so it has to stay visible and untickable: without this the page opened
+// on "0 of 48 rows" with no chip lit and nothing to untick but Clear.
+export function slicerOptions(base, table, column, { limit = 200, keep = null } = {}) {
   const col = (base.columns(table) || []).find((c) => c.id === column) || null;
   const counts = new Map();   // key -> { value, label, count }
   // 0 is Grist's empty reference and must not become a chip labelled "0". Only for references:
@@ -226,7 +232,20 @@ export function slicerOptions(base, table, column, { limit = 200 } = {}) {
       else counts.set(k, { value: v, key: k, label: col ? formatCellValue(v, col) || k : k, count: 1 });
     }
   }
-  return [...counts.values()]
+  const shown = [...counts.values()]
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, undefined, { numeric: true }))
     .slice(0, limit);
+  if (!keep) return shown;
+  const have = new Set(shown.map((o) => o.key));
+  for (const k of keep) {
+    const kk = key(k);
+    if (have.has(kk)) continue;
+    have.add(kk);
+    const found = counts.get(kk);
+    if (found) { shown.push(found); continue; }
+    // Keys are strings; a reference was picked by its row id, so give the formatter a number back.
+    const value = isRef(col) && /^\d+$/.test(kk) ? Number(kk) : kk;
+    shown.push({ value, key: kk, label: (col ? formatCellValue(value, col) : '') || kk, count: 0, missing: true });
+  }
+  return shown;
 }

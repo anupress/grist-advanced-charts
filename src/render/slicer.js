@@ -39,7 +39,9 @@ export function renderSlicer(block, ctx) {
     return card;
   }
 
-  const options = slicerOptions(base, table, column);
+  // The picked values are always offered, even ones the data no longer has, so whatever is
+  // narrowing the page can be seen and unticked.
+  const options = slicerOptions(base, table, column, { keep: selected });
   const style = c.style === 'chips' || c.style === 'dropdown' ? c.style : (options.length > CHIP_LIMIT ? 'dropdown' : 'chips');
 
   // With `remember` on, every change (a cleared one included) is kept on this device.
@@ -83,8 +85,9 @@ export function renderSlicer(block, ctx) {
     for (const o of options) {
       const on = selected.has(o.key);
       row.append(el('button', {
-        class: 'ap-chip ap-slicer__chip' + (on ? ' is-active' : ''), type: 'button',
+        class: 'ap-chip ap-slicer__chip' + (on ? ' is-active' : '') + (o.missing ? ' is-missing' : ''), type: 'button',
         'aria-pressed': on ? 'true' : 'false', disabled: !live,
+        title: o.missing ? 'No rows have this value now' : null,
         dataset: { value: o.key },
         onClick: () => { toggleValue(block.id, o.key, { multi }); apply(); },
       }, [
@@ -103,7 +106,7 @@ export function renderSlicer(block, ctx) {
       !multi ? el('option', { value: '', text: `All (${options.length})`, selected: !selected.size }) : null,
       ...options.map((o) => el('option', {
         value: o.key, selected: selected.has(o.key),
-        text: c.showCounts !== false ? `${o.label} (${o.count})` : o.label,
+        text: o.missing ? `${o.label} (not in the data now)` : (c.showCounts !== false ? `${o.label} (${o.count})` : o.label),
       })),
     ]);
     sel.addEventListener('change', () => {

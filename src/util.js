@@ -11,7 +11,18 @@ export function el(tag, props = {}, children = []) {
     if (k === 'html') { node.innerHTML = v; continue; }
     if (k === 'text') { node.textContent = v; continue; }
     if (k === 'dataset') { Object.assign(node.dataset, v); continue; }
-    if (k === 'style' && typeof v === 'object') { Object.assign(node.style, v); continue; }
+    // Object.assign onto a style declaration silently drops CUSTOM properties: assigning
+    // '--ap-inv-accent' just puts a JS property on the object and never reaches the element, which
+    // is why an invoice's Accent colour and a calendar's "Color events by" rendered as the theme's
+    // primary however they were set. Custom properties need setProperty; ordinary ones still assign.
+    if (k === 'style' && typeof v === 'object') {
+      for (const [prop, val] of Object.entries(v)) {
+        if (val == null || val === false) continue;
+        if (prop.startsWith('--')) node.style.setProperty(prop, String(val));
+        else node.style[prop] = val;
+      }
+      continue;
+    }
     if (k.startsWith('on') && typeof v === 'function') { node.addEventListener(k.slice(2).toLowerCase(), v); continue; }
     if (k in node && k !== 'list') { try { node[k] = v; continue; } catch {} }
     // Fall-through: only call setAttribute with a name the DOM will accept —

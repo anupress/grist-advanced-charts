@@ -1,12 +1,12 @@
 # Advanced Charts — a custom widget for Grist (by ANUPRESS)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-2563EB.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-3.0.0-0F1B2D.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.8.1-0F1B2D.svg)](CHANGELOG.md)
 [![Live demo](https://img.shields.io/badge/live_demo-try_it-16a34a.svg)](https://anupress.github.io/grist-advanced-charts/?demo=1)
 
 Turn any Grist table into a website-style dashboard: pages of KPI cards, charts, searchable data
-tables, invoices, calendars and maps, edited in place like a page builder. 22 block types, 10
-one-click industry templates, printable report layouts — and no server anywhere. Everything runs
+tables, invoices, calendars and maps, edited in place like a page builder. 26 block types, slicers that filter the whole page, 10
+one-click industry templates, several dashboards per document, printable report layouts — and no server anywhere. Everything runs
 in the viewer's browser, and your data never leaves your Grist document.
 
 Paste this into Grist (**Add widget → Custom → Enter Custom URL**):
@@ -30,14 +30,14 @@ The full editor runs in a plain browser tab against bundled sample data — noth
 
 ## What's inside
 
-**22 block types**, grouped the way the Add Element panel groups them:
+**26 block types**, grouped the way the Add Element panel groups them:
 
 | Group | Blocks |
 |---|---|
-| Data & Metrics | Stat card (KPI + trend + sparkline) · Chart (11 types via Apache ECharts) · Breakdown · Map (Leaflet, clustering) · Progress bar · Data table (search/sort/paging/highlight ranges) · Invoice (a row rendered as a printable document) · Calendar (drag to reschedule, writes back to Grist) |
+| Data & Metrics | Stat card (KPI + trend + sparkline) · Chart (11 types via Apache ECharts) · Breakdown · Map (Leaflet, clustering) · Progress bar · Data table (search/sort/paging/highlight ranges) · Invoice (a row rendered as a printable document) · Calendar (drag to reschedule, writes back to Grist) · Slicer (chips or a menu that narrow every block on the page; can open already picked) |
 | Content | Text · Image (upload or Grist attachment) · Counter · Testimonials · Accordion · Timeline · Pricing table |
-| Basic | Button · Icon (509-icon library) · Spacer · Divider · Countdown timer · QR code (generated locally) |
-| Advanced | HTML/CSS/JS embed, sandboxed so it can never read your data |
+| Basic | Button · Icon (509-icon library) · Spacer · Divider · Countdown timer · QR code (generated locally) · Barcode (Code 128, EAN-13, EAN-8, UPC-A) · Grid (a section of cells, each holding a block) |
+| Advanced | HTML/CSS/JS embed (sandboxed; reaches your data only if you switch on its Grist access) · Widget (another Grist custom widget, nested inside the page) |
 
 **10 starter templates** install a complete multi-page dashboard plus sample tables, each table
 either created with sample data or mapped onto one of your own (read-only, with column matching):
@@ -76,14 +76,16 @@ ANUPRESS has no server. The widget is a static page; every chart, table, invoice
 computed in the viewer's browser, and nothing is ever transmitted to us or anyone else. The one
 exception: a **Map** block loads its background tiles from a public tile provider (OpenStreetMap /
 Esri / OpenTopo), so that provider sees the viewer's IP and the viewed area — never any table data.
-The HTML embed block runs in a sandboxed frame that cannot reach your document. The first time you
-click **Edit**, a consent screen states all of this before anything happens.
+The HTML/CSS/JS block runs in a sandboxed frame that cannot reach your document unless you
+switch on its Grist access, and a nested Widget block gets this widget's access, so only add one
+you trust. The first time you click **Edit**, a consent screen states all of this before anything
+happens.
 
 ## Documentation
 
 - **[The complete guide](https://anupress.com/advanced-charts-grist-widget-guide/)** — setup, every feature, theming, printing, publishing, FAQ
 - **[The template library, toured](https://anupress.com/grist-dashboard-templates/)** — what each of the 10 templates includes and who it's for
-- **[The blocks tutorial](https://anupress.com/grist-tutorial-dashboard-blocks/)** — all 22 blocks, setting by setting, for beginners
+- **[The blocks tutorial](https://anupress.com/grist-tutorial-dashboard-blocks/)** — all 26 blocks, setting by setting, for beginners
 - **[Changelog](CHANGELOG.md)**
 
 ## Host it yourself

@@ -185,8 +185,12 @@ export function openGuidedWizard({ provider, onCreate }) {
     state.chartType = best ? best.id : (evals[0]?.id || 'column');
   }
 
+  // The same aggregation buildBlockConfig will write: a number column is summed, anything else
+  // (or nothing, "Just count entries") is counted, so the type grid judges the chart it will make.
   function currentSelection() {
-    return { dims: state.xCol ? [state.xCol] : [], measures: state.yCol ? [state.yCol] : [] };
+    const cols = provider.columns(state.table);
+    const yIsNumber = state.yCol && !!cols.find((c) => c.id === state.yCol && isMeasure(c));
+    return { dims: state.xCol ? [state.xCol] : [], measures: state.yCol ? [state.yCol] : [], agg: yIsNumber ? 'sum' : 'count' };
   }
 
   function buildBlockConfig() {

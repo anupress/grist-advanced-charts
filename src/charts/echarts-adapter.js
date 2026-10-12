@@ -137,7 +137,10 @@ export function buildOption(block, ctx) {
     color: colors, animationDuration: 600, animationEasing: 'cubicOut',
     grid: baseGrid(showLegend), legend: legendCfg(showLegend), tooltip: tooltipCfg('axis'),
     xAxis: isBar ? valAxis() : catAxis(cats, { rotate: catRotate, showAll: showAllCats }),
-    yAxis: isBar ? catAxis(cats, { showAll: nCats <= 18 }) : valAxis(),
+    // A category y axis starts at the bottom, so a horizontal bar read its groups upwards: "Largest
+    // first" put the largest last to a reader, A to Z read Z first, a Choice list ran backwards.
+    // Inverted, the first group is the top bar, the way a list (and a breakdown) reads.
+    yAxis: isBar ? { ...catAxis(cats, { showAll: nCats <= 18 }), inverse: true } : valAxis(),
     series,
   };
 }
