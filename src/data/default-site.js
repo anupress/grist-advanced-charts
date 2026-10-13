@@ -18,6 +18,7 @@ import {
   text, accordion, counter, iconBlock, button, urlTarget, tabTarget, spacer, image, testimonials,
   calcEmbed, placeholderImage,
 } from './templates/_helpers.js';
+import { designSignature } from '../util.js';
 
 export const SITE_VERSION = 1;
 
@@ -310,3 +311,10 @@ export const DEFAULT_SITE = {
     },
   ],
 };
+
+// The demo is the 'demo-dashboard' template as installed and untouched, and says so. Unstamped, the
+// template picker could only infer the template from the block ids, and an inference cannot say
+// whether the design was changed since, so every fresh demo was badged "Active · edited" and its
+// row offered a reset of a design nobody had touched. (The signature ignores these two fields.)
+DEFAULT_SITE.templateId = 'demo-dashboard';
+DEFAULT_SITE.templateSig = designSignature(DEFAULT_SITE);

@@ -3,6 +3,17 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.8.3] — 2026-10-13
+
+### Fixed
+
+- **A fresh demo is no longer badged "Active · edited" in the template
+  picker.** The demo design carried no template stamp, so the picker could
+  only infer its template from the block ids, and an inference cannot tell
+  whether anything was changed since; it chose the cautious answer and
+  offered to reset a design nobody had touched. The demo now ships stamped
+  as the installed, untouched demo template, so its row reads "Active".
+
 ## [3.8.2] — 2026-10-13
 
 ### Fixed
