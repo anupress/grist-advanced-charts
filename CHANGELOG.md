@@ -3,6 +3,21 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.8.4] — 2026-10-13
+
+### Fixed
+
+- **Typing in "Rename groups" and in "My own order" works.** Both boxes
+  rebuilt the whole editor on every keystroke, which replaced the box under
+  the cursor: after the first character the focus was gone, and the line
+  being typed went with it, because the box is refilled from the saved
+  pairs and a half-typed line has none yet. Only pasting a finished block of
+  text got through, so "Mid = Mid-level" typed by hand never reached the
+  chart. The two boxes now redraw only the preview while you type; choosing
+  an order from the list still rebuilds the editor, as it must to show or
+  hide the My own order box. Found while recording the tutorial; the same
+  fix applies to the breakdown editor.
+
 ## [3.8.3] — 2026-10-13
 
 ### Fixed

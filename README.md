@@ -78,7 +78,7 @@ exception: a **Map** block loads its background tiles from a public tile provide
 Esri / OpenTopo), so that provider sees the viewer's IP and the viewed area — never any table data.
 The HTML/CSS/JS block runs in a sandboxed frame that cannot reach your document unless you
 switch on its Grist access, and a nested Widget block gets this widget's access, so only add one
-you trust. The first time you click **Edit**, a consent screen states all of this before anything
+you trust. Each time you click **Edit**, a consent screen states all of this before anything
 happens.
 
 ## Documentation

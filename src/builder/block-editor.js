@@ -198,7 +198,7 @@ function openChartEditor(block, ctx) {
     }
     if (type !== 'scatter' && type !== 'gauge' && (wb.config.dims || []).length) {
       const columns = provider.columns(wb.config.table);
-      box.append(groupOrderFields(wb, columns, wb.config.dims[0], () => { rebuild(); refreshPreview(); }));
+      box.append(groupOrderFields(wb, columns, wb.config.dims[0], () => { rebuild(); refreshPreview(); }, refreshPreview));
     }
     return box;
   }
@@ -251,7 +251,10 @@ function openChartEditor(block, ctx) {
 // The order of a chart's groups and what they are called. Shared by the chart and breakdown
 // editors, so the two blocks read the same way. The Choice-list option only appears when the
 // column is a Choice column, because that is the only time it means anything.
-function groupOrderFields(wb, columns, dim, onChange) {
+// `onChange` is for the picker, which can change the editor's shape (My own order adds a field). `onText` is for the two text
+// boxes and must NOT rebuild the editor: rebuilding replaces the box under the cursor, so a reader typing "Mid = Mid-level" lost
+// their focus, and the half-typed line with it, after every keystroke. Only a paste ever got through. (Fixed in 3.8.4.)
+function groupOrderFields(wb, columns, dim, onChange, onText = onChange) {
   const col = (columns || []).find((c) => c.id === dim);
   const hasChoices = Array.isArray(col?.widgetOptions?.choices) && col.widgetOptions.choices.length > 0;
   const current = wb.config.order || (wb.config.sortByValue ? 'value' : 'auto');
@@ -269,10 +272,10 @@ function groupOrderFields(wb, columns, dim, onChange) {
     ? 'Tip: "The column\'s Choice list" shows the groups in the order they are defined in Grist.'
     : (!hasChoices && col?.type === 'Text' ? 'Tip: make this a Choice column in Grist and its Choice list becomes an option here.' : null)));
   if (current === 'custom') {
-    box.append(field('Groups, one per line, in order', linesInput(wb.config.customOrder || [], (v) => { wb.config.customOrder = v; onChange(); }, { placeholder: '18–24\n25–34\n35–44' }),
+    box.append(field('Groups, one per line, in order', linesInput(wb.config.customOrder || [], (v) => { wb.config.customOrder = v; onText(); }, { placeholder: '18–24\n25–34\n35–44' }),
       'Groups you leave out follow at the end, in the order the rows come.'));
   }
-  box.append(field('Rename groups (optional)', pairsInput(wb.config.labels || null, (v) => { wb.config.labels = v; onChange(); }, { placeholder: 'M = Male\nF = Female' }),
+  box.append(field('Rename groups (optional)', pairsInput(wb.config.labels || null, (v) => { wb.config.labels = v; onText(); }, { placeholder: 'M = Male\nF = Female' }),
     'One per line: the value as it appears, an equals sign, then the name to show. Two values renamed alike are added together.'));
   return box;
 }
@@ -402,7 +405,7 @@ function openBreakdownEditor(block, ctx) {
       field('Group by column', selectInput(cols.map((c) => ({ value: c.id, label: c.label })), wb.config.column, (v) => { wb.config.column = v; buildDyn(); refreshPreview(); })),
       field('Max rows shown', textInput(String(wb.config.limit || 12), (v) => { wb.config.limit = Math.max(3, Math.min(40, Number(v) || 12)); refreshPreview(); }, { type: 'number' })),
       // A breakdown's own default is largest first; `order` is only written once the author picks.
-      groupOrderFields({ config: new Proxy(wb.config, { get: (t, k) => (k === 'order' ? (t.order || 'value') : t[k]) }) }, cols, wb.config.column, () => { buildDyn(); refreshPreview(); }),
+      groupOrderFields({ config: new Proxy(wb.config, { get: (t, k) => (k === 'order' ? (t.order || 'value') : t[k]) }) }, cols, wb.config.column, () => { buildDyn(); refreshPreview(); }, refreshPreview),
     );
   }
 
