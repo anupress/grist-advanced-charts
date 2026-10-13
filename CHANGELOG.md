@@ -3,6 +3,17 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.8.6] — 2026-10-13
+
+### Fixed
+
+- **Edit data: a wide table keeps its header and row lines when scrolled
+  sideways.** Each row of the data editor was only as wide as the visible
+  part of the grid, so after scrolling to the columns on the right the
+  header's tint and the lines between rows stopped part-way across, and a
+  column there looked cut in two. Every row is now as wide as all its
+  columns. Found while recording the data-tables tutorial on 3.8.5.
+
 ## [3.8.5] — 2026-10-13
 
 ### Fixed

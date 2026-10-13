@@ -357,6 +357,10 @@
 }
 .ap-dataedit__row {
   display: grid; grid-template-columns: 52px repeat(var(--ap-de-cols, 3), minmax(120px, 1fr));
+  /* A row is a block in the scrolling grid, so without this it is only as wide as the visible part:
+     scrolled sideways, the header's tint and the row lines stopped where the view had ended. Every row
+     gets the same minimum (the columns' own minimums), so they stay the same width and stay aligned. */
+  min-width: calc(52px + var(--ap-de-cols, 3) * 120px);
   border-bottom: 1px solid var(--ap-border);
 }
 .ap-dataedit__row:last-child { border-bottom: 0; }
