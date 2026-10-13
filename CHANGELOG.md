@@ -3,6 +3,19 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.8.2] — 2026-10-13
+
+### Fixed
+
+- **A printout follows the page's slicer.** Blocks arranged on the printable
+  sheet read the whole table: a page narrowed to "41 of 404 rows" printed
+  every card and chart for all 404, while the slicer printed beside them
+  still showed what was picked (reported on the community forum). A block on
+  the sheet now reads its rows through the slicers of the page it was
+  collected from, exactly as it does on that page, Grid cells included.
+  Repeat mode is unchanged: it still prints one copy per row of the table
+  you chose, whatever any slicer says.
+
 ## [3.8.1] — 2026-10-12
 
 ### Fixed

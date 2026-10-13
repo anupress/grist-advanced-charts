@@ -27,6 +27,7 @@ import { mountMaps, settleMapsForPrint } from '../render/map.js';
 import { mountCounters } from '../render/counter.js';
 import { mountCountdowns } from '../render/countdown.js';
 import { isPrintable } from './printable.js';
+import { slicersFor, filteredProvider } from '../data/slicer.js';
 // Sortable is used directly rather than through builder/dnd.js: the sheet's items are
 // .ap-sheet__item, not .ap-block, and reordering here rewrites the selection rather than a tab.
 
@@ -432,7 +433,18 @@ export function openLayout(opts) {
       pageInfo.textContent = '';
       return;
     }
+    // Repeat mode binds each block to one record of the chosen table, so it reads the table whole.
     const ctx = { provider, config, edit: null };
+    // Everything else reads its rows through the slicers of the page it was collected from, exactly
+    // as the page does. It used to get the bare provider, so a page narrowed to "41 of 404 rows"
+    // printed every block for all 404 while the slicer beside them still showed the selection
+    // (reported on the Grist community forum, 2026-10-13).
+    const ctxFor = (found) => {
+      const c = { provider: filteredProvider(provider, slicersFor(found.block, found.tab)), config, edit: null };
+      // A Grid block prints its cells narrowed on their own terms, as on the page.
+      c.cellContext = (child) => ({ ...c, nested: true, provider: filteredProvider(provider, slicersFor(child, found.tab)) });
+      return c;
+    };
     const rows = repeatRows(provider);
 
     // A run of labels is not a document, so it gets no letterhead. The header belongs on the one
@@ -491,7 +503,7 @@ export function openLayout(opts) {
             title: 'Take out of the printout', 'aria-label': 'Take out of the printout',
             onClick: () => { remove(id); draw(); } }, [icon('trash')]),
         ]),
-        renderBlock(found.block, ctx),
+        renderBlock(found.block, ctxFor(found)),
       );
       sheet.append(wrap);
     }
