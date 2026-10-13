@@ -3,6 +3,50 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.8.5] — 2026-10-13
+
+### Fixed
+
+Five editor bugs found while scripting the tutorial video on 3.8.4, each
+confirmed in a real Grist document first.
+
+- **A map finds the coordinates of the table you switch it to.** A new map
+  starts on the page's table, and when that table has no coordinates its
+  first two columns stand in for latitude and longitude (Order, Date).
+  Switching "Data table" to one with Latitude and Longitude kept those two,
+  because they were only filled in while empty, and the map drew no points.
+  Changing the table now drops every column the new table does not have
+  (latitude, longitude, popup title, colour and tooltip fields) and looks for
+  the new table's coordinates again. Opening the editor still changes nothing
+  that is set, so a column since renamed in Grist shows as "not in this
+  document" as before.
+- **A slicer's label follows its column.** A new slicer is labelled with its
+  column's name, and changing the column, or the table, kept the old name: a
+  slicer set to Year still said "Channel". A label that still reads as the
+  previous column's name now takes the new one; a label you typed stays.
+- **A chart's first category is the one you picked first.** The first
+  category is the axis and the second the series, but the pickers reported
+  them in the table's column order, so a column added to the table later (a
+  Month formula) could never be the axis while an earlier one (Channel) was
+  picked: "Revenue by Month and Channel" drew the channels along the axis
+  and one line per month. Categories and values now keep the order you pick
+  them in, and unpicking and picking again moves a column to the end, as the
+  funnel's hint always said. Saved charts keep their order; nothing is
+  re-sorted. The live table, invoice and widget column pickers are
+  unchanged.
+- **Renaming a page renames it in the menu.** The menu shows its own label
+  for a page when it has one, and a blank site, the demo and every template
+  give each page one equal to its title, with nothing in the editor to change
+  it. So a page renamed in Pages & menu kept its old name in the menu for
+  good. A menu label, or a footer link, that still matches the old title now
+  follows the rename; a footer link you renamed yourself keeps your name.
+- **A new page opens without a "New Page" banner.** Pages added from Pages &
+  menu started with a large hero whose headline was a copy of the title made
+  at creation, so it still said "New Page" after a rename. New pages now
+  start with the hero switched off, as a blank site's first page does. Switch
+  it on and, until you type a headline, it shows the page title and follows
+  any rename.
+
 ## [3.8.4] — 2026-10-13
 
 ### Fixed

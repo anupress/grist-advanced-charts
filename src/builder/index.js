@@ -537,6 +537,35 @@ function openFooterPanel() {
 }
 
 // ---------------- Tabs / pages ----------------
+// Renaming a page renames the menu entries that still carry its old name. Exported for the tests.
+//
+// The nav shows a header.menu label in preference to the page title (render/header.js), and a
+// blank site, the demo and every template write one equal to each title, while nothing in the
+// editor edits those labels. So renaming "Page 1" in Pages & menu left the nav saying "Page 1" for
+// good (found scripting the tutorial, 3.8.4). A label that still equals the old title was never
+// chosen by anyone, so it follows; a footer link the author renamed in the Footer panel no longer
+// matches and keeps their name. Runs on every keystroke, so each step compares with the last.
+export function renameTab(site, tab, title) {
+  const before = tab.title || '';
+  for (const m of [...(site.header?.menu || []), ...(site.footer?.links || [])]) {
+    if (m.tab === tab.id && (m.label || '') === before) m.label = title;
+  }
+  tab.title = title;
+}
+
+// A page added from Pages & menu. Exported for the tests.
+//
+// It starts with its hero switched off, as a blank site's first page and a saved printout do.
+// It used to open with a large "New Page" banner whose headline was a copy of the title made at
+// creation, so it still said "New Page" after the page was renamed (found scripting the tutorial,
+// 3.8.4). Off rather than following the title, because most dashboard pages want no banner at
+// all, and while editing a hidden hero still shows as a strip that opens its settings. Switched
+// on with no headline typed, the banner shows the page title (render/hero.js), so it follows a
+// rename anyway until the author writes one.
+export function newPage(id) {
+  return { id, title: 'New Page', hero: { enabled: false }, blocks: [] };
+}
+
 function openTabsPanel() {
   markContext = 'Edited pages';
   const host = el('div');
@@ -545,7 +574,7 @@ function openTabsPanel() {
     (working.tabs || []).forEach((tab, i) => {
       const row = el('div', { class: 'ap-tabedit', dataset: { tabId: tab.id } }, [
         el('span', { class: 'ap-tab-grip', title: 'Drag to reorder' }, [icon('grip')]),
-        textInput(tab.title || '', (v) => { tab.title = v; mark(); rerenderSoon(); }, { placeholder: 'Tab name' }),
+        textInput(tab.title || '', (v) => { renameTab(working, tab, v); mark(); rerenderSoon(); }, { placeholder: 'Tab name' }),
         el('button', { class: 'ap-btn ap-btn--icon ap-btn--sm', title: 'Edit hero / slider', onClick: () => openHeroEditor(tab) }, [icon('sparkles')]),
         working.tabs.length > 1 ? el('button', { class: 'ap-btn ap-btn--icon ap-btn--sm ap-btn--danger', onClick: () => { working.tabs.splice(i, 1); if (activeTabId === tab.id) activeTabId = working.tabs[0]?.id; render(); mark(); rerenderSoon(); } }, [icon('trash')]) : null,
       ]);
@@ -553,7 +582,7 @@ function openTabsPanel() {
     });
     host.append(el('button', { class: 'ap-btn ap-btn--soft', onClick: addTab }, [icon('plus'), 'Add page']));
   }
-  function addTab() { const id = uid('tab'); working.tabs.push({ id, title: 'New Page', hero: { title: 'New Page', subtitle: '' }, blocks: [] }); activeTabId = id; render(); mark(); rerenderSoon(); }
+  function addTab() { const id = uid('tab'); working.tabs.push(newPage(id)); activeTabId = id; render(); mark(); rerenderSoon(); }
 
   // External URL menu items (no page content) — shown in the nav after the pages.
   const menuHost = el('div', { style: { marginTop: '14px' } });

@@ -158,10 +158,10 @@ function openChartEditor(block, ctx) {
     dynHost.replaceChildren(
       subhead(staged ? 'Categories  ·  leave empty to use the values below as stages'
         : 'Categories  ·  the groups along the axis'),
-      columnPicker(columns, wb.config.dims || [], (ids) => { wb.config.dims = ids; update(); }),
+      columnPicker(columns, wb.config.dims || [], (ids) => { wb.config.dims = ids; update(); }, { pickOrder: true }),
       subhead(staged ? 'Stages  ·  in order, widest first'
         : 'Values  ·  the numbers to measure'),
-      columnPicker(columns, wb.config.measures || [], (ids) => { wb.config.measures = ids; update(); }),
+      columnPicker(columns, wb.config.measures || [], (ids) => { wb.config.measures = ids; update(); }, { pickOrder: true }),
       funnelSelected ? el('div', { class: 'ap-muted', style: { fontSize: '11.5px', marginTop: '4px', lineHeight: '1.5' }, text: staged
         ? 'Each value is a stage, in the order listed, labelled with how much of the previous stage survived it. Reorder by unpicking and picking again.'
         : 'A funnel means stages that each contain the next — pick no category and two or more values (impressions, clicks, leads) to build one. Grouping by a category instead only reads correctly when that column is cumulative.' }) : null,
@@ -242,12 +242,6 @@ function openChartEditor(block, ctx) {
   refreshPreview();
 }
 
-// A list of column pills; `onToggle` receives the selected ids, in table order, after every click.
-//
-// Each pill repaints itself when clicked. It used to rely on the caller rebuilding the list, and
-// the data table editor never did: a click added the column to the block (the preview further
-// down changed) while the pill kept its "+", so the reader concluded the column could not be
-// chosen. The pill is the control; it must show its own state.
 // The order of a chart's groups and what they are called. Shared by the chart and breakdown
 // editors, so the two blocks read the same way. The Choice-list option only appears when the
 // column is a Choice column, because that is the only time it means anything.
@@ -280,23 +274,49 @@ function groupOrderFields(wb, columns, dim, onChange, onText = onChange) {
   return box;
 }
 
-function columnPicker(columns, selected, onToggle) {
-  const sel = new Set(selected);
+// Picking appends and unpicking removes, so a list kept this way is in the order it was picked.
+// Exported for the tests.
+//
+// A chart needs that order: its first category is the axis and the second the series. The picker
+// used to hand its selection back in table order, so a column added to the table later (a Month
+// formula) could never be the axis while an earlier one (Channel) was picked: "Revenue by Month
+// and Channel" drew the channels along the axis and one line per month, and the funnel's hint to
+// reorder by unpicking and picking again did nothing (found scripting the tutorial, 3.8.4). A
+// saved list is never re-sorted, only added to at the end or taken from, so opening and editing
+// an existing chart keeps its axis.
+export function togglePick(order, id) {
+  return order.includes(id) ? order.filter((x) => x !== id) : [...order, id];
+}
+
+// A list of column pills; `onToggle` receives the selected ids after every click. They come in
+// table order unless `pickOrder` is set, when they come in the order picked (togglePick above).
+// Only the chart's categories and values ask for that. A live table draws its columns in table
+// order whatever the list says, and an invoice's address lines read best in the order the
+// address book lays them out. Exported for the tests.
+//
+// Each pill repaints itself when clicked. It used to rely on the caller rebuilding the list, and
+// the data table editor never did: a click added the column to the block (the preview further
+// down changed) while the pill kept its "+", so the reader concluded the column could not be
+// chosen. The pill is the control; it must show its own state.
+export function columnPicker(columns, selected, onToggle, { pickOrder = false } = {}) {
+  const known = (id) => columns.some((x) => x.id === id);
+  let order = [...selected];
   const list = el('div', { class: 'ap-collist' });
   for (const c of columns) {
-    const on = sel.has(c.id);
+    const on = order.includes(c.id);
     const pill = el('button', { class: 'ap-colpill' + (on ? ' is-on' : ''), type: 'button', dataset: { id: c.id }, 'aria-pressed': on ? 'true' : 'false' }, [
       icon(on ? 'check' : 'plus'),
       el('span', { text: c.label || c.id }),
       el('span', { class: 'ap-coltype', text: shortType(c.type) }),
     ]);
     pill.addEventListener('click', () => {
-      const now = !sel.has(c.id);
-      if (now) sel.add(c.id); else sel.delete(c.id);
+      // A saved id the table no longer has goes on the first click, as it always did.
+      order = togglePick(order.filter(known), c.id);
+      const now = order.includes(c.id);
       pill.classList.toggle('is-on', now);
       pill.setAttribute('aria-pressed', now ? 'true' : 'false');
       pill.firstChild.replaceWith(icon(now ? 'check' : 'plus'));
-      onToggle([...columns.filter((x) => sel.has(x.id)).map((x) => x.id)]);
+      onToggle(pickOrder ? [...order] : columns.filter((x) => order.includes(x.id)).map((x) => x.id));
     });
     list.append(pill);
   }
@@ -431,6 +451,32 @@ function openBreakdownEditor(block, ctx) {
 }
 
 // ---------------- Map editor ----------------
+// The columns a map reads, fitted to its table. Exported for the tests.
+//
+// Latitude and longitude used to be filled only while empty. A new map starts on the page's
+// table, and when that table has no coordinates its first two columns stand in (Order, Date);
+// switching "Data table" to one with Latitude and Longitude then kept those two, and the map drew
+// no points (found scripting the tutorial, 3.8.4). The popup title, colour and tooltip columns
+// went stale the same way. So a change of table drops every column the new table lacks and takes
+// the coordinates detectLatLon finds there, even over an id both tables happen to have: that one
+// was chosen for the old table. Opening the editor changes nothing that is set, so a column since
+// renamed in Grist still shows as "not in this document" rather than being swapped behind the
+// author's back.
+export function fitMapColumns(config, cols, { tableChanged = false } = {}) {
+  const has = (id) => cols.some((c) => c.id === id);
+  const det = detectLatLon(cols);
+  if (tableChanged) {
+    config.latColumn = det.lat || (has(config.latColumn) ? config.latColumn : '');
+    config.lonColumn = det.lon || (has(config.lonColumn) ? config.lonColumn : '');
+    if (config.labelColumn && !has(config.labelColumn)) config.labelColumn = null;
+    if (config.colorBy && !has(config.colorBy)) config.colorBy = null;
+    if (Array.isArray(config.popupColumns)) config.popupColumns = config.popupColumns.filter(has);
+  }
+  if (!config.latColumn) config.latColumn = det.lat || (cols[0]?.id || '');
+  if (!config.lonColumn) config.lonColumn = det.lon || (cols[1]?.id || '');
+  return config;
+}
+
 function openMapEditor(block, ctx) {
   const wb = clone(block); wb.config = wb.config || {};
   const provider = ctx.provider;
@@ -443,11 +489,9 @@ function openMapEditor(block, ctx) {
   }, 200);
 
   const dynHost = el('div');
-  function buildDyn() {
+  function buildDyn(tableChanged = false) {
     const cols = provider.columns(wb.config.table);
-    const det = detectLatLon(cols);
-    if (!wb.config.latColumn) wb.config.latColumn = det.lat || (cols[0]?.id || '');
-    if (!wb.config.lonColumn) wb.config.lonColumn = det.lon || (cols[1]?.id || '');
+    fitMapColumns(wb.config, cols, { tableChanged });
     const opts = cols.map((c) => ({ value: c.id, label: c.label }));
     const optional = (label) => [{ value: '', label }].concat(opts);
     const pc = wb.config.popupColumns || [];
@@ -470,7 +514,7 @@ function openMapEditor(block, ctx) {
     field('Title', textInput(wb.config.title || '', (v) => { wb.config.title = v; refreshPreview(); }, { placeholder: 'Map' })),
     subtitleField(wb, 'map', refreshPreview, 'e.g. %count mapped · %missing without coordinates'),
     field('Data table', tablePicker(provider, wb.config.table,
-      async (v) => { wb.config.table = v; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
+      async (v) => { wb.config.table = v; await ensureRows(provider, v); buildDyn(true); refreshPreview(); })),
     editDataRow(() => wb.config.table, ctx, () => openMapEditor(block, ctx)),
     dynHost,
     // Street and Terrain ship built in. A satellite layer does not, because no free global aerial
@@ -1076,6 +1120,19 @@ function openEmbedEditor(block, ctx) {
  * scannability of the result, and someone who thinks they are choosing a display size will pick a
  * number that cannot be read by a scanner.
  */
+
+// ---------------- Slicer editor ----------------
+// A new slicer's label is its column's name (new-block.js). Exported for the tests.
+//
+// Changing the column, or the table, left that name behind: a slicer set to Year still said
+// "Channel" above the years (found scripting the tutorial, 3.8.4). A label that still reads as
+// the previous column's name was written by us, not the author, so it follows the new column. A
+// label the author typed stays, and so does one they emptied: a slicer with no label already
+// shows its column's name (render/slicer.js).
+export function followColumnLabel(label, before, after) {
+  return (label || '') === (before || '') ? (after || '') : label;
+}
+
 /**
  * Slicer editor.
  *
@@ -1111,9 +1168,23 @@ function openSlicerEditor(block, ctx) {
       : (wb.config.table && wb.config.column ? 'Reaches no other block on this page yet — none shares this column or references this table.' : '');
   }, 150);
 
+  // The name a column goes by, as new-block.js writes it into a new slicer's label.
+  const columnName = (table, id) => {
+    const c = (ctx.provider.columns(table) || []).find((x) => x.id === id);
+    return c ? (c.label || c.id) : (id || '');
+  };
+  const labelInput = textInput(wb.config.label || '', (v) => { wb.config.label = v; refreshPreview(); }, { placeholder: 'Shown above the choices' });
+  const followColumn = (before, after) => {
+    const next = followColumnLabel(wb.config.label, before, after);
+    if (next !== wb.config.label) { wb.config.label = next; labelInput.value = next; }
+  };
+
   const columnField = () => {
     const cols = (ctx.provider.columns(wb.config.table) || []).map((c) => ({ value: c.id, label: c.label || c.id }));
-    return selectInput([{ value: '', label: 'Choose a column…' }, ...cols], wb.config.column || '', (v) => { wb.config.column = v; delete wb.config.defaults; drawDefaults(); refreshPreview(); });
+    return selectInput([{ value: '', label: 'Choose a column…' }, ...cols], wb.config.column || '', (v) => {
+      followColumn(columnName(wb.config.table, wb.config.column), columnName(wb.config.table, v));
+      wb.config.column = v; delete wb.config.defaults; drawDefaults(); refreshPreview();
+    });
   };
   const columnHost = el('div', {}, [columnField()]);
 
@@ -1162,12 +1233,15 @@ function openSlicerEditor(block, ctx) {
 
   const body = [
     field('Table', tablePicker(ctx.provider, wb.config.table, (v) => {
+      // No column is picked on the new table yet, so a following label empties (the slicer then
+      // says "Filter") and takes the name of whichever column is picked next.
+      followColumn(columnName(wb.config.table, wb.config.column), '');
       wb.config.table = v; wb.config.column = ''; delete wb.config.defaults;
       columnHost.replaceChildren(columnField());
       drawDefaults(); refreshPreview();
     })),
     field('Column', columnHost, 'The values in this column become the choices. A Choice, Reference or Text column works best.'),
-    field('Label (optional)', textInput(wb.config.label || '', (v) => { wb.config.label = v; refreshPreview(); }, { placeholder: 'Shown above the choices' })),
+    field('Label (optional)', labelInput),
     twoUp(
       field('Show as', segmented([{ value: 'auto', label: 'Auto' }, { value: 'chips', label: 'Chips' }, { value: 'dropdown', label: 'Menu' }],
         wb.config.style || 'auto', (v) => { wb.config.style = v; refreshPreview(); }), 'Auto uses chips up to twelve choices, then a menu.'),
