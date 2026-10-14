@@ -189,6 +189,20 @@ export function fmtNumber(v, opts = {}) {
 }
 function trimZero(n) { return String(Number(n.toFixed(2))); }
 
+/**
+ * A progress bar's figure. Against a whole target, a figure of 1,000 or more is whole: a year's
+ * revenue reads "€118,575 / €150,000", not "€118,574.6 / €150,000" (found building the Glutbohne
+ * case study, 3.10.4). Smaller figures keep up to two decimals as before (an 87.35% pass rate, three
+ * quarters of 1), and a target written with decimals gives every figure that many.
+ */
+export function fmtProgress(n, target, { prefix = '', suffix = '' } = {}) {
+  const t = String(target ?? '');
+  const dec = (t.split('.')[1] || '').length;
+  const whole = dec === 0 && Math.abs(Number(n) || 0) >= 1000;
+  const num = whole ? fmtNumber(Math.round(Number(n) || 0)) : fmtNumber(n, dec ? { decimals: dec } : {});
+  return `${prefix}${num}${suffix ? ' ' + suffix : ''}`;
+}
+
 export function isFiniteNum(v) { return typeof v === 'number' ? isFinite(v) : (v !== '' && v != null && isFinite(Number(v))); }
 
 /**

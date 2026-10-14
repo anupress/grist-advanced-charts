@@ -262,15 +262,30 @@ function pt(r, x, y, size) {
 
 // KPI value + optional delta vs previous period (orders rows by a temporal/order dim,
 // splits in half, compares the two halves).
+// The "vs prev. period" figure under a KPI: the later half of the periods in view against the
+// earlier half, the same number of periods on each side (an odd middle one sits out). By Month over
+// 2026 so far that is June to October against January to May.
+//
+// It used to split the ROWS in half, so both halves always held the same number of rows: a shop
+// whose orders doubled showed about 0% on a summed revenue, because only the average order could
+// move it (found building the Glutbohne case study, 3.10.4). One period alone has nothing before it,
+// so no figure is shown rather than a made-up one.
 export function computeKpi(rows, { column, agg = 'sum', deltaBy }) {
   const value = round(aggregate(rows.map((r) => r[column]), agg));
   let delta = null;
   if (deltaBy && rows.length > 3) {
-    const ordered = [...rows].sort((a, b) => String(a[deltaBy]).localeCompare(String(b[deltaBy])));
-    const mid = Math.floor(ordered.length / 2);
-    const prev = round(aggregate(ordered.slice(0, mid).map((r) => r[column]), agg));
-    const curr = round(aggregate(ordered.slice(mid).map((r) => r[column]), agg));
-    if (prev !== 0) delta = round(((curr - prev) / Math.abs(prev)) * 100);
+    const key = (r) => (r[deltaBy] == null ? '' : String(r[deltaBy]));
+    const num = (k) => k.trim() !== '' && Number.isFinite(Number(k));
+    const periods = [...new Set(rows.map(key))].filter((k) => k !== '')
+      .sort((a, b) => (num(a) && num(b) ? Number(a) - Number(b) : a.localeCompare(b)));
+    const half = Math.floor(periods.length / 2);
+    if (half >= 1) {
+      const early = new Set(periods.slice(0, half));
+      const late = new Set(periods.slice(periods.length - half));
+      const prev = round(aggregate(rows.filter((r) => early.has(key(r))).map((r) => r[column]), agg));
+      const curr = round(aggregate(rows.filter((r) => late.has(key(r))).map((r) => r[column]), agg));
+      if (prev !== 0) delta = round(((curr - prev) / Math.abs(prev)) * 100);
+    }
   }
   return { value, delta };
 }

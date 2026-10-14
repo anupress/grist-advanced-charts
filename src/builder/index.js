@@ -11,6 +11,7 @@ import { tablesInConfig } from '../data/provider.js';
 import { openBlockEditor } from './block-editor.js';
 import { newBlock } from './new-block.js';
 import { findBlockIn, flattenBlocks, emptyCells } from '../data/grid.js';
+import { joinChosenSlicers } from '../data/slicer.js';
 import { openGuidedWizard } from './wizard.js';
 import { openBlockChooser } from './chooser.js';
 import { openTemplatePicker } from './template-picker.js';
@@ -358,7 +359,7 @@ function chooseNewBlock(tabId) {
   openBlockChooser({
     onPick: (type) => { closeDrawer(); addBlock(tabId, type); },
     onLayout: (cols, rows) => { closeDrawer(); addLayout(tabId, cols, rows); },
-    onGuided: () => { closeDrawer(); openGuidedWizard({ provider, onCreate: (block) => { const tab = findTab(tabId); (tab.blocks ||= []).push(block); mark('Added chart'); rerender(); } }); },
+    onGuided: () => { closeDrawer(); openGuidedWizard({ provider, onCreate: (block) => { const tab = findTab(tabId); (tab.blocks ||= []).push(block); joinChosenSlicers(block, tab, provider); mark('Added chart'); rerender(); } }); },
     onTemplates: () => { closeDrawer(); openTemplatesPanel(); },
   });
 }
@@ -369,7 +370,7 @@ function addLayout(tabId, cols, rows) {
   const grid = defaultBlock('grid');
   if (!cols) {
     openBlockEditor(grid, { provider, site: working, tabId, onApply: (nb) => {
-      delete nb.__isNew; const tab = findTab(tabId); (tab.blocks ||= []).push(nb);
+      delete nb.__isNew; const tab = findTab(tabId); (tab.blocks ||= []).push(nb); joinChosenSlicers(nb, tab, provider);
       mark(`Added a ${nb.config.cols} × ${nb.config.rows} section`); rerender();
     } });
     return;
@@ -415,7 +416,7 @@ function openTemplatesPanel() {
 
 function addBlock(tabId, type) {
   const block = defaultBlock(type, tabId);
-  openBlockEditor(block, { provider, site: working, tabId, onApply: (nb) => { delete nb.__isNew; const tab = findTab(tabId); (tab.blocks ||= []).push(nb); mark(`Added ${nb.type}`); rerender(); } });
+  openBlockEditor(block, { provider, site: working, tabId, onApply: (nb) => { delete nb.__isNew; const tab = findTab(tabId); (tab.blocks ||= []).push(nb); joinChosenSlicers(nb, tab, provider); mark(`Added ${nb.type}`); rerender(); } });
 }
 function editBlock(blockId) {
   const found = findBlock(blockId); if (!found) return;
@@ -436,7 +437,7 @@ function deleteBlock(blockId) {
 function addBlockInGrid(gridId, cell) {
   const found = findBlock(gridId); if (!found || found.block.type !== 'grid') return;
   const grid = found.block;
-  const put = (nb) => { delete nb.__isNew; (grid.config.cells ||= [])[cell] = nb; mark(`Added ${nb.type} to a cell`); rerender(); };
+  const put = (nb) => { delete nb.__isNew; (grid.config.cells ||= [])[cell] = nb; joinChosenSlicers(nb, found.tab, provider); mark(`Added ${nb.type} to a cell`); rerender(); };
   const inGrid = { cols: grid.config?.cols || 1, rows: grid.config?.rows || 1 };
   openBlockChooser({
     exclude: ['grid'], title: 'Add to this cell',

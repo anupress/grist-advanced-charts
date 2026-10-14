@@ -370,7 +370,7 @@ function openStatEditor(block, ctx) {
             else wb.config.deltaBy = v || null;
             refreshPreview();
           }),
-        'The little wave and the "vs prev. period" figure under the number. Automatic uses the table\'s date column.'),
+        'The little wave and the "vs prev. period" figure under the number: the later half of the months (or days) shown, against the earlier half. Automatic uses the table\'s date column.'),
     );
   }
 
@@ -1230,6 +1230,8 @@ function openSlicerEditor(block, ctx) {
         refreshPreview();
       }));
     }
+    // joinChosenSlicers (data/slicer.js): said here so nobody wonders why a new chart is ticked
+    targetsHost.append(el('div', { class: 'ap-muted', style: { fontSize: '12px', marginTop: '4px' }, text: 'A block you add later is ticked here when this slicer can reach it. Untick it to leave it out.' }));
   };
 
   const body = [

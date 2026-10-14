@@ -53,5 +53,30 @@ ok('a Date column keeps its time order', dates.categories.length === 2);
 const legacy = agg.groupAggregate([{ Month: 'b', R: 1 }, { Month: 'a', R: 2 }], { dims: ['Month'], measures: ['R'], agg: 'sum' });
 eq('without column information the name still decides, as before', legacy.categories.join(','), 'a,b');
 
+// 3.10.4: a progress bar's figures read like its target
+eq('a year\'s revenue against a whole target', `${u.fmtProgress(118574.6, 150000, { prefix: '€' })} / ${u.fmtProgress(150000, 150000, { prefix: '€' })}`, '€118,575 / €150,000');
+eq('an average pass rate keeps its decimals', u.fmtProgress(87.35, 100, { suffix: '%' }), '87.35 %');
+eq('three quarters of 1 is not 1', u.fmtProgress(0.75, 1), '0.75');
+eq('a target with decimals sets them', u.fmtProgress(2.25, 4.5), '2.3');
+eq('a unit after the number', u.fmtProgress(9000, 9000, { suffix: 'leads' }), '9,000 leads');
+ok('the progress bar uses it', /fmtProgress\(n, c\.target/.test(src('src/render/blocks.js')));
+
+// 3.10.4: "vs prev. period" compares periods, not two halves of the rows. A shop whose orders double while each order
+// stays at ten euros: by rows both halves held the same number of orders, so the card said 0%.
+const line = (m, n) => Array.from({ length: n }, () => ({ Month: m, Revenue: 10 }));
+const growing = [...line('2026-01', 10), ...line('2026-02', 10), ...line('2026-03', 20), ...line('2026-04', 20)];
+eq('orders doubling show as +100%', agg.computeKpi(growing, { column: 'Revenue', agg: 'sum', deltaBy: 'Month' }).delta, 100);
+eq('the total is still everything', agg.computeKpi(growing, { column: 'Revenue', agg: 'sum', deltaBy: 'Month' }).value, 600);
+const odd = [...line('2026-01', 4), ...line('2026-02', 99), ...line('2026-03', 6)];
+eq('an odd middle period sits out: March against January', agg.computeKpi(odd, { column: 'Revenue', agg: 'sum', deltaBy: 'Month' }).delta, 50);
+eq('one period alone has nothing to compare with', agg.computeKpi(line('2026-10', 8), { column: 'Revenue', agg: 'sum', deltaBy: 'Month' }).delta, null);
+const shuffled = [...line('2026-04', 20), ...line('2026-01', 10), ...line('2026-03', 20), ...line('2026-02', 10)];
+eq('row order does not matter', agg.computeKpi(shuffled, { column: 'Revenue', agg: 'sum', deltaBy: 'Month' }).delta, 100);
+const years = [{ Y: 2025, R: 50 }, { Y: 2025, R: 50 }, { Y: 2026, R: 80 }, { Y: 2026, R: 70 }];
+eq('numbers sort as numbers (a Year column)', agg.computeKpi(years, { column: 'R', agg: 'sum', deltaBy: 'Y' }).delta, 50);
+const days = [1767225600, 1767225600, 1767312000, 1767312000].map((d, i) => ({ D: d, R: i < 2 ? 5 : 15 }));
+eq('raw Grist dates (seconds) too', agg.computeKpi(days, { column: 'R', agg: 'sum', deltaBy: 'D' }).delta, 200);
+eq('an average compares averages of the two halves', agg.computeKpi(growing.map((r, i) => ({ ...r, Revenue: i < 20 ? 10 : 12 })), { column: 'Revenue', agg: 'avg', deltaBy: 'Month' }).delta, 20);
+
 console.log(`case-study-fixes: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

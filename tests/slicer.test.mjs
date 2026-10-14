@@ -156,6 +156,33 @@ eq('a Region slicer on Sales reaches both charts (rule 1 and rule 2)',
 eq('a Country slicer on Clients reaches Invoices (rule 4) but not Sales',
    S.affectedBlocks(tab.blocks[1], tab, base).map((b) => b.id), ['chart-b']);
 
+// The Glutbohne case study (3.10.4): a Year slicer set to Choose, to leave the monthly chart out,
+// stopped filtering every chart added after it.
+console.log('joinChosenSlicers');
+{
+  const page = { id: 'p', blocks: [
+    { id: 'year', type: 'slicer', config: { table: 'Sales', column: 'Region', targets: ['cards'] } },   // 'monthly' left out on purpose
+    { id: 'auto', type: 'slicer', config: { table: 'Sales', column: 'Region' } },
+    { id: 'country', type: 'slicer', config: { table: 'Clients', column: 'Country', targets: [] } },
+    { id: 'cards', type: 'stat', config: { table: 'Sales' } },
+    { id: 'monthly', type: 'chart', config: { table: 'Sales' } },
+  ] };
+  const added = { id: 'kinds', type: 'chart', config: { table: 'Sales' } };
+  page.blocks.push(added);
+  const changed = S.joinChosenSlicers(added, page, base).map((s) => s.id);
+  eq('a new chart joins the chosen list of a slicer that reaches it', page.blocks[0].config.targets, ['cards', 'kinds']);
+  eq('...and the block left out stays out', page.blocks[0].config.targets.includes('monthly'), false);
+  eq('an Automatic slicer is left as it is (it reaches new blocks already)', 'targets' in page.blocks[1].config, false);
+  eq('a slicer that cannot reach the block keeps its list', page.blocks[2].config.targets, []);
+  eq('it says which slicers changed', changed, ['year']);
+  eq('adding it twice changes nothing', S.joinChosenSlicers(added, page, base), []);
+  const grid = { id: 'g', type: 'grid', config: { cols: 2, rows: 1, cells: [{ id: 'inv', type: 'chart', config: { table: 'Invoices' } }, null] } };
+  page.blocks.push(grid);
+  S.joinChosenSlicers(grid, page, base);
+  eq('a new grid brings in the cells the slicer reaches', [page.blocks[0].config.targets, page.blocks[2].config.targets], [['cards', 'kinds', 'inv'], ['inv']]);
+  eq('a new slicer joins nothing', S.joinChosenSlicers({ id: 's2', type: 'slicer', config: { table: 'Sales', column: 'Region' } }, page, base), []);
+}
+
 // ---- options ---------------------------------------------------------------------------------
 console.log('slicerOptions');
 eq('choices come with counts, most common first', S.slicerOptions(base, 'Sales', 'Region').map((o) => `${o.label}:${o.count}`), ['North:2', 'South:1']);

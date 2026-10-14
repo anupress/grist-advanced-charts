@@ -2,7 +2,7 @@
 // Charts are mounted in a second pass (mountCharts) once the node is in the document and
 // has a measurable size.
 
-import { el, fromHTML, fmtNumber, interpolate, clamp, pctText } from '../util.js';
+import { el, fromHTML, fmtNumber, fmtProgress, interpolate, clamp, pctText } from '../util.js';
 import { sanitizeToFragment } from '../security/sanitize.js';
 import { renderInvoice } from './invoice.js';
 import { icon, chartIcon, EMPTY_ART } from '../assets/icons.js';
@@ -366,9 +366,7 @@ function renderProgressBlock(block, ctx) {
   // way to show money was suffix:'$', which rendered "1.2M $" — it did, on eight bars across five
   // templates. The suffix keeps its automatic leading space; the prefix deliberately gets none,
   // because "$ 1.2M" is wrong in every currency that leads.
-  const suf = c.suffix ? ' ' + c.suffix : '';
-  const pre = c.prefix || '';
-  const amount = (n) => `${pre}${fmtNumber(n)}${suf}`;
+  const amount = (n) => fmtProgress(n, c.target, { prefix: c.prefix || '', suffix: c.suffix || '' });
   return el('div', { class: 'ap-card ap-progressblock', dataset: { blockId: block.id } }, [
     el('div', { class: 'ap-progressblock__head' }, [
       el('span', { class: 'ap-progressblock__title', text: c.title || 'Progress' }),

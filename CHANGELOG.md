@@ -3,6 +3,24 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.10.4] — 2026-10-14
+
+### Fixed
+
+- **"vs prev. period" compares periods.** The figure under a stat card split the
+  rows in half, so both halves always held the same number of rows: a shop whose
+  orders doubled showed about 0% on its revenue, because only the average order
+  could move it. It now sets the later half of the months (or days) in view
+  against the earlier half, the same number on each side. One period alone shows
+  no figure.
+- **A slicer set to Choose reaches the blocks you add after it.** "What it
+  filters, Choose" kept the blocks that existed when it was set, so a chart added
+  later was quietly left unfiltered. A new block that the slicer can reach is now
+  ticked in its list; untick it to leave it out, as before.
+- **A progress bar reads like its target.** A year's revenue showed as
+  "€118,574.6 / €150,000"; against a whole target, figures of 1,000 or more are
+  now whole: "€118,575 / €150,000". Smaller figures keep their decimals.
+
 ## [3.10.3] — 2026-10-14
 
 ### Fixed

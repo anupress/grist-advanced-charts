@@ -208,6 +208,29 @@ export function affectedBlocks(slicerBlock, tab, base) {
 }
 
 /**
+ * A block just added to a page joins every slicer there that picks its blocks by hand (What it
+ * filters, Choose) and would reach it. Choose stores the blocks that existed when it was set, so
+ * a chart added afterwards was quietly left out: a Year slicer set to skip one monthly chart
+ * stopped filtering every chart added after it, and the page showed this year's cards over
+ * all-time charts (found building the Glutbohne case study, 3.10.4). Leaving one block out is
+ * why anyone chooses; a new block is meant to follow the page, and can be unticked like any other.
+ * Only for new blocks: one unticked on purpose and edited later stays out. Returns the slicers
+ * that changed.
+ */
+export function joinChosenSlicers(block, tab, base) {
+  if (!block || block.type === 'slicer') return [];
+  const changed = [];
+  for (const s of flattenBlocks(tab?.blocks)) {
+    if (s.type !== 'slicer' || !Array.isArray(s.config?.targets)) continue;
+    const add = affectedBlocks(s, { blocks: [block] }, base).map((b) => b.id).filter((id) => !s.config.targets.includes(id));
+    if (!add.length) continue;
+    s.config.targets = [...s.config.targets, ...add];
+    changed.push(s);
+  }
+  return changed;
+}
+
+/**
  * The choices a slicer offers: each distinct value in its column, with a label and a count, from
  * the UNFILTERED table so the menu never shrinks to only what is already picked.
  */
