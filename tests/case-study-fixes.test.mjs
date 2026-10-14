@@ -133,5 +133,10 @@ eq('a table with no text column too', u.rowLabel({ id: 3, Price: 1 }, [{ id: 'Pr
 ok('a reference never names a row (it holds an id)', u.rowLabel({ id: 2, Customer: 17 }, [{ id: 'Customer', type: 'Ref:Customers' }]) === 'Row 2');
 ok('the image editor uses it', /label: rowLabel\(r, provider\.columns/.test(src('src/builder/block-editor.js')) && !/function rowLabel/.test(src('src/builder/block-editor.js')));
 
+// 3.10.13: blocks, menu tabs and Pages rows drag with SortableJS's own pointer handling, so a drag starts from pointer events alone
+const dnd = src('src/builder/dnd.js');
+ok('the drag uses pointer events, not the browser drag and drop', /const POINTER = { forceFallback: true, fallbackTolerance: 4 };/.test(dnd));
+ok('for blocks, menu tabs and Pages rows alike', (dnd.match(/...POINTER,/g) || []).length === 3);
+
 console.log(`case-study-fixes: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

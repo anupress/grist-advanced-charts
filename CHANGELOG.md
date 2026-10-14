@@ -3,6 +3,16 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.10.13] — 2026-10-14
+
+### Changed
+
+- **Dragging a block follows the pointer.** Reordering blocks, menu tabs and the rows
+  of the Pages panel now uses the drag library's own pointer handling instead of the
+  browser's drag and drop: the block moves with the pointer itself, the same with a
+  mouse, a pen or a finger. A few pixels of travel start a drag, so a click on a
+  handle stays a click.
+
 ## [3.10.12] — 2026-10-14
 
 ### Added
