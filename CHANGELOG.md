@@ -3,6 +3,17 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.10.8] — 2026-10-14
+
+### Fixed
+
+- **The editor shows the page as it opens.** A slicer's "Start with these picked"
+  only took effect on the published page, so while building, a Year slicer
+  opening on 2026 sat over cards adding up every year. The editor now applies
+  the author's defaults too (a reader's remembered choice still only applies on
+  the published page), shows a changed default at once, and opens the page whole
+  again when a default is taken away.
+
 ## [3.10.7] — 2026-10-14
 
 ### Fixed

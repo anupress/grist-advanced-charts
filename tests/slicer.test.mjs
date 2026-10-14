@@ -241,6 +241,26 @@ eq('no defaults, no store: nothing is selected and nothing throws', S.hasSelecti
 const inGrid = { id: 'g', type: 'grid', config: { cols: 1, rows: 1, cells: [{ id: 'd2', type: 'slicer', config: { table: 'Sales', column: 'Region', defaults: ['South'] } }] } };
 S.applySlicerDefaults(tabOf(inGrid), { store: null });
 eq('a slicer inside a Grid block gets its defaults too', [...S.getSelection('d2')], ['South']);
+
+// 3.10.8: the editor shows the page as it opens (the author's defaults), never a reader's remembered pick
+S.clearAll(); S.resetSlicerDefaults();
+const remembers = { id: 'e1', type: 'slicer', config: { table: 'Sales', column: 'Region', defaults: ['North'], remember: true } };
+// a reader's pick saved on this device, the way remembering writes it
+const store2 = fakeStore();
+S.setSelection('e1', ['South']);
+for (const k of store.m.keys()) store2.setItem(k.replace(/r1/g, 'e1'), JSON.stringify(['South']));
+S.applySlicerDefaults(tabOf(remembers), { store: store2, readerChoice: false });
+eq('editing: the author\'s default is picked', [...S.getSelection('e1')], ['North']);
+const added = { id: 'e2', type: 'slicer', config: { table: 'Sales', column: 'Region' } };
+S.applySlicerDefaults(tabOf(added), { store: fakeStore(), readerChoice: false });
+eq('editing: a slicer without defaults picks nothing', [...S.getSelection('e2')], []);
+added.config.defaults = ['South'];
+S.applySlicerDefaults(tabOf(added), { store: fakeStore(), readerChoice: false });
+eq('editing: defaults set in the editor show at once', [...S.getSelection('e2')], ['South']);
+delete added.config.defaults;
+S.applySlicerDefaults(tabOf(added), { store: fakeStore(), readerChoice: false });
+eq('editing: defaults taken away, the page opens whole again', [...S.getSelection('e2')], []);
+S.clearAll(); S.resetSlicerDefaults();
 S.clearAll(); S.resetSlicerDefaults();
 
 console.log(`\n${pass} passed, ${fail} failed`);

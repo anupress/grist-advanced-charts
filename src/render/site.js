@@ -62,7 +62,7 @@ export function renderSite(opts) {
   function buildPanel(tab) {
     // Before any block reads its rows: a slicer's defaults (or the reader's remembered choice)
     // have to be in place, or the first paint would show the whole table and then jump.
-    if (!editing) applySlicerDefaults(tab);
+    applySlicerDefaults(tab, { readerChoice: !editing });
     const children = [];
     const heroInfo = tab.hero ? buildHero(tab, { editing, onEditHero: edit?.onEditHero }) : null;
     if (heroInfo?.fullWidth) children.push(heroInfo.el); // full-width slider, edge to edge

@@ -86,16 +86,22 @@ export function forgetSelection(blockId, store = storage()) {
   try { store?.removeItem(STORE_PREFIX + blockId); } catch { /* same */ }
 }
 
-export function applySlicerDefaults(tab, { store = storage(), force = false } = {}) {
+// readerChoice: false while the author edits. The editor shows the page as it opens, with the author's defaults picked (it used to
+// show the whole table, so a Year slicer opening on 2026 sat over cards adding up every year: the Glutbohne case study, 3.10.8),
+// but not a reader's remembered choice, which belongs to the published page.
+export function applySlicerDefaults(tab, { store = storage(), force = false, readerChoice = true } = {}) {
   for (const b of flattenBlocks(tab?.blocks)) {
     if (b.type !== 'slicer') continue;
     const c = b.config || {};
-    const signature = JSON.stringify([Array.isArray(c.defaults) ? c.defaults : null, !!c.remember]);
-    if (initialised.get(b.id) === signature && !force) continue;
+    const signature = JSON.stringify([Array.isArray(c.defaults) ? c.defaults : null, !!c.remember && readerChoice]);
+    const prev = initialised.get(b.id);
+    if (prev === signature && !force) continue;
     initialised.set(b.id, signature);
-    const remembered = c.remember ? readRemembered(b.id, store) : null;
+    const remembered = c.remember && readerChoice ? readRemembered(b.id, store) : null;
     if (Array.isArray(remembered)) { setSelection(b.id, remembered); continue; }
     if (Array.isArray(c.defaults) && c.defaults.length) setSelection(b.id, c.defaults);
+    // defaults taken away in the editor: the page opens whole again, rather than keeping the old pick
+    else if (prev && JSON.parse(prev)[0]?.length) setSelection(b.id, []);
   }
 }
 export function resetSlicerDefaults() { initialised.clear(); }
