@@ -3,6 +3,17 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.10.9] — 2026-10-14
+
+### Fixed
+
+- **Icon search finds the everyday icons.** The icons a stat card, an icon block
+  or a counter use most (coins, cart, trending, users, pulse, target, calendar
+  and the rest of the starter row) were not in the searchable library, so
+  searching "coins" found only coins2 and "calendar" found nothing. They are
+  now a Basics group at the top of the results, with synonyms, so "money"
+  reaches coins.
+
 ## [3.10.8] — 2026-10-14
 
 ### Fixed

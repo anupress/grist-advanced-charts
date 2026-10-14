@@ -112,5 +112,14 @@ eq('no reference to the invoice table, no link guessed', invm.guessInvoiceItems(
 ok('the editor guesses them when the table is picked', src('src/builder/block-editor.js').includes('Object.assign(c, guessInvoiceItems(provider.columns(v) || [], c.table))'));
 ok('a barcode is listed by its caption in a slicer\'s Choose list', src('src/builder/block-editor.js').includes("(b.config?.caption ? kind + ': ' + b.config.caption : kind)"));
 
+// 3.10.9: the base set's content icons are searchable ("coins" found only coins2, "calendar" nothing)
+const ic = await import(pathToFileURL(_resolve(ROOT, 'src/assets/icons.js')).href);
+const names = (q) => ic.searchIcons(q).flatMap((g) => g.icons);
+ok('coins is found by its name', names('coins').includes('coins'));
+ok('calendar too', names('calendar').includes('calendar'));
+ok('and money reaches coins', names('money').includes('coins'));
+ok('every starter is searchable', ['coins', 'cart', 'trending', 'users', 'pulse', 'target', 'star', 'database', 'globe', 'sparkles'].every((n) => ic.allIconNames().includes(n)));
+ok('a UI-only glyph stays out', !ic.allIconNames().includes('trash'));
+
 console.log(`case-study-fixes: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

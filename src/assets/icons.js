@@ -78,10 +78,24 @@ export const ICONS = {
 // are wired into buttons and into the chart-type picker, while the library's are stored in saved
 // designs. A library glyph quietly taking over 'check' would change the tick on every confirm
 // button in the product. Library names that clash are dropped and reported by the test instead.
-export const ICON_CATEGORIES = ICON_GROUPS.filter((g) => ICON_LIBRARY[g.id]).map((g) => ({
-  ...g,
-  icons: Object.keys(ICON_LIBRARY[g.id]).filter((n) => !(n in ICONS)),
-}));
+// The UI set's own glyphs that dashboards use as content: the picker's starter row and every icon a template gives a
+// stat card, an icon block or a counter. They are not in the library, so search never found them: "coins" found only
+// coins2 and "calendar" nothing (found building the Glutbohne case study, 3.10.9). Searchable now, listed first.
+const BASICS = ['coins', 'cart', 'trending', 'users', 'pulse', 'target', 'star', 'database', 'globe', 'sparkles',
+  'calendar', 'check', 'code', 'countdown', 'eye', 'layout', 'shield', 'sliders', 'type'];
+// the words someone might type for a basic, as ICON_ALIASES does for the library
+const BASIC_ALIASES = {coins: 'money cash revenue euro dollar sales', cart: 'shop shopping orders basket', trending: 'growth up trend margin profit',
+  users: 'people customers team members', pulse: 'activity heartbeat kpi', target: 'goal aim objective', star: 'favourite rating review',
+  database: 'data table storage', globe: 'world web online international', sparkles: 'new magic highlight', calendar: 'date schedule day week',
+  check: 'done tick ok', code: 'developer html script', countdown: 'timer clock deadline', eye: 'view visible watch', layout: 'page grid dashboard',
+  shield: 'security safe secure', sliders: 'settings filter controls', type: 'text font letter'};
+export const ICON_CATEGORIES = [
+  { id: 'basics', name: 'Basics', icons: BASICS.filter((n) => n in ICONS) },
+  ...ICON_GROUPS.filter((g) => ICON_LIBRARY[g.id]).map((g) => ({
+    ...g,
+    icons: Object.keys(ICON_LIBRARY[g.id]).filter((n) => !(n in ICONS)),
+  })),
+];
 
 for (const group of Object.values(ICON_LIBRARY)) {
   for (const [name, body] of Object.entries(group)) {
@@ -107,7 +121,7 @@ export function searchIcons(query) {
   const q = String(query || '').trim().toLowerCase();
   if (!q) return ICON_CATEGORIES;
   const hit = (name) => name.toLowerCase().includes(q)
-    || (ICON_ALIASES[name] || '').toLowerCase().includes(q);
+    || (ICON_ALIASES[name] || BASIC_ALIASES[name] || '').toLowerCase().includes(q);
   return ICON_CATEGORIES
     .map((c) => ({ ...c, icons: c.icons.filter(hit) }))
     .filter((c) => c.icons.length);
