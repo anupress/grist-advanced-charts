@@ -3,6 +3,17 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.10.2] — 2026-10-14
+
+### Fixed
+
+- **A Weekday column keeps the order you give it.** A chart decided whether its
+  groups were dates by the column's name, and "Weekday" contains "day": Mon,
+  Tue and Wed were sorted A to Z, Friday first, and "My own order" was ignored.
+  It now goes by the column: a Date column, or values that read as a year, a
+  month or a day (2026, 2026-01, 2026-01-31). An order chosen by hand is
+  followed in every case.
+
 ## [3.10.1] — 2026-10-14
 
 ### Fixed

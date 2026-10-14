@@ -40,5 +40,18 @@ ok('map clusters are drawn in the theme colour', /iconCreateFunction/.test(src('
 const inv = src('src/render/invoice.js');
 ok('an invoice line names a referenced product, not its row id (3.10.1)', /formatCellValue\(v, col\)/.test(inv) && /desc: describe\(r\)/.test(inv));
 
+// 3.10.2: a "Weekday" column (Mon, Tue…) is not a date because its name has "day" in it
+const agg = await import(pathToFileURL(_resolve(ROOT, 'src/stats/aggregate.js')).href);
+const rows = [['Fri', 5], ['Mon', 60], ['Sat', 7], ['Thu', 8], ['Tue', 55], ['Wed', 9]].map(([d, v]) => ({ Weekday: d, Revenue: v }));
+const wcols = [{ id: 'Weekday', type: 'Text' }, { id: 'Revenue', type: 'Numeric' }];
+const week = agg.groupAggregate(rows, { dims: ['Weekday'], measures: ['Revenue'], agg: 'sum', cols: wcols, order: 'custom', customOrder: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], labels: { Mon: 'Monday' } });
+eq('a weekday column follows the order chosen for it', week.categories.join(','), 'Monday,Tue,Wed,Thu,Fri,Sat');
+const months = agg.groupAggregate([{ Month: '2026-02', R: 1 }, { Month: '2026-01', R: 2 }], { dims: ['Month'], measures: ['R'], agg: 'sum', cols: [{ id: 'Month', type: 'Text' }], order: 'value' });
+eq('months as text still keep their time order', months.categories.join(','), '2026-01,2026-02');
+const dates = agg.groupAggregate([{ D: 1767225600, R: 1 }, { D: 1764547200, R: 9 }], { dims: ['D'], measures: ['R'], agg: 'sum', cols: [{ id: 'D', type: 'Date' }], order: 'value' });
+ok('a Date column keeps its time order', dates.categories.length === 2);
+const legacy = agg.groupAggregate([{ Month: 'b', R: 1 }, { Month: 'a', R: 2 }], { dims: ['Month'], measures: ['R'], agg: 'sum' });
+eq('without column information the name still decides, as before', legacy.categories.join(','), 'a,b');
+
 console.log(`case-study-fixes: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -170,7 +170,14 @@ export function groupAggregate(rows, opts) {
   const cats = [];
   const catSet = new Set();
   for (const r of rows) { const k = catKey(r[catDim]); if (!catSet.has(k)) { catSet.add(k); cats.push(k); } }
-  const temporal = opts.temporalDim || /date|month|time|day|year/i.test(catDim);
+  // Time-like groups keep their order. Known by the column when there is one: a Date column, or values that read as
+  // a year, a month or a day (2026, 2026-01, 2026-01-31). The name alone decided it before 3.10.2, and "Weekday",
+  // with Mon, Tue… in it, matched "day": it was sorted A to Z and its chosen order ignored.
+  const catCol = Array.isArray(cols) ? cols.find((c) => c.id === catDim) : null;
+  const isoLike = (list) => list.length > 0 && list.every((v) => v === '—' || /^\d{4}(-\d{2}(-\d{2})?)?$/.test(String(v)));
+  const temporal = opts.temporalDim || (catCol
+    ? (/^Date/i.test(String(catCol.type || '')) || isoLike(cats))
+    : /date|month|time|day|year/i.test(catDim));
   sortCategories(cats, temporal);
 
   let series;
@@ -211,7 +218,8 @@ export function groupAggregate(rows, opts) {
   // Order, then rename. Dates keep their chronological order whatever the chart says, because a
   // time axis sorted by value is not a time axis.
   let categories = cats;
-  if (temporal) ({ categories, series } = relabelGroups(categories, series, opts.labels));
+  // An order chosen by hand is followed even for dates: someone who typed one meant it.
+  if (temporal && opts.order !== 'custom') ({ categories, series } = relabelGroups(categories, series, opts.labels));
   else {
     const mode = opts.order || (sortByValue ? 'value' : 'auto');
     ({ categories, series } = shapeGroups(categories, series, { mode, custom: opts.customOrder, choices: choiceOrder(cols, catDim), labels: opts.labels }));
