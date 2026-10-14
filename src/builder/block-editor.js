@@ -1,7 +1,7 @@
 // Drawer editors for the three block kinds. Charts get column pickers, type recommendations
 // and a live preview that updates as you tweak. "Any column" can be used as a category or value.
 
-import { el, clone, debounce, toast } from '../util.js';
+import { el, clone, debounce, toast, rowLabel } from '../util.js';
 import { blockCatalogEntry } from './block-catalog.js';
 import { icon, chartIcon } from '../assets/icons.js';
 import { openDrawer, closeDrawer, field, textInput, selectInput, tablePicker, checkboxRow, segmented, subhead, divider, primaryBtn, ghostBtn, iconPickerField, linkTargetField, colorInput, linesInput, pairsInput } from './ui.js';
@@ -806,12 +806,6 @@ function openImageEditor(block, ctx) {
     buildDyn();
     refreshPreview();
   })();
-}
-
-function rowLabel(row, cols) {
-  const nameCol = cols.find((c) => /name|title|label/i.test(c.id) && !/attach/i.test(c.type));
-  const val = nameCol ? row[nameCol.id] : null;
-  return val != null && val !== '' ? String(val) : `Row ${row.id}`;
 }
 
 // ---------------- Testimonials editor ----------------

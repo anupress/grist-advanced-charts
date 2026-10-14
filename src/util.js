@@ -280,6 +280,18 @@ export function designSignature(config) {
  */
 export const isStructuredType = (type) => /^(Ref(List)?(:|$)|ChoiceList|Attachments)/i.test(String(type || ''));
 
+/**
+ * What a row is called in a picker (the Image block's Row list): its name, title or label column,
+ * else the table's first text column, else "Row 7". A Products table names its rows in a column
+ * called Product, and before the fallback its rows were offered as "Row 1", "Row 2"... (3.10.11).
+ */
+export function rowLabel(row, cols) {
+  const plain = (cols || []).filter((c) => c && c.id !== 'id' && c.id !== 'manualSort' && !isStructuredType(c.type));
+  const named = plain.find((c) => /name|title|label/i.test(c.id)) || plain.find((c) => String(c.type || 'Text') === 'Text');
+  const val = named ? row[named.id] : null;
+  return val != null && val !== '' ? String(val) : `Row ${row.id}`;
+}
+
 export function formatCellValue(value, col) {
   if (value == null || value === '') return '';
   const type = String(col?.type || '');

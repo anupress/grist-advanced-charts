@@ -3,6 +3,15 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.10.11] — 2026-10-14
+
+### Fixed
+
+- **The Image block names the rows you can pick.** Showing a photo from your data,
+  the Row list used a column called name, title or label, and offered every other
+  table's rows as "Row 1", "Row 2"... It now falls back to the table's first text
+  column, so a Products table lists its products by name.
+
 ## [3.10.10] — 2026-10-14
 
 ### Fixed

@@ -124,5 +124,14 @@ ok('and money reaches coins', names('money').includes('coins'));
 ok('every starter is searchable', ['coins', 'cart', 'trending', 'users', 'pulse', 'target', 'star', 'database', 'globe', 'sparkles'].every((n) => ic.allIconNames().includes(n)));
 ok('a UI-only glyph stays out', !ic.allIconNames().includes('trash'));
 
+// 3.10.11: the Image block's Row list names a Products row by its Product column, not "Row 4"
+const prodCols = [{ id: 'Photo', type: 'Attachments' }, { id: 'Product', type: 'Text' }, { id: 'Coffee', type: 'Text' }, { id: 'Price', type: 'Numeric' }];
+eq('the first text column names the row', u.rowLabel({ id: 4, Photo: ['L', 2], Product: 'Ethiopia Guji 250 g', Coffee: 'Ethiopia Guji', Price: 12.5 }, prodCols), 'Ethiopia Guji 250 g');
+eq('a name column still wins', u.rowLabel({ id: 1, Product: 'A', Full_name: 'Mara Keller' }, [...prodCols, { id: 'Full_name', type: 'Text' }]), 'Mara Keller');
+eq('an empty one falls back to the row number', u.rowLabel({ id: 9, Product: '' }, prodCols), 'Row 9');
+eq('a table with no text column too', u.rowLabel({ id: 3, Price: 1 }, [{ id: 'Price', type: 'Numeric' }]), 'Row 3');
+ok('a reference never names a row (it holds an id)', u.rowLabel({ id: 2, Customer: 17 }, [{ id: 'Customer', type: 'Ref:Customers' }]) === 'Row 2');
+ok('the image editor uses it', /label: rowLabel\(r, provider\.columns/.test(src('src/builder/block-editor.js')) && !/function rowLabel/.test(src('src/builder/block-editor.js')));
+
 console.log(`case-study-fixes: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
