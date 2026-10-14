@@ -3,6 +3,15 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.10.3] — 2026-10-14
+
+### Fixed
+
+- **A footer link takes the name of the page you point it at.** "Add page to menu"
+  in the Footer panel starts every link on the first page, and picking another
+  page in the link's list kept the first page's name: a link to This week still
+  said Overview. A name nobody typed now follows the page; one you typed stays.
+
 ## [3.10.2] — 2026-10-14
 
 ### Fixed

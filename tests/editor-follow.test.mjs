@@ -6,6 +6,7 @@
 //   chart    categories came back in table order, so a later column could never be the axis
 //   pages    renaming a page left its menu entry on the old name, for good
 //   new page every page added opened with a "New Page" banner that ignored a rename
+//   footer   a link pointed at another page kept the first page's name
 //
 // The rules are pure functions beside the editors that use them, so they are tested here
 // directly; the editors only call them.
@@ -36,7 +37,7 @@ const node = (tag) => {
 globalThis.document = { createElement: node, createTextNode: (t) => ({ nodeType: 3, textContent: t }) };
 
 const { fitMapColumns, followColumnLabel, togglePick, columnPicker } = await import(R('src/builder/block-editor.js'));
-const { renameTab, newPage } = await import(R('src/builder/index.js'));
+const { renameTab, newPage, pointLinkAt } = await import(R('src/builder/index.js'));
 const { newBlock } = await import(R('src/builder/new-block.js'));
 const { DUMMY_DATA } = await import(R('src/data/dummy-data.js'));
 const { emptySite, DEFAULT_SITE } = await import(R('src/data/default-site.js'));
@@ -178,6 +179,24 @@ console.log('pages: a new page');
   eq('starts with its hero off, like a blank site\'s first page', p.hero, emptySite().tabs[0].hero);
   eq('...and no headline of its own, so a hero switched on shows the page title', 'title' in p.hero, false);
   eq('the rest of its shape', [p.id, p.title, p.blocks], ['tab-x', 'New Page', []]);
+}
+
+console.log('footer: a link pointed at another page');
+{
+  // the case study (3.10.3): Add page to menu twice gives two links to the first page; the second one is pointed at This week
+  const tabs = [{ id: 'tab-1', title: 'Overview' }, { id: 'tab-w', title: 'This week' }];
+  const lnk = { label: 'Overview', tab: 'tab-1' };
+  pointLinkAt(lnk, tabs, 'tab:tab-w');
+  eq('an untouched label follows the page', lnk, { label: 'This week', tab: 'tab-w', href: null });
+  const typed = { label: 'Roast plan', tab: 'tab-1' };
+  pointLinkAt(typed, tabs, 'tab:tab-w');
+  eq('a typed label stays', [typed.label, typed.tab], ['Roast plan', 'tab-w']);
+  const blank = { label: '', href: '#' };
+  pointLinkAt(blank, tabs, 'tab:tab-w');
+  eq('an empty label takes the page title', [blank.label, blank.tab, blank.href], ['This week', 'tab-w', null]);
+  const away = { label: 'Overview', tab: 'tab-1' };
+  pointLinkAt(away, tabs, '');
+  eq('Custom URL keeps the label and drops the page', [away.label, away.tab, away.href], ['Overview', null, '#']);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

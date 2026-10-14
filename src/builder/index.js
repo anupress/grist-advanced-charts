@@ -517,7 +517,7 @@ function openFooterPanel() {
     (f.links || []).forEach((lnk, i) => {
       const row = el('div', { class: 'ap-tabedit' }, [
         textInput(lnk.label || '', (v) => { lnk.label = v; mark(); rerenderSoon(); }, { placeholder: 'Label' }),
-        selectInput([{ value: '', label: 'Custom URL…' }].concat((working.tabs || []).map((t) => ({ value: 'tab:' + t.id, label: 'Page: ' + t.title }))), lnk.tab ? 'tab:' + lnk.tab : '', (v) => { if (v.startsWith('tab:')) { lnk.tab = v.slice(4); lnk.href = null; } else { lnk.tab = null; lnk.href = lnk.href || '#'; } mark(); rerenderSoon(); }),
+        selectInput([{ value: '', label: 'Custom URL…' }].concat((working.tabs || []).map((t) => ({ value: 'tab:' + t.id, label: 'Page: ' + t.title }))), lnk.tab ? 'tab:' + lnk.tab : '', (v) => { pointLinkAt(lnk, working.tabs, v); renderLinks(); mark(); rerenderSoon(); }),
         el('button', { class: 'ap-btn ap-btn--icon ap-btn--sm ap-btn--danger', onClick: () => { f.links.splice(i, 1); renderLinks(); mark(); rerenderSoon(); } }, [icon('trash')]),
       ]);
       linksHost.append(row);
@@ -551,6 +551,21 @@ export function renameTab(site, tab, title) {
     if (m.tab === tab.id && (m.label || '') === before) m.label = title;
   }
   tab.title = title;
+}
+
+// A footer link pointed at another page. "Add page to menu" starts every link on the first page,
+// and the label did not follow the page picked after it, so a link to This week still said
+// Overview (found filming the case study, 3.10.3). As with renameTab, a label that still equals
+// the old page's title was never chosen by anyone, so it follows; a typed one stays.
+export function pointLinkAt(lnk, tabs, value) {
+  const find = (id) => (tabs || []).find((t) => t.id === id);
+  if (value.startsWith('tab:')) {
+    const was = lnk.tab ? find(lnk.tab) : null;
+    const next = find(value.slice(4));
+    if (next && (!lnk.label || (was && lnk.label === (was.title || '')))) lnk.label = next.title;
+    lnk.tab = value.slice(4); lnk.href = null;
+  } else { lnk.tab = null; lnk.href = lnk.href || '#'; }
+  return lnk;
 }
 
 // A page added from Pages & menu. Exported for the tests.
