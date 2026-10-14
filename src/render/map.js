@@ -117,7 +117,16 @@ function mountOne(container) {
     let layer = null;
     if (typeof Lf.markerClusterGroup === 'function') {
       try {
-        layer = Lf.markerClusterGroup({ disableClusteringAtZoom: 17, maxClusterRadius: 45, chunkedLoading: true });
+        // Clusters in the dashboard's own colour (3.10.0): the plugin's green, yellow and orange
+        // bubbles sat on a Sand or Ocean page like a different product.
+        layer = Lf.markerClusterGroup({
+          disableClusteringAtZoom: 17, maxClusterRadius: 45, chunkedLoading: true,
+          iconCreateFunction: (cl) => {
+            const n = cl.getChildCount();
+            const size = n < 10 ? 34 : n < 100 ? 40 : 48;
+            return Lf.divIcon({ html: '<div class="ap-cluster"><span>' + n + '</span></div>', className: 'ap-cluster-wrap', iconSize: Lf.point(size, size) });
+          },
+        });
       } catch (e) {
         console.warn('[ANUPRESS] marker clustering unavailable — showing individual pins', e);
       }

@@ -3,6 +3,32 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.10.0] — 2026-10-14
+
+Found while building the dashboard for a long case-study video: a small coffee
+roastery with orders, cafés on a map, a roast plan and café invoices.
+
+### Added
+
+- **A data table shows its columns in the order you pick them.** Product,
+  Origin, Process, Tasting notes, Price now reads in that order; before, the
+  table drew its columns in the Grist table's own order, whatever was picked.
+- **A unit after a stat card's number.** "Unit after the number" in the stat
+  card's Number format: 1,680 kg, 312 cups. The label said what was counted,
+  never in what.
+- **Map clusters in the dashboard's colours.** The grouped pins were the map
+  library's green, yellow and orange bubbles on every theme; they are now a
+  disc of the theme's main colour.
+
+### Fixed
+
+- **An invoice shows cents.** Amounts on the Invoice block read €30.5 and €2
+  where they should read €30.50 and €2.00. Any number shown with a set number
+  of decimal places now shows exactly that many.
+- **A Year slicer reads 2026, not 2,026.** A whole number in a Numeric column
+  with no number format, such as a Year column made with YEAR(), is written as
+  Grist writes it when it is a slicer's choice. Values in tables are unchanged.
+
 ## [3.9.1] — 2026-10-14
 
 ### Fixed

@@ -79,7 +79,9 @@ function buildHighlightMap(highlights) {
 export function renderLiveTable(block, ctx) {
   const c = block.config || {};
   const allCols = ctx.provider.columns(c.table) || [];
-  const cols = c.columns?.length ? allCols.filter((col) => c.columns.includes(col.id)) : allCols;
+  // In the order they were picked (3.10.0): Product, Origin, Price reads as chosen, not in the
+  // table's own column order. Ids the table no longer has are skipped.
+  const cols = c.columns?.length ? c.columns.map((id) => allCols.find((col) => col.id === id)).filter(Boolean) : allCols;
   // maxRows caps the table at the top N. Nothing sets it in a normal design — it exists for the
   // printable layout, where "the top 20 by value" is a document and all 3,000 rows is a phone
   // book. Applied before search and sort so the cap means "the first N of the table", which is

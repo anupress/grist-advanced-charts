@@ -22,7 +22,8 @@ function oldFmt(v, opts = {}, L) {
     for (const [s, f] of units) if (Math.abs(n) >= f) return (currency ? currency : '') + trimZero(n / f) + s;
   }
   const fixed = decimals != null ? n.toFixed(decimals) : trimZero(Math.round(n * 100) / 100);
-  return (currency || '') + Number(fixed).toLocaleString(L, { maximumFractionDigits: decimals ?? 2 });
+  // 3.10.0: asked for a number of decimals, exactly that many ("€30.50", not "€30.5")
+  return (currency || '') + Number(fixed).toLocaleString(L, { minimumFractionDigits: decimals ?? 0, maximumFractionDigits: decimals ?? 2 });
 }
 const values = [0, 4.3, 12.5, 999, 1000, 1234.567, 7670, 481800, 1170000, 2.5e9, -3456.78, 0.0049];
 const optsList = [{}, { compact: true }, { compact: true, currency: '$' }, { currency: '€' }, { percent: true }, { decimals: 2 }, { decimals: 0, currency: '£' }];

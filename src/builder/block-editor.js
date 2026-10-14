@@ -384,6 +384,7 @@ function openStatEditor(block, ctx) {
     subhead('Number format'),
     checkboxRow('Compact (1.2K, 3.4M)', wb.config.format?.compact, (v) => { wb.config.format = { ...wb.config.format, compact: v }; refreshPreview(); }),
     field('Currency symbol', textInput(wb.config.format?.currency || '', (v) => { wb.config.format = { ...wb.config.format, currency: v }; refreshPreview(); }, { placeholder: 'e.g. $' })),
+    field('Unit after the number', textInput(wb.config.format?.suffix || '', (v) => { wb.config.format = { ...wb.config.format, suffix: v }; refreshPreview(); }, { placeholder: 'e.g. kg' })),
     widthField(wb, ctx, 3),
     subhead('Live preview'), previewHost,
   ];
@@ -957,7 +958,7 @@ function openLiveTableEditor(block, ctx) {
     if (!wb.config.columns?.length) wb.config.columns = cols.slice(0, 5).map((c) => c.id);
     dynHost.replaceChildren(
       subhead('Columns to show'),
-      columnPicker(cols, wb.config.columns, (ids) => { wb.config.columns = ids; refreshPreview(); }),
+      columnPicker(cols, wb.config.columns, (ids) => { wb.config.columns = ids; refreshPreview(); }, { pickOrder: true }),
     );
   }
 

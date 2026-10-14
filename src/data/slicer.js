@@ -32,7 +32,7 @@
 // theirs for as long as the page is open, and must never be saved into the document as if the
 // author had chosen it.
 
-import { formatCellValue } from '../util.js';
+import { formatCategory } from '../util.js';
 import { flattenBlocks } from './grid.js';
 
 // ---- selection state ------------------------------------------------------------------------
@@ -229,7 +229,7 @@ export function slicerOptions(base, table, column, { limit = 200, keep = null } 
       const k = key(v);
       const cur = counts.get(k);
       if (cur) cur.count++;
-      else counts.set(k, { value: v, key: k, label: col ? formatCellValue(v, col) || k : k, count: 1 });
+      else counts.set(k, { value: v, key: k, label: col ? formatCategory(v, col) || k : k, count: 1 });
     }
   }
   const shown = [...counts.values()]
@@ -245,7 +245,7 @@ export function slicerOptions(base, table, column, { limit = 200, keep = null } 
     if (found) { shown.push(found); continue; }
     // Keys are strings; a reference was picked by its row id, so give the formatter a number back.
     const value = isRef(col) && /^\d+$/.test(kk) ? Number(kk) : kk;
-    shown.push({ value, key: kk, label: (col ? formatCellValue(value, col) : '') || kk, count: 0, missing: true });
+    shown.push({ value, key: kk, label: (col ? formatCategory(value, col) : '') || kk, count: 0, missing: true });
   }
   return shown;
 }

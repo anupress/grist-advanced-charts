@@ -199,7 +199,8 @@ function renderStat(block, ctx) {
     el('div', { class: 'ap-stat__head' }, [
       el('div', {}, [
         el('div', { class: 'ap-stat__label', text: c.label || c.column || 'Metric' }),
-        el('div', { class: 'ap-stat__value', text: fmtNumber(value, c.format || { compact: true }) }),
+        // A unit after the number, "1,680 kg" (3.10.0): the label said what was counted, never in what.
+        el('div', { class: 'ap-stat__value', text: fmtNumber(value, c.format || { compact: true }) + (c.format?.suffix ? ' ' + String(c.format.suffix).trim() : '') }),
       ]),
       el('div', { class: 'ap-stat__icon' }, [
         c.iconData ? el('img', { src: c.iconData, alt: '', style: { width: '21px', height: '21px', objectFit: 'contain' } }) : icon(c.icon || 'pulse'),

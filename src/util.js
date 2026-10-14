@@ -183,7 +183,9 @@ export function fmtNumber(v, opts = {}) {
     try { return withCurrency(new Intl.NumberFormat(L, { notation: 'compact', maximumFractionDigits: 2 }).format(n), currency); } catch {}
   }
   const fixed = decimals != null ? n.toFixed(decimals) : trimZero(Math.round(n * 100) / 100);
-  return withCurrency(Number(fixed).toLocaleString(L, { maximumFractionDigits: decimals ?? 2 }), currency);
+  // Asked for a number of decimals, it shows exactly that many: an invoice reads €30.50, not €30.5
+  // (toLocaleString drops trailing zeros unless told the minimum too). 3.10.0
+  return withCurrency(Number(fixed).toLocaleString(L, { minimumFractionDigits: decimals ?? 0, maximumFractionDigits: decimals ?? 2 }), currency);
 }
 function trimZero(n) { return String(Number(n.toFixed(2))); }
 
@@ -321,6 +323,20 @@ export function formatCellValue(value, col) {
   }
 
   return String(value);
+}
+
+/**
+ * A value as a category: a slicer's choice, a chart's group. Like formatCellValue, except that a whole
+ * number in a column with no number format is written as Grist writes it, 2026 and not 2,026: a Year
+ * column made with YEAR() is Numeric, and its slicer read "2,026" (3.10.0). Values in a table keep
+ * formatCellValue, where one column must not mix 1200 and 1,200.50 from row to row.
+ */
+export function formatCategory(value, col) {
+  const type = String(col?.type || '');
+  const o = col?.widgetOptions || {};
+  if (/^(Numeric|Int)/i.test(type) && isFiniteNum(value) && Number.isInteger(Number(value))
+    && !o.numMode && o.decimals == null && o.maxDecimals == null) return String(Number(value));
+  return formatCellValue(value, col);
 }
 
 // Replace %placeholders in a template with values (numbers are locale-formatted).
