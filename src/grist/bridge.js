@@ -82,6 +82,17 @@ export async function connect(timeoutMs = 4000) {
   } catch (e) { return false; }
 }
 
+/**
+ * Grist's note that the data of the table this widget is linked to has changed: the same message
+ * grist.onRecords waits for ({tableId, dataChange: true}), sent for every edit, whoever made it.
+ * A cursor moving sends the message without dataChange, and is not a change. Returns false when
+ * there is no Grist to listen to.
+ */
+export function onDataChange(cb) {
+  if (!apiPresent()) return false;
+  try { g().on('message', (msg) => { if (msg && msg.dataChange) cb(msg.tableId || null); }); return true; } catch { return false; }
+}
+
 // Grist reports the access it has actually granted with every settings message — at ready, and
 // again whenever the level changes in the widget panel. That report, not what was asked for, is
 // what accessLevel() answers with.

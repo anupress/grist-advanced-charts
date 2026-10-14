@@ -213,6 +213,24 @@ export class GristProvider extends BaseProvider {
     this._rows.set(id, rows);
     return rows;
   }
+  // Every table this provider holds rows for, read again, and swapped in only once all of them have
+  // arrived: a page drawn halfway through never shows a table emptied for its reload. The labels of
+  // references go too, built again from the new rows. Returns whether anything actually changed,
+  // so a note from Grist about an edit elsewhere does not redraw a page that would look the same.
+  async refreshCached() {
+    const ids = [...this._rows.keys()];
+    const fresh = await Promise.all(ids.map(async (id) => {
+      try { return [id, await grist.getRecords(id, await this._loadColumns(id))]; } catch { return [id, null]; }
+    }));
+    let changed = false;
+    for (const [id, rows] of fresh) {
+      if (!rows) continue;
+      if (!changed && JSON.stringify(rows) !== JSON.stringify(this._rows.get(id))) changed = true;
+      this._rows.set(id, rows);
+    }
+    if (changed) this._refLabels.clear();
+    return changed;
+  }
   // Writes through to Grist first; only mutates the local cache (so the just-edited row reflects
   // its new value immediately, without waiting for the next poll) once that write has actually
   // succeeded — never optimistic-update-then-hope.

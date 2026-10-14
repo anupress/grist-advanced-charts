@@ -3,6 +3,23 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.10.12] — 2026-10-14
+
+### Added
+
+- **The dashboard follows its data.** When the table the widget is linked to changes
+  in Grist (a status typed in the table next door, a row from a form, a teammate's
+  edit), the page reads its tables again and redraws by itself, on the same page and
+  at the same place. It waits while the editor, a printout or a calendar popover is
+  open. Other tables still come in with Refresh.
+
+### Fixed
+
+- **Edit opens the page you are looking at.** It always opened the first page, so a
+  block added after "Cafés, Edit, Add Section" landed on the Overview.
+- **The page stays put.** Done, dark mode, Refresh and a saved layout all used to show
+  the first page again; they now keep the page that was showing.
+
 ## [3.10.11] — 2026-10-14
 
 ### Fixed

@@ -37,7 +37,9 @@ let markTimer = null, pendingLabel = null;
 export function openBuilder(opts) {
   working = clone(opts.config);
   provider = opts.provider; live = !!opts.live; root = opts.root; onExit = opts.onExit;
-  activeTabId = working.tabs?.[0]?.id || null;
+  // On the page that was showing when Edit was pressed. It always opened on the first one, so
+  // "Cafés, Edit, Add Section" put the new block on the Overview (the Glutbohne case study, 3.10.12).
+  activeTabId = (opts.tabId && (working.tabs || []).some((t) => t.id === opts.tabId)) ? opts.tabId : (working.tabs?.[0]?.id || null);
   dirty = false;
   history = [{ label: 'Opened the editor', at: Date.now(), json: JSON.stringify(working) }];
   cursor = 0; savedCursor = 0; markContext = 'Change';
@@ -681,5 +683,6 @@ async function finish() {
   closeDrawer();
   // The session's history goes with the editor; the next Edit starts a fresh one.
   document.removeEventListener('keydown', onHistoryKey);
-  onExit?.(cleanConfig());
+  // and the page being edited, so Done leaves you where you were rather than on the first page
+  onExit?.(cleanConfig(), activeTabId);
 }

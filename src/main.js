@@ -30,6 +30,37 @@ const app = {
   siteApi: null,
 };
 
+// ---- live data ---------------------------------------------------------------------------------
+// Grist tells this widget whenever the table it is linked to changes, whoever changed it: a cell
+// typed in the table next door, a row from a form, an import, a teammate. The page used to wait for
+// a reload or the Refresh button. Now it reads its tables again once the edits have settled and, if
+// anything differs, redraws on the same page at the same place (3.10.12). Not while the editor is
+// open, which draws from the data it loaded (the change is applied when it closes), and not under
+// an open printout or calendar popover, which a redraw would close: those wait until they are gone.
+let editing = false, livePending = false, liveTimer = null, liveBusy = false;
+function onLiveChange() {
+  if (!app.live) return;
+  if (editing) { livePending = true; return; }
+  clearTimeout(liveTimer);
+  liveTimer = setTimeout(liveRedraw, 900);
+}
+async function liveRedraw() {
+  if (editing) { livePending = true; return; }
+  if (liveBusy || typeof app.provider.refreshCached !== 'function') return;
+  if (document.querySelector('.ap-layout, .ap-drawer, .ap-calendar__popover:not([hidden])')) { liveTimer = setTimeout(liveRedraw, 2000); return; }
+  liveBusy = true;
+  try {
+    const changed = await app.provider.refreshCached();
+    if (changed && !editing) {
+      const scroller = root.closest('.ap-scroll') || document.scrollingElement || document.documentElement;
+      const y = scroller.scrollTop;
+      renderView();
+      scroller.scrollTop = y;
+    }
+  } catch (e) { console.warn('[ANUPRESS] live update failed', e); }
+  finally { liveBusy = false; }
+}
+
 async function boot() {
   // Timed handshake: true only when actually embedded in a live Grist document.
   const live = await bridge.connect();
@@ -59,6 +90,8 @@ async function boot() {
   maybeApplyTemplateParam();
   renderView();
   maybeStartTour();
+  // after the first load: Grist's note that comes with the handshake is the data just read
+  if (live) bridge.onDataChange(onLiveChange);
 }
 
 // ?template=<id> (demo only) boots straight into an installed template — the same demo-mode apply
@@ -95,7 +128,16 @@ function maybeStartTour() {
   }, every);
 }
 
-function renderView() {
+// The page that was showing stays showing. Every redraw (dark mode, Refresh, leaving the editor, a
+// layout saved) used to open the first page, so a reader on page three who switched to dark mode was
+// sent back to page one (3.10.12). `tabId` names another page to show instead.
+function renderView(tabId) {
+  const keep = tabId ?? app.siteApi?.getActiveTab?.() ?? null;
+  drawView();
+  if (keep && keep !== app.siteApi?.getActiveTab?.()) app.siteApi?.showTab(keep);
+}
+
+function drawView() {
   // A viewer's own light/dark choice (if any) overrides the saved site mode.
   let saved = null;
   try { saved = localStorage.getItem('apMode'); } catch {}
@@ -121,10 +163,10 @@ function renderView() {
         toast('Could not save the layout — ' + (e?.message || 'unknown error'), 'err');
       }
     } : null,
-    // Re-read every table this page uses, then draw again. Grist offers a custom widget no change
-    // notification to subscribe to, so without this the only way to see rows edited in the
-    // document next door was to reload the whole widget. Only offered on a live document — in
-    // demo mode there is nothing behind the bundled data to re-read.
+    // Re-read every table this page uses, then draw again. Edits to the linked table arrive by
+    // themselves now (onLiveChange); this is for everything else: another table, a new column, a
+    // table made since the page opened. Only offered on a live document — in demo mode there is
+    // nothing behind the bundled data to re-read.
     onRefresh: app.live ? async () => {
       const tables = tablesInConfig(app.config);
       try {
@@ -224,11 +266,20 @@ async function startEdit() {
 
   try {
     const { openBuilder } = await import('./builder/index.js');
+    // On the page that was showing, and back to the page that was being edited.
+    const tabId = app.siteApi?.getActiveTab?.() || null;
+    editing = true;
     openBuilder({
-      root, config: app.config, provider, live,
-      onExit: (finalConfig) => { if (finalConfig) app.config = finalConfig; renderView(); },
+      root, config: app.config, provider, live, tabId,
+      onExit: (finalConfig, lastTab) => {
+        editing = false;
+        if (finalConfig) app.config = finalConfig;
+        renderView(lastTab || null);
+        if (livePending) { livePending = false; onLiveChange(); }
+      },
     });
   } catch (e) {
+    editing = false;
     console.error('[ANUPRESS] startEdit: failed to open the editor', e);
     toast('Could not open the editor (' + (e?.message || 'unknown error') + ').', 'err');
   }
