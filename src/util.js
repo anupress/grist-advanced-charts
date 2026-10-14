@@ -59,19 +59,131 @@ export function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
 
-// Human-friendly number formatting (1.2K, 3.4M, currency, percent).
+// ---------------- Locale ----------------
+// Numbers are written the way the DOCUMENT's readers write them: 1,234.56 in English, 1.234,56 in
+// German, 1 234,56 in French. Grist hands a custom widget the document's locale (Document settings →
+// Locale) as ?culture= and its currency as ?currency=; outside Grist (the web demo) the browser's
+// language stands in. Before 3.9 every number followed the visitor's browser instead, compact
+// figures and currency symbols were English-only ("€1.2K" for a German document), and the data
+// editor read "9,50" as 950.
+let LOCALE = null;
+let CURRENCY;
+export function docLocale() {
+  if (LOCALE) return LOCALE;
+  let l = null;
+  try { l = new URLSearchParams(globalThis.location?.search || '').get('culture'); } catch {}
+  if (!l) l = globalThis.navigator?.language || 'en-US';
+  l = String(l).replace(/_/g, '-');
+  try { if (!Intl.NumberFormat.supportedLocalesOf([l]).length) l = 'en-US'; } catch { l = 'en-US'; }
+  return (LOCALE = l);
+}
+/** The document's currency code (Grist's ?currency=), or null outside Grist. */
+export function docCurrency() {
+  if (CURRENCY !== undefined) return CURRENCY;
+  let c = null;
+  try { c = new URLSearchParams(globalThis.location?.search || '').get('currency'); } catch {}
+  return (CURRENCY = c && /^[A-Z]{3}$/i.test(c) ? c.toUpperCase() : null);
+}
+/** For the tests, and for a page that learns its locale after loading. */
+export function setLocale(locale, currency) { LOCALE = locale || null; CURRENCY = currency === undefined ? undefined : currency; }
+const isEnglish = () => /^en(-|$)/i.test(docLocale());
+// Where the locale puts a currency symbol, and whether a space separates it: read from how it
+// writes euros, then applied to whatever symbol the author typed ("€", "$", "CHF").
+function withCurrency(num, sym) {
+  if (!sym) return num;
+  if (isEnglish()) return sym + num;   // unchanged from before 3.9: "$1.17M", "€1,234.56"
+  let after = true, space = ' ';
+  try {
+    const parts = new Intl.NumberFormat(docLocale(), { style: 'currency', currency: 'EUR' }).formatToParts(1);
+    const ci = parts.findIndex((p) => p.type === 'currency');
+    const ni = parts.findIndex((p) => p.type === 'integer');
+    after = ci > ni;
+    space = parts.some((p) => p.type === 'literal' && /\s/.test(p.value)) ? ' ' : '';
+  } catch {}
+  return after ? num + space + sym : sym + space + num;
+}
+/** The decimal and grouping characters of the document's locale. */
+export function numberSymbols(locale = docLocale()) {
+  let decimal = '.', group = ',';
+  try {
+    for (const p of new Intl.NumberFormat(locale).formatToParts(12345.6)) {
+      if (p.type === 'decimal') decimal = p.value;
+      if (p.type === 'group') group = p.value;
+    }
+  } catch {}
+  return { decimal, group };
+}
+/**
+ * Read a number as someone typed it, in their own locale: "9,50" and "1.234,56" in German, "9.50"
+ * and "1,234.56" in English, "1 234,56" in French, "1'234.56" in Swiss German. Returns NaN for text
+ * that is not a number. A lone separator is the decimal one unless it can only be a thousands
+ * separator (another locale's decimal followed by exactly three digits): so a German "12.5" is still
+ * twelve and a half, and a value shown with a point in the editor reads back as itself.
+ */
+export function parseLocaleNumber(raw, locale = docLocale()) {
+  let s = String(raw ?? '').trim();
+  if (s === '') return NaN;
+  const neg = /^-|^\(.*\)$|-$/.test(s.replace(/\s/g, ''));
+  s = s.replace(/[\s  '’]/g, '').replace(/[^0-9.,eE+-]/g, '').replace(/^[+-]|[+-]$/g, '');
+  if (/[eE]/.test(s) && /^\d*\.?\d+[eE][+-]?\d+$/.test(s)) return (neg ? -1 : 1) * Number(s);
+  s = s.replace(/[eE+-]/g, '');
+  if (!/\d/.test(s)) return NaN;
+  const { decimal } = numberSymbols(locale);
+  const dots = (s.match(/\./g) || []).length, commas = (s.match(/,/g) || []).length;
+  let dec = null;
+  if (dots && commas) dec = s.lastIndexOf('.') > s.lastIndexOf(',') ? '.' : ',';
+  else if (dots + commas === 1) {
+    const sep = dots ? '.' : ',';
+    const tail = s.slice(s.indexOf(sep) + 1);
+    dec = sep === decimal || tail.length !== 3 ? sep : null;
+  }
+  // more than one of a single separator: they are all thousands separators
+  const grp = dec === '.' ? ',' : dec === ',' ? '.' : null;
+  if (grp) s = s.split(grp).join('');
+  if (!dec) s = s.replace(/[.,]/g, '');
+  else s = s.replace(dec, '.');
+  const n = Number(s);
+  return isFinite(n) ? (neg ? -n : n) : NaN;
+}
+
+/**
+ * A percentage the caller has already rounded ("30.92", 7, "0.50"), with the locale's decimal sign
+ * and the space it puts before "%": "30.92%" in English (exactly as before 3.9), "30,92 %" in German.
+ */
+export function pctText(num) {
+  const s = String(num);
+  if (isEnglish()) return s + '%';
+  let gap = ' ';
+  try {
+    const parts = new Intl.NumberFormat(docLocale(), { style: 'percent' }).formatToParts(0.5);
+    const lit = parts.find((p) => p.type === 'literal');
+    gap = lit ? lit.value : '';
+  } catch {}
+  return s.replace('.', numberSymbols().decimal) + gap + '%';
+}
+
+// Human-friendly number formatting (1.2K, 3.4M, currency, percent), in the document's locale.
 export function fmtNumber(v, opts = {}) {
   if (v == null || v === '' || (typeof v === 'number' && !isFinite(v))) return '—';
   const n = Number(v);
   if (!isFinite(n)) return String(v);
+  const L = docLocale();
   const { compact, currency, percent, decimals } = opts;
-  if (percent) return (n).toLocaleString(undefined, { maximumFractionDigits: decimals ?? 1 }) + '%';
+  if (percent) {
+    if (isEnglish()) return (n).toLocaleString(L, { maximumFractionDigits: decimals ?? 1 }) + '%';
+    try { return new Intl.NumberFormat(L, { style: 'percent', maximumFractionDigits: decimals ?? 1 }).format(n / 100); } catch {}
+    return (n).toLocaleString(L, { maximumFractionDigits: decimals ?? 1 }) + '%';
+  }
   if (compact && Math.abs(n) >= 1000) {
-    const units = [['T', 1e12], ['B', 1e9], ['M', 1e6], ['K', 1e3]];
-    for (const [s, f] of units) if (Math.abs(n) >= f) return (currency ? currency : '') + trimZero(n / f) + s;
+    if (isEnglish()) {
+      const units = [['T', 1e12], ['B', 1e9], ['M', 1e6], ['K', 1e3]];
+      for (const [s, f] of units) if (Math.abs(n) >= f) return (currency ? currency : '') + trimZero(n / f) + s;
+    }
+    // other locales use their own short forms: "1,17 Mio." in German, "1,17 M" in French
+    try { return withCurrency(new Intl.NumberFormat(L, { notation: 'compact', maximumFractionDigits: 2 }).format(n), currency); } catch {}
   }
   const fixed = decimals != null ? n.toFixed(decimals) : trimZero(Math.round(n * 100) / 100);
-  return (currency || '') + Number(fixed).toLocaleString(undefined, { maximumFractionDigits: decimals ?? 2 });
+  return withCurrency(Number(fixed).toLocaleString(L, { maximumFractionDigits: decimals ?? 2 }), currency);
 }
 function trimZero(n) { return String(Number(n.toFixed(2))); }
 
@@ -198,14 +310,14 @@ export function formatCellValue(value, col) {
     const min = o.decimals, max = o.maxDecimals;
     if (mode || min != null || max != null) {
       const fmt = { minimumFractionDigits: min ?? 0, maximumFractionDigits: max ?? Math.max(min ?? 0, 2) };
-      if (mode === 'currency') { fmt.style = 'currency'; fmt.currency = o.currency || 'USD'; }
+      if (mode === 'currency') { fmt.style = 'currency'; fmt.currency = o.currency || docCurrency() || 'USD'; }
       else if (mode === 'percent') fmt.style = 'percent';
       else if (mode === 'scientific') return n.toExponential(max ?? min ?? 2);
       if (mode === 'decimal' || !mode) fmt.useGrouping = true;
-      try { return n.toLocaleString(undefined, fmt); } catch { return String(n); }
+      try { return n.toLocaleString(docLocale(), fmt); } catch { return String(n); }
     }
     if (/^Int/i.test(type)) return String(n);
-    return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    return n.toLocaleString(docLocale(), { maximumFractionDigits: 2 });
   }
 
   return String(value);
@@ -216,7 +328,7 @@ export function interpolate(template, vars) {
   return String(template == null ? '' : template).replace(/%(\w+)/g, (m, k) => {
     if (!(k in vars)) return m;
     const v = vars[k];
-    return typeof v === 'number' ? v.toLocaleString() : String(v ?? '');
+    return typeof v === 'number' ? v.toLocaleString(docLocale()) : String(v ?? '');
   });
 }
 

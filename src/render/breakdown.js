@@ -1,7 +1,7 @@
 // "Group-wise breakdown" block: counts each distinct value of a column and shows them as a
 // list of colored-dot rows with a count and percentage (like the reference widget's quality cards).
 
-import { el, interpolate, formatCellValue, isStructuredType } from '../util.js';
+import { el, interpolate, formatCellValue, isStructuredType, docLocale, pctText } from '../util.js';
 import { currentSeriesColors, readVar } from '../theme/apply.js';
 import { shapeGroups } from '../stats/aggregate.js';
 
@@ -57,15 +57,15 @@ export function renderBreakdown(block, ctx) {
       el('div', { class: 'ap-chartcard__title', text: c.title || c.column || 'Breakdown' }),
       c.subtitle ? el('div', { class: 'ap-chartcard__sub', text: interpolate(c.subtitle, { total, groups, top, topcount, empty }) }) : null,
     ]),
-    el('span', { class: 'ap-bd-total', text: `${Number(total).toLocaleString()} total` }),
+    el('span', { class: 'ap-bd-total', text: `${Number(total).toLocaleString(docLocale())} total` }),
   ]);
 
   const list = el('div', { class: 'ap-bd-rows' },
     rowList.length ? rowList.map((r) => el('div', { class: 'ap-bd-row' }, [
       el('span', { class: 'ap-bd-dot', style: { background: r.color } }),
       el('span', { class: 'ap-bd-name', text: r.name }),
-      el('span', { class: 'ap-bd-count', text: Number(r.count).toLocaleString() }),
-      el('span', { class: 'ap-bd-pct', text: (total ? Math.round((r.count / total) * 100) : 0) + '%' }),
+      el('span', { class: 'ap-bd-count', text: Number(r.count).toLocaleString(docLocale()) }),
+      el('span', { class: 'ap-bd-pct', text: pctText(total ? Math.round((r.count / total) * 100) : 0) }),
     ])) : [el('div', { class: 'ap-muted', style: { padding: '8px 2px' }, text: 'No data for this column.' })]);
 
   return el('div', { class: 'ap-card ap-breakdown', dataset: { blockId: block.id } }, [head, list]);

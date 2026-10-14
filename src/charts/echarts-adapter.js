@@ -9,7 +9,7 @@ import { groupAggregate, scatterPoints, aggregate } from '../stats/aggregate.js'
 const WHOLE_SHAPED = new Set(['pie', 'doughnut', 'treemap']);
 import { getChartType, CARTESIAN, SINGLE_SERIES } from './catalog.js';
 import { currentSeriesColors, readVar } from '../theme/apply.js';
-import { fmtNumber } from '../util.js';
+import { fmtNumber, pctText } from '../util.js';
 
 const ec = () => window.echarts;
 
@@ -179,7 +179,7 @@ function treemapOption(data, colors) {
 function ratePct(value, base) {
   if (!(base > 0)) return null;
   const p = (value / base) * 100;
-  return (p >= 10 ? Math.round(p) : p >= 1 ? p.toFixed(1) : p.toFixed(2)) + '%';
+  return pctText(p >= 10 ? Math.round(p) : p >= 1 ? p.toFixed(1) : p.toFixed(2));
 }
 
 function funnelOption(data, colors, { staged = false } = {}) {

@@ -3,6 +3,31 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.9.0] — 2026-10-14
+
+### Added
+
+- **Numbers in the document's locale.** Every number on a dashboard is now
+  written the way the document's readers write them: 1,234.56 in English,
+  1.234,56 in German, 1 234,56 in French. The locale is the one set in Grist
+  (Document settings → Locale), which Grist passes to the widget; the web
+  demo uses the browser's language. That covers stat cards, progress bars,
+  breakdowns, data tables, chart axes and tooltips, subtitle placeholders and
+  the trend line ("+30,92 %").
+- **Compact figures and currency symbols follow the locale.** A German
+  dashboard shows "1,17 Mio. €" where an English one shows "$1.17M": the
+  locale's own short forms, and the currency symbol where the locale puts
+  it, with its space. A Currency column without its own currency uses the
+  document's currency. English dashboards look exactly as before.
+
+### Fixed
+
+- **Edit data reads numbers the way you type them.** Typing "9,50" into a
+  number column saved 950, and "1.234,56" saved 1.23456, because everything
+  but digits and points was dropped. Numbers are now read in the document's
+  locale ("9,50" is nine and a half in German, "1,234.56" in English), and a
+  number is shown in the editor with the locale's decimal sign.
+
 ## [3.8.6] — 2026-10-13
 
 ### Fixed

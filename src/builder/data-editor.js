@@ -18,7 +18,7 @@
 // Writes go through bridge.saveRows(), which sends everything as ONE action bundle so the whole
 // edit is a single undoable step in the document's history rather than one per cell.
 
-import { el, clone, toast, debounce, formatCellValue, isStructuredType } from '../util.js';
+import { el, clone, toast, debounce, formatCellValue, isStructuredType, parseLocaleNumber, numberSymbols } from '../util.js';
 import { icon } from '../assets/icons.js';
 import * as bridge from '../grist/bridge.js';
 import { isDateColumn } from '../grist/dates.js';
@@ -145,7 +145,8 @@ function coerce(value, col) {
   if (raw === '') return null;
   if (isBoolType(col.type)) return raw === 'true' || raw === '1' || raw === 'yes';
   if (isNumericType(col.type)) {
-    const n = Number(raw.replace(/[^0-9.eE+-]/g, ''));
+    // In the document's locale: a German "9,50" is nine and a half, not 950 (the old reading kept digits and points only)
+    const n = parseLocaleNumber(raw);
     return isFinite(n) ? n : null;
   }
   if (isDateColumn(col.type)) {
@@ -158,6 +159,9 @@ function coerce(value, col) {
 
 // The inverse, for putting a stored value back into an input.
 const display = (v) => (v == null ? '' : String(v));
+// A stored number in an input box, with the locale's decimal sign and no grouping ("9,5" in German):
+// what a reader there would type, and what parseLocaleNumber reads back as the same number.
+const inputText = (v, col) => (typeof v === 'number' && isNumericType(col.type) ? String(v).replace('.', numberSymbols().decimal) : display(v));
 
 /**
  * opts: { provider, table, onSaved }
@@ -231,11 +235,11 @@ export function openDataEditor(opts) {
     const input = el('input', {
       class: 'ap-dataedit__input',
       type: isDateColumn(col.type) ? 'date' : (isNumericType(col.type) ? 'text' : 'text'),
-      value: display(value),
+      value: inputText(value, col),
       'aria-label': `${col.label}, row ${row.id}`,
     });
     input.addEventListener('input', () => {
-      const original = display(row[col.id]);
+      const original = inputText(row[col.id], col);
       const now = input.value;
       let fields = edits.get(row.id);
       if (now === original) {

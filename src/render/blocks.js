@@ -2,7 +2,7 @@
 // Charts are mounted in a second pass (mountCharts) once the node is in the document and
 // has a measurable size.
 
-import { el, fromHTML, fmtNumber, interpolate, clamp } from '../util.js';
+import { el, fromHTML, fmtNumber, interpolate, clamp, pctText } from '../util.js';
 import { sanitizeToFragment } from '../security/sanitize.js';
 import { renderInvoice } from './invoice.js';
 import { icon, chartIcon, EMPTY_ART } from '../assets/icons.js';
@@ -209,7 +209,7 @@ function renderStat(block, ctx) {
   if (delta != null) {
     const up = delta >= 0;
     card.append(el('div', { class: 'ap-stat__delta ' + (up ? 'ap-stat__delta--up' : 'ap-stat__delta--down') }, [
-      icon(up ? 'arrowUp' : 'arrowDown'), `${up ? '+' : ''}${delta}%`, el('span', { class: 'ap-muted', text: ' vs prev. period' }),
+      icon(up ? 'arrowUp' : 'arrowDown'), `${up ? '+' : ''}${pctText(delta)}`, el('span', { class: 'ap-muted', text: ' vs prev. period' }),
     ]));
   }
   if (spark.length > 1) card.append(sparkline(spark));
@@ -376,7 +376,7 @@ function renderProgressBlock(block, ctx) {
     el('div', { class: 'ap-progressblock__track' }, [
       el('div', { class: 'ap-progressblock__fill', style: { width: pct + '%', background: c.color || 'var(--ap-primary)' } }),
     ]),
-    el('span', { class: 'ap-progressblock__pct', text: pct + '%' }),
+    el('span', { class: 'ap-progressblock__pct', text: pctText(pct) }),
   ]);
 }
 
