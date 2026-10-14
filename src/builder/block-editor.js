@@ -94,7 +94,7 @@ export function openBlockEditor(block, ctx) {
 //
 // Only offered on a live document: in demo mode there is no table behind the numbers to write to,
 // and a Save button that cannot save is worse than no button.
-function editDataRow(getTable, ctx, reopen) {
+export function editDataRow(getTable, ctx, reopen) {
   const table = getTable();
   if (!ctx.provider?.isLive || !table) return null;
   const label = el('span', { text: `Edit the data in ${table}` });

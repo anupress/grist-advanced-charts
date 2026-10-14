@@ -179,18 +179,26 @@ export class GristProvider extends BaseProvider {
   //
   // Only the named tables get their rows re-fetched (the ones the page actually draws); schema and
   // the table list are refreshed wholesale because they are one request each regardless.
+  //
+  // Schema means EVERY table's, as init() reads it. Reading only the named tables' columns left
+  // every other table listed with none: a table made in Grist after the widget opened could be
+  // chosen but offered no column to pick (Invoice Studio's Data drawer), and the next Edit here
+  // re-downloaded the rows of every table not on the page to make up for it.
+  //
+  // Rows go through prime(), so a Reference column's target table is read again too, and the label
+  // cache goes with the rows it was built from. Kept, it went on naming a client by what it was
+  // called before the Refresh while the Clients table itself showed the new name.
   async reload(tableIds = []) {
     grist.invalidateMetaCache();
     this._cols.clear();
     this._rows.clear();
+    this._refLabels.clear();
     const ids = await grist.listTables();
     this._tables = ids.map((id) => ({ id, label: id }));
     if (!ids.includes(this._default)) this._default = ids[0] || null;
+    await Promise.all(ids.map((id) => this._loadColumns(id)));
     const wanted = [...new Set(tableIds.filter((t) => t && ids.includes(t)))];
-    await Promise.all(wanted.map(async (id) => {
-      const cols = await this._loadColumns(id);
-      this._rows.set(id, await grist.getRecords(id, cols));
-    }));
+    await this.prime(wanted);
     return { tables: this._tables.length, reloaded: wanted.length };
   }
   // Unconditional re-fetch (prime() above deliberately skips tables it already has cached).

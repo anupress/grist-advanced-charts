@@ -3,6 +3,29 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.9.1] — 2026-10-14
+
+### Fixed
+
+- **After Refresh, references show the name a row has now.** A Reference
+  column shows the name of the row it points at, such as a client's name.
+  Rename that client in Grist, press Refresh, and the Clients table showed
+  the new name while every reference to it kept the old one, because the
+  names were remembered from before the Refresh. Refresh now reads them
+  again, along with any table the page's references point at.
+- **Edit after a Refresh no longer downloads the whole document.** Refresh
+  kept the columns of the tables on the page and forgot every other
+  table's, so the next Edit read every other table again, rows and all, to
+  find them. Refresh now reads every table's columns, as the widget does
+  when it opens, which costs no extra request. A table not on the page is
+  read when you choose it or preview it, as before. A table made in Grist
+  after the widget opened is listed with its columns straight after Refresh.
+- **"Edit the data in …" names the table the block uses.** After switching
+  a block to another table in its editor, the button below the table picker
+  still named the table the editor opened with, "Edit the data in Sales". It
+  opened the right table; only its label was wrong. It now follows the
+  picker. Wrong since 3.3.0, when the table picker got its preview.
+
 ## [3.9.0] — 2026-10-14
 
 ### Added

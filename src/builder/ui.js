@@ -183,6 +183,11 @@ export function tablePicker(provider, value, onChange, { options, blank } = {}) 
     // Close first: onChange may rebuild the editor around this control.
     close({ focusBtn: true });
     onChange(o.value);
+    // A <select> tells the drawer with a bubbling 'change', and this control replaced one without
+    // saying anything: the "Edit the data in …" button listens for that event, so since 3.3.0 it
+    // kept naming the table the editor opened with. Sent after onChange, so the config listeners
+    // read already holds the new table.
+    wrap.dispatchEvent(new Event('change', { bubbles: true }));
   };
 
   for (const o of opts) {
