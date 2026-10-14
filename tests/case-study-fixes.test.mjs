@@ -61,6 +61,14 @@ eq('a target with decimals sets them', u.fmtProgress(2.25, 4.5), '2.3');
 eq('a unit after the number', u.fmtProgress(9000, 9000, { suffix: 'leads' }), '9,000 leads');
 ok('the progress bar uses it', /fmtProgress\(n, c\.target/.test(src('src/render/blocks.js')));
 
+// 3.10.5: a stat card's figure, which has no decimals field in its editor
+eq('a summed revenue, not compact', u.fmtFigure(118574.6, { compact: false, currency: '€' }), '€118,575');
+eq('an average order keeps its cents', u.fmtFigure(8.73, { compact: false, currency: '€' }), '€8.73');
+eq('decimals set are kept', u.fmtFigure(118574.6, { compact: false, currency: '€', decimals: 2 }), '€118,574.60');
+eq('compact as before', u.fmtFigure(118574.6, { compact: true, currency: '€' }), '€118.57K');
+eq('a count', u.fmtFigure(794, { compact: false }), '794');
+ok('the stat card uses it', /fmtFigure\(value, c\.format/.test(src('src/render/blocks.js')));
+
 // 3.10.4: "vs prev. period" compares periods, not two halves of the rows. A shop whose orders double while each order
 // stays at ten euros: by rows both halves held the same number of orders, so the card said 0%.
 const line = (m, n) => Array.from({ length: n }, () => ({ Month: m, Revenue: 10 }));

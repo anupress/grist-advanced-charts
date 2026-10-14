@@ -3,6 +3,15 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.10.5] — 2026-10-14
+
+### Fixed
+
+- **A stat card shows a large figure whole.** With Compact off and a currency
+  symbol, a summed revenue read "€118,574.6", and the stat editor has no decimals
+  setting to change it. A figure of 1,000 or more is now whole, "€118,575";
+  smaller ones keep up to two decimals, so an average order of €8.73 stays €8.73.
+
 ## [3.10.4] — 2026-10-14
 
 ### Fixed

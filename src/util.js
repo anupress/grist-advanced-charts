@@ -190,6 +190,18 @@ export function fmtNumber(v, opts = {}) {
 function trimZero(n) { return String(Number(n.toFixed(2))); }
 
 /**
+ * A stat card's number: as fmtNumber, but when no decimal places are set and it is not compact, a
+ * figure of 1,000 or more is whole. A summed revenue read "€118,574.6", and the stat editor has no
+ * decimals field to say otherwise (found building the Glutbohne case study, 3.10.5). Under 1,000 it
+ * keeps up to two, so an average order of €8.73 stays €8.73.
+ */
+export function fmtFigure(n, format = {}) {
+  const v = Number(n);
+  if (format.decimals == null && !format.compact && isFinite(v) && Math.abs(v) >= 1000) return fmtNumber(Math.round(v), format);
+  return fmtNumber(n, format);
+}
+
+/**
  * A progress bar's figure. Against a whole target, a figure of 1,000 or more is whole: a year's
  * revenue reads "€118,575 / €150,000", not "€118,574.6 / €150,000" (found building the Glutbohne
  * case study, 3.10.4). Smaller figures keep up to two decimals as before (an 87.35% pass rate, three
