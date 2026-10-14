@@ -108,7 +108,10 @@ eq('number, client, dates and address book', [g.numberColumn, g.clientColumn, g.
 const orderCols = [{ id: 'Order', type: 'Text' }, { id: 'Customer', type: 'Ref:Customers' }, { id: 'Product', type: 'Ref:Products', label: 'Product' }, { id: 'Quantity', type: 'Numeric' }, { id: 'Unit_price', type: 'Numeric', label: 'Unit price' }, { id: 'Revenue', type: 'Numeric' }, { id: 'Invoice', type: 'Ref:Orders_summary_Customer_Month' }];
 const items = invm.guessInvoiceItems(orderCols, 'Orders_summary_Customer_Month');
 eq('the line items: link, product, quantity, unit price', [items.itemsLinkColumn, items.itemDescColumn, items.itemQtyColumn, items.itemPriceColumn].join(','), 'Invoice,Product,Quantity,Unit_price');
-eq('no reference to the invoice table, no link guessed', invm.guessInvoiceItems(orderCols, 'Invoices').itemsLinkColumn, null);
+eq('no reference and no column named for the invoice: no link guessed', invm.guessInvoiceItems(orderCols.filter((c) => c.id !== 'Invoice'), 'Invoices').itemsLinkColumn, null);
+// 3.10.10: a summary table's invoices are linked by number (Grist offers no Reference to a summary table)
+eq('a text column named Invoice is the link', invm.guessInvoiceItems([...orderCols.filter((c) => c.id !== 'Invoice'), { id: 'Invoice', type: 'Text' }], 'Orders_summary_Customer_Month').itemsLinkColumn, 'Invoice');
+ok('a barcode icon can be searched for', (await import(pathToFileURL(_resolve(ROOT, 'src/assets/icons.js')).href)).allIconNames().includes('barcode'));
 ok('the editor guesses them when the table is picked', src('src/builder/block-editor.js').includes('Object.assign(c, guessInvoiceItems(provider.columns(v) || [], c.table))'));
 ok('a barcode is listed by its caption in a slicer\'s Choose list', src('src/builder/block-editor.js').includes("(b.config?.caption ? kind + ': ' + b.config.caption : kind)"));
 

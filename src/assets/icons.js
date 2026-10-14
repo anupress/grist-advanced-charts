@@ -82,13 +82,13 @@ export const ICONS = {
 // stat card, an icon block or a counter. They are not in the library, so search never found them: "coins" found only
 // coins2 and "calendar" nothing (found building the Glutbohne case study, 3.10.9). Searchable now, listed first.
 const BASICS = ['coins', 'cart', 'trending', 'users', 'pulse', 'target', 'star', 'database', 'globe', 'sparkles',
-  'calendar', 'check', 'code', 'countdown', 'eye', 'layout', 'shield', 'sliders', 'type'];
+  'calendar', 'check', 'code', 'countdown', 'eye', 'layout', 'shield', 'sliders', 'type', 'barcode'];
 // the words someone might type for a basic, as ICON_ALIASES does for the library
 const BASIC_ALIASES = {coins: 'money cash revenue euro dollar sales', cart: 'shop shopping orders basket', trending: 'growth up trend margin profit',
   users: 'people customers team members', pulse: 'activity heartbeat kpi', target: 'goal aim objective', star: 'favourite rating review',
   database: 'data table storage', globe: 'world web online international', sparkles: 'new magic highlight', calendar: 'date schedule day week',
   check: 'done tick ok', code: 'developer html script', countdown: 'timer clock deadline', eye: 'view visible watch', layout: 'page grid dashboard',
-  shield: 'security safe secure', sliders: 'settings filter controls', type: 'text font letter'};
+  shield: 'security safe secure', sliders: 'settings filter controls', type: 'text font letter', barcode: 'scan label packing parcel'};
 export const ICON_CATEGORIES = [
   { id: 'basics', name: 'Basics', icons: BASICS.filter((n) => n in ICONS) },
   ...ICON_GROUPS.filter((g) => ICON_LIBRARY[g.id]).map((g) => ({

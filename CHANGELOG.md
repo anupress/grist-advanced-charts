@@ -3,6 +3,16 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.10.10] — 2026-10-14
+
+### Fixed
+
+- **An invoice from a summary table finds its lines.** Grist offers no Reference to
+  a summary table, so the lines of a monthly invoice are linked by the invoice's
+  number instead (a text column holding it). Picking the line items table now
+  guesses that column too, when it is named Invoice.
+- **A barcode icon can be searched for**, with "scan", "label" or "parcel".
+
 ## [3.10.9] — 2026-10-14
 
 ### Fixed

@@ -414,7 +414,10 @@ export function guessInvoiceConfig(columns, tables) {
 export function guessInvoiceItems(columns, invoiceTable) {
   const cols = columns || [];
   const find = (...pats) => { for (const p of pats) { const c = cols.find((x) => p.test(x.id) || p.test(x.label || '')); if (c) return c.id; } return null; };
-  const link = cols.find((c) => String(c.type || '') === 'Ref:' + invoiceTable)?.id || null;
+  // a reference to the invoice table, or else a column named for the invoice (the Invoice block also matches a line by the
+  // invoice's number, which is how a summary table's invoices are linked: Grist offers no Reference to a summary table)
+  const link = cols.find((c) => String(c.type || '') === 'Ref:' + invoiceTable)?.id
+    || cols.find((c) => /^invoice(.?(no|number|id))?$/i.test(c.id) || /^invoice(.?(no|number))?$/i.test(c.label || ''))?.id || null;
   return {
     itemsLinkColumn: link,
     itemDescColumn: find(/desc/i, /product/i, /item/i, /service/i, /^name$/i),
