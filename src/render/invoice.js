@@ -20,7 +20,7 @@
 // every invoice, and putting them in the design means there is no extra table to create before the
 // block does anything.
 
-import { el, fmtNumber, clone } from '../util.js';
+import { el, fmtNumber, clone, formatCellValue } from '../util.js';
 import { icon, brandLogo } from '../assets/icons.js';
 import { sanitizeToFragment } from '../security/sanitize.js';
 
@@ -80,6 +80,16 @@ function resolveLines(row, c, ctx) {
       return link != null && (link === row.id || String(link) === String(row[c.numberColumn]));
     });
     if (mine.length) {
+      // A line's description is often a reference, Product pointing at the price list: what the
+      // cell holds is a row id, and the invoice printed "1" where it should say "House Blend 250 g".
+      // Formatted with its column, as a table cell is, it reads the name (3.10.1).
+      const itemCols = ctx.provider.columns(c.itemsTable) || [];
+      const describe = (r) => {
+        const v = r[c.itemDescColumn];
+        if (v == null || v === '') return 'Item';
+        const col = itemCols.find((x) => x.id === c.itemDescColumn);
+        return (col ? formatCellValue(v, col) : String(v)) || 'Item';
+      };
       return mine.map((r) => {
         const qty = c.itemQtyColumn ? num(r[c.itemQtyColumn]) : 1;
         const price = c.itemPriceColumn ? num(r[c.itemPriceColumn]) : 0;
@@ -87,7 +97,7 @@ function resolveLines(row, c, ctx) {
         // or a discount baked in that qty x price would not reproduce.
         const amount = c.itemTotalColumn && r[c.itemTotalColumn] != null && r[c.itemTotalColumn] !== ''
           ? num(r[c.itemTotalColumn]) : qty * price;
-        return { desc: String(r[c.itemDescColumn] ?? 'Item'), qty, price, amount, itemised: true };
+        return { desc: describe(r), qty, price, amount, itemised: true };
       });
     }
   }

@@ -37,5 +37,8 @@ ok('and the editor keeps the pick order', /columnPicker\(cols, wb\.config\.colum
 ok('a stat card has a unit after its number', /c\.format\?\.suffix/.test(src('src/render/blocks.js')) && /Unit after the number/.test(src('src/builder/block-editor.js')));
 ok('map clusters are drawn in the theme colour', /iconCreateFunction/.test(src('src/render/map.js')) && /\.ap-cluster \{[^}]*var\(--ap-primary\)/.test(src('src/styles/site.css')));
 
+const inv = src('src/render/invoice.js');
+ok('an invoice line names a referenced product, not its row id (3.10.1)', /formatCellValue\(v, col\)/.test(inv) && /desc: describe\(r\)/.test(inv));
+
 console.log(`case-study-fixes: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

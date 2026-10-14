@@ -3,6 +3,15 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.10.1] — 2026-10-14
+
+### Fixed
+
+- **An invoice line names the product.** When the line items' description
+  column is a Reference, such as Product pointing at a price list, each line
+  printed the product's row number ("1") instead of its name ("House Blend
+  250 g"). It is now written the way a table cell writes it.
+
 ## [3.10.0] — 2026-10-14
 
 Found while building the dashboard for a long case-study video: a small coffee
