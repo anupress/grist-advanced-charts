@@ -19,7 +19,7 @@
 // a published page is exactly who wants this. Saving the arrangement back into the design writes to
 // the document, so that stays behind Edit.
 
-import { el, clone, uid, toast, interpolate } from '../util.js';
+import { el, clone, uid, toast, interpolate, formatCellValue } from '../util.js';
 import { flattenBlocks } from '../data/grid.js';
 import { icon, brandLogo } from '../assets/icons.js';
 import { renderBlock, mountCharts } from '../render/blocks.js';
@@ -109,6 +109,8 @@ export function reorder(ids) { state.ids = ids.filter((x) => state.ids.includes(
 
 export const optsFor = (id) => state.opts[id] || {};
 export function setOpt(id, patch) { state.opts[id] = { ...optsFor(id), ...patch }; notify(); }
+// The repeat settings as the Arrange panel sets them. Exported for the tests.
+export function setRepeat(patch) { Object.assign(state.repeat, patch); notify(); }
 
 /**
  * Put a block's overrides back exactly as they were, including back to having none at all.
@@ -155,6 +157,17 @@ export const ACROSS = [1, 2, 3, 4, 6];
 export const REPEAT_MAX = 500;   // one careless run should not send a thousand labels to a printer
 
 /**
+ * A row as its cells read: a reference by the name it shows, a date as a date. A label template
+ * "%Product × %Quantity" printed "9 × 2", the product's row id, the same mistake 3.10.1 fixed for
+ * invoice lines (found building the Glutbohne case study, 3.10.6). The id stays as it is.
+ */
+export function displayRow(row, columns) {
+  const out = { ...row };
+  for (const col of columns || []) if (col.id in row && col.id !== 'id') out[col.id] = formatCellValue(row[col.id], col);
+  return out;
+}
+
+/**
  * One block, bound to one row.
  *
  * Only blocks that mean something for a single record are rebound. A chart of a whole table means
@@ -167,11 +180,12 @@ export const REPEAT_MAX = 500;   // one careless run should not send a thousand 
  * dynamic subtitles already use. The interpolation happens before renderText sanitizes, so a cell
  * containing markup is disarmed exactly as any other config value would be.
  */
-export function bindBlockToRow(block, row) {
+export function bindBlockToRow(block, row, columns = null) {
   const b = clone(block);
   const c = b.config || (b.config = {});
-  if (b.type === 'invoice') c.rowId = row.id;
-  else if (b.type === 'qrcode') {
+  if (b.type === 'invoice') { c.rowId = row.id; return b; }
+  row = columns ? displayRow(row, columns) : row;
+  if (b.type === 'qrcode') {
     c.text = interpolate(c.text, row);
     if (c.caption) c.caption = interpolate(c.caption, row);
   } else if (b.type === 'barcode') {
@@ -184,11 +198,26 @@ export function bindBlockToRow(block, row) {
   return b;
 }
 
-/** The rows this printout would repeat over, already capped. */
-export function repeatRows(provider) {
+/**
+ * The rows this printout would repeat over, already capped.
+ *
+ * Through the slicers that reach the blocks it collected, as those blocks read on their pages: a
+ * packing table narrowed to the orders packed today prints a label for each of those, not for all
+ * 1,955 lines of the order book. Repeat used to read the table whole ("whatever a slicer says",
+ * as the tutorial had to warn); found building the Glutbohne case study, 3.10.6. A slicer that
+ * cannot resolve the repeat table (another table, no shared column or reference) leaves it alone,
+ * as filteredProvider decides for any block.
+ */
+export function repeatRows(provider, config = null) {
   const r = state.repeat;
   if (!r.table) return [];
-  const all = provider?.records?.(r.table) || [];
+  const slicers = new Map();
+  for (const id of state.ids) {
+    const found = config ? findBlock(config, id) : null;
+    if (found) for (const s of slicersFor(found.block, found.tab)) slicers.set(s.id, s);
+  }
+  const base = slicers.size ? filteredProvider(provider, [...slicers.values()]) : provider;
+  const all = base?.records?.(r.table) || [];
   const limit = Math.min(REPEAT_MAX, Math.max(1, Number(r.limit) || 1));
   return all.slice(0, limit);
 }
@@ -445,7 +474,7 @@ export function openLayout(opts) {
       c.cellContext = (child) => ({ ...c, nested: true, provider: filteredProvider(provider, slicersFor(child, found.tab)) });
       return c;
     };
-    const rows = repeatRows(provider);
+    const rows = repeatRows(provider, config);
 
     // A run of labels is not a document, so it gets no letterhead. The header belongs on the one
     // printout that reads as a page from the site; stamping it above forty address labels would
@@ -470,6 +499,7 @@ export function openLayout(opts) {
       // selection is still changed the way it was made, with the + on the blocks themselves.
       const across = state.repeat.pageEach ? 1
         : (ACROSS.includes(state.repeat.across) ? state.repeat.across : 1);
+      const repeatCols = provider?.columns?.(state.repeat.table) || [];
       for (const row of rows) {
         const rec = el('div', {
           class: 'ap-sheet__record' + (state.repeat.pageEach ? ' is-page' : ''),
@@ -478,7 +508,7 @@ export function openLayout(opts) {
         for (const id of selection()) {
           const found = blockForSheet(config, id);
           if (!found) continue;
-          rec.append(renderBlock(bindBlockToRow(found.block, row), ctx));
+          rec.append(renderBlock(bindBlockToRow(found.block, row, repeatCols), ctx));
         }
         sheet.append(rec);
       }

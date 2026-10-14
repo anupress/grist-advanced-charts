@@ -3,6 +3,28 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.10.6] — 2026-10-14
+
+### Added
+
+- **A data table can open sorted.** "Sorted when the page opens" in the data
+  table editor: any column of the table, ascending or descending. The table
+  could always be told this in its saved design, but nothing in the editor
+  set it, so "customers, quiet ones first" needed a hand-edited config.
+
+### Fixed
+
+- **Repeat once per record follows the slicers.** A printout repeated over a
+  table read it whole, so a packing table narrowed to today's orders printed a
+  label for every line of the order book. It now prints the rows the slicers
+  leave, as the blocks it collected show them on their pages.
+- **A label names what it labels.** A template like "%Product × %Quantity"
+  printed the product's row id ("9 × 2"). Templates in a print run now read
+  each cell as the page shows it: a reference by its name, a date as a date.
+- **Money keeps its cents.** A currency column with no decimals set showed a
+  whole amount without them, "€1,581" in a column of "€3,420.45". It now shows
+  what Grist shows: the currency's own digits, "€1,581.00".
+
 ## [3.10.5] — 2026-10-14
 
 ### Fixed

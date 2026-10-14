@@ -959,13 +959,14 @@ function openLiveTableEditor(block, ctx) {
     dynHost.replaceChildren(
       subhead('Columns to show'),
       columnPicker(cols, wb.config.columns, (ids) => { wb.config.columns = ids; refreshPreview(); }, { pickOrder: true }),
+      field('Sorted when the page opens', sortField(cols, wb, refreshPreview), 'Ascending puts A, the earliest date or the smallest number first. Readers can still sort by any column.'),
     );
   }
 
   const body = [
     field('Title (optional)', textInput(wb.config.title || '', (v) => { wb.config.title = v; refreshPreview(); }, { placeholder: 'e.g. All submissions' })),
     field('Data table', tablePicker(provider, wb.config.table,
-      async (v) => { wb.config.table = v; wb.config.columns = null; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
+      async (v) => { wb.config.table = v; wb.config.columns = null; wb.config.defaultSort = null; await ensureRows(provider, v); buildDyn(); refreshPreview(); })),
     editDataRow(() => wb.config.table, ctx, () => openLiveTableEditor(block, ctx)),
     dynHost,
     divider(),
@@ -980,6 +981,23 @@ function openLiveTableEditor(block, ctx) {
   const footer = [ghostBtn('Cancel', () => closeDrawer()), primaryBtn('Apply', 'check', () => { ctx.onApply(wb); closeDrawer(); })];
   openEditor(block.__isNew ? 'Add data table' : 'Edit data table', body, footer, wb, ctx, refreshPreview);
   (async () => { await ensureRows(provider, wb.config.table); buildDyn(); refreshPreview(); })();
+}
+
+// The order a data table opens in. The renderer has always honoured defaultSort (templates set it),
+// but nothing in the editor could, so a table of customers "quiet ones first" needed a hand-edited
+// config (found building the Glutbohne case study, 3.10.6). Any column of the table, shown or not.
+function sortField(cols, wb, refresh) {
+  const ds = () => wb.config.defaultSort;
+  const dirHost = el('div');
+  const drawDir = () => dirHost.replaceChildren(...(ds()?.column
+    ? [segmented([{ value: 'asc', label: 'Ascending' }, { value: 'desc', label: 'Descending' }], ds().dir || 'asc', (v) => { wb.config.defaultSort = { ...ds(), dir: v }; refresh(); })]
+    : []));
+  const known = cols.some((c) => c.id === ds()?.column);
+  const sel = selectInput([{ value: '', label: 'As in the table' }].concat(cols.map((c) => ({ value: c.id, label: c.label || c.id }))), known ? ds().column : '', (v) => {
+    wb.config.defaultSort = v ? { column: v, dir: ds()?.dir || 'asc' } : null; drawDir(); refresh();
+  });
+  drawDir();
+  return el('div', { style: { display: 'grid', gap: '8px' } }, [sel, dirHost]);
 }
 
 // ---------------- Shared: what a nested widget reads ----------------

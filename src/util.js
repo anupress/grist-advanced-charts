@@ -337,7 +337,10 @@ export function formatCellValue(value, col) {
     const mode = o.numMode;
     const min = o.decimals, max = o.maxDecimals;
     if (mode || min != null || max != null) {
-      const fmt = { minimumFractionDigits: min ?? 0, maximumFractionDigits: max ?? Math.max(min ?? 0, 2) };
+      // A currency column with no decimals set shows what Grist shows: the currency's own digits, €1,581.00 beside €3,420.45,
+      // where trimming gave €1,581 in a column of cents (found building the Glutbohne case study, 3.10.6).
+      const fmt = mode === 'currency' && min == null && max == null ? {}
+        : { minimumFractionDigits: min ?? 0, maximumFractionDigits: max ?? Math.max(min ?? 0, 2) };
       if (mode === 'currency') { fmt.style = 'currency'; fmt.currency = o.currency || docCurrency() || 'USD'; }
       else if (mode === 'percent') fmt.style = 'percent';
       else if (mode === 'scientific') return n.toExponential(max ?? min ?? 2);

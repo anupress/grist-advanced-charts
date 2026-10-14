@@ -69,6 +69,19 @@ eq('compact as before', u.fmtFigure(118574.6, { compact: true, currency: '€' }
 eq('a count', u.fmtFigure(794, { compact: false }), '794');
 ok('the stat card uses it', /fmtFigure\(value, c\.format/.test(src('src/render/blocks.js')));
 
+// 3.10.6: a currency column keeps its cents on whole amounts, as Grist shows it
+const eur = { type: 'Numeric', widgetOptions: { numMode: 'currency', currency: 'EUR' } };
+eq('a whole amount in a euro column', u.formatCellValue(1581, eur), '€1,581.00');
+eq('beside one with cents', u.formatCellValue(3420.45, eur), '€3,420.45');
+eq('decimals set by hand still win', u.formatCellValue(1581, { type: 'Numeric', widgetOptions: { numMode: 'currency', currency: 'EUR', decimals: 0, maxDecimals: 0 } }), '€1,581');
+eq('a yen column has no cents', u.formatCellValue(1581, { type: 'Numeric', widgetOptions: { numMode: 'currency', currency: 'JPY' } }), '¥1,581');
+
+// 3.10.6: a data table can open sorted (the renderer read defaultSort; nothing in the editor set it)
+const be = src('src/builder/block-editor.js');
+ok('the data table editor has the setting', be.includes("field('Sorted when the page opens', sortField(cols, wb, refreshPreview)"));
+ok('a new table starts unsorted again', be.includes('wb.config.columns = null; wb.config.defaultSort = null;'));
+ok('and the table reads it', src('src/render/livetable.js').includes('sortCol: c.defaultSort?.column'));
+
 // 3.10.4: "vs prev. period" compares periods, not two halves of the rows. A shop whose orders double while each order
 // stays at ten euros: by rows both halves held the same number of orders, so the card said 0%.
 const line = (m, n) => Array.from({ length: n }, () => ({ Month: m, Revenue: 10 }));
