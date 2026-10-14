@@ -2,6 +2,7 @@
 // and a live preview that updates as you tweak. "Any column" can be used as a category or value.
 
 import { el, clone, debounce, toast } from '../util.js';
+import { blockCatalogEntry } from './block-catalog.js';
 import { icon, chartIcon } from '../assets/icons.js';
 import { openDrawer, closeDrawer, field, textInput, selectInput, tablePicker, checkboxRow, segmented, subhead, divider, primaryBtn, ghostBtn, iconPickerField, linkTargetField, colorInput, linesInput, pairsInput } from './ui.js';
 import { CHART_TYPES, getChartType, CARTESIAN } from '../charts/catalog.js';
@@ -19,7 +20,7 @@ import { normalizeGrid, resizeCells, flattenBlocks, GRID_MIN, GRID_MAX } from '.
 import { DEFAULT_MODULE_MM, MIN_MODULE_MM, MAX_MODULE_MM, DEFAULT_HEIGHT_MM } from '../render/barcode.js';
 import { currentSeriesColors } from '../theme/apply.js';
 import { openDataEditor } from './data-editor.js';
-import { guessInvoiceConfig, STYLES, STYLE_LABELS } from '../render/invoice.js';
+import { guessInvoiceConfig, guessInvoiceItems, STYLES, STYLE_LABELS } from '../render/invoice.js';
 import { pickImage, readFileAsDataURL } from './imageutil.js';
 import { layoutStyleSection } from './style-section.js';
 import { clearNestedOptions, linkedTableId } from '../grist/widget-host.js';
@@ -1170,7 +1171,8 @@ function openSlicerEditor(block, ctx) {
   if (!wb.config.table) wb.config.table = ctx.provider.defaultTable();
   const previewHost = el('div', { class: 'ap-preview' });
   const reach = el('div', { class: 'ap-muted', style: { fontSize: '12px', marginTop: '6px' } });
-  const blockName = (b) => b.config?.title || b.config?.label || b.config?.heading || b.type;
+  // A barcode or QR code has no title: by its name in the chooser and its caption ("Barcode: %Product × %Quantity"), not "barcode"
+  const blockName = (b) => { const kind = blockCatalogEntry(b.type)?.title || b.type; return b.config?.title || b.config?.label || b.config?.heading || (b.config?.caption ? kind + ': ' + b.config.caption : kind); };
   // Blocks inside a Grid block are candidates too; the grid itself holds no data and is not.
   const siblings = flattenBlocks(tab.blocks).filter((b) => b.id !== block.id && b.type !== 'slicer' && b.type !== 'grid');
 
@@ -1670,7 +1672,7 @@ function openInvoiceEditor(block, ctx) {
     const t = c.itemsTable;
     itemsHost.replaceChildren(
       field('Line items table', tablePicker(provider, t || '',
-        async (v) => { c.itemsTable = v || null; if (v) await ensureRows(provider, v); buildItems(); refreshPreview(); },
+        async (v) => { c.itemsTable = v || null; if (v) { await ensureRows(provider, v); Object.assign(c, guessInvoiceItems(provider.columns(v) || [], c.table)); } buildItems(); refreshPreview(); },
         { blank: '— no line items, bill the amount —' })),
       t ? field('Links back to the invoice by', selectInput(colOpts(t), c.itemsLinkColumn || '', set('itemsLinkColumn'))) : null,
       t ? field('Description', selectInput(colOpts(t), c.itemDescColumn || '', set('itemDescColumn'))) : null,

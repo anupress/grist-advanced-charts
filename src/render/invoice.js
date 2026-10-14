@@ -388,16 +388,37 @@ export function renderInvoice(block, ctx) {
 // so the block draws a real invoice the moment it is added rather than after twelve dropdowns.
 export function guessInvoiceConfig(columns, tables) {
   const ids = (columns || []).map((c) => c.id);
-  const find = (...pats) => ids.find((id) => pats.some((p) => p.test(id))) || null;
+  // the patterns in order of preference: the first pattern that matches any column wins (it used to be the first column
+  // matching any pattern, so a Unit_price listed before Revenue won the amount)
+  const find = (...pats) => { for (const p of pats) { const id = ids.find((x) => p.test(x)); if (id) return id; } return null; };
   const dateCols = (columns || []).filter((c) => /^Date/i.test(c.type || '')).map((c) => c.id);
   return {
     numberColumn: find(/^invoice.?number$/i, /number/i, /^id$/i, /ref/i) || ids[0] || null,
     clientColumn: find(/client/i, /customer/i, /account/i, /company/i, /donor/i),
     dateColumn: find(/issue/i, /^date$/i, /created/i) || dateCols[0] || null,
     dueColumn: find(/due/i) || (dateCols[1] || null),
-    amountColumn: find(/^amount$/i, /total/i, /value/i, /price/i),
+    // revenue before price: a summary table of orders sums every number column, and a sum of unit prices is no invoice's
+    // amount (the Glutbohne case study's monthly invoices, 3.10.7)
+    amountColumn: find(/^amount$/i, /total/i, /revenue/i, /sales/i, /value/i, /price/i),
     statusColumn: find(/status/i, /state/i),
     noteColumn: find(/note/i, /memo/i, /comment/i, /description/i),
     clientTable: (tables || []).map((t) => t.id).find((id) => /client|customer|account|business|compan/i.test(id)) || null,
+  };
+}
+
+/**
+ * The line items' columns, guessed when their table is picked: the link is the column that references the invoice table
+ * (there is no guessing about that one), then a description, a quantity and a unit price by name. The line total stays
+ * blank, which means quantity x unit price. Picking Orders under a summary of orders used to leave all four empty (3.10.7).
+ */
+export function guessInvoiceItems(columns, invoiceTable) {
+  const cols = columns || [];
+  const find = (...pats) => { for (const p of pats) { const c = cols.find((x) => p.test(x.id) || p.test(x.label || '')); if (c) return c.id; } return null; };
+  const link = cols.find((c) => String(c.type || '') === 'Ref:' + invoiceTable)?.id || null;
+  return {
+    itemsLinkColumn: link,
+    itemDescColumn: find(/desc/i, /product/i, /item/i, /service/i, /^name$/i),
+    itemQtyColumn: find(/qty/i, /quantity/i, /hours/i, /units/i),
+    itemPriceColumn: find(/unit.?price/i, /^price$/i, /rate/i),
   };
 }

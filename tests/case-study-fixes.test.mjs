@@ -99,5 +99,18 @@ const days = [1767225600, 1767225600, 1767312000, 1767312000].map((d, i) => ({ D
 eq('raw Grist dates (seconds) too', agg.computeKpi(days, { column: 'R', agg: 'sum', deltaBy: 'D' }).delta, 200);
 eq('an average compares averages of the two halves', agg.computeKpi(growing.map((r, i) => ({ ...r, Revenue: i < 20 ? 10 : 12 })), { column: 'Revenue', agg: 'avg', deltaBy: 'Month' }).delta, 20);
 
+// 3.10.7: a monthly invoice from a summary table of orders, guessed right
+const invm = await import(pathToFileURL(_resolve(ROOT, 'src/render/invoice.js')).href);
+const sumCols = ['Customer', 'Month', 'group', 'count', 'Quantity', 'Unit_price', 'Revenue', 'Margin', 'Number', 'Issued', 'Due', 'Channel'].map((id) => ({ id, type: /Issued|Due/.test(id) ? 'Date' : 'Any' }));
+const g = invm.guessInvoiceConfig(sumCols, [{ id: 'Customers' }, { id: 'Orders' }]);
+eq('the amount is the revenue, not a sum of unit prices', g.amountColumn, 'Revenue');
+eq('number, client, dates and address book', [g.numberColumn, g.clientColumn, g.dateColumn, g.dueColumn, g.clientTable].join(','), 'Number,Customer,Issued,Due,Customers');
+const orderCols = [{ id: 'Order', type: 'Text' }, { id: 'Customer', type: 'Ref:Customers' }, { id: 'Product', type: 'Ref:Products', label: 'Product' }, { id: 'Quantity', type: 'Numeric' }, { id: 'Unit_price', type: 'Numeric', label: 'Unit price' }, { id: 'Revenue', type: 'Numeric' }, { id: 'Invoice', type: 'Ref:Orders_summary_Customer_Month' }];
+const items = invm.guessInvoiceItems(orderCols, 'Orders_summary_Customer_Month');
+eq('the line items: link, product, quantity, unit price', [items.itemsLinkColumn, items.itemDescColumn, items.itemQtyColumn, items.itemPriceColumn].join(','), 'Invoice,Product,Quantity,Unit_price');
+eq('no reference to the invoice table, no link guessed', invm.guessInvoiceItems(orderCols, 'Invoices').itemsLinkColumn, null);
+ok('the editor guesses them when the table is picked', src('src/builder/block-editor.js').includes('Object.assign(c, guessInvoiceItems(provider.columns(v) || [], c.table))'));
+ok('a barcode is listed by its caption in a slicer\'s Choose list', src('src/builder/block-editor.js').includes("(b.config?.caption ? kind + ': ' + b.config.caption : kind)"));
+
 console.log(`case-study-fixes: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

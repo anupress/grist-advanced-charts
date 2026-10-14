@@ -3,6 +3,23 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.10.7] — 2026-10-14
+
+### Fixed
+
+- **An invoice from a summary table guesses its amount right.** Grist sums every
+  number column of a summary, and the Invoice block took the first column that
+  matched any of its patterns: a sum of unit prices became the amount. The
+  patterns now go in order of preference (amount, total, revenue, sales, then
+  value and price), and the first that matches wins.
+- **Picking the line items table fills in its columns.** The column that links
+  back to the invoice (a reference to the invoice table), the description, the
+  quantity and the unit price are guessed; the line total stays blank, which is
+  quantity x unit price.
+- **A slicer lists a barcode by its name.** "What it filters, Choose" listed a
+  barcode or QR code as "barcode"; it now reads "Barcode: %Product × %Quantity",
+  its name in the block chooser and its caption.
+
 ## [3.10.6] — 2026-10-14
 
 ### Added
