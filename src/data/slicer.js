@@ -76,14 +76,25 @@ const STORE_PREFIX = 'ap-slicer:';
 function storage() {
   try { return globalThis.localStorage || null; } catch { return null; }
 }
+// The choice is kept per document and dashboard (3.10.14). Keyed on the block id alone, a choice
+// made in one document came back in every other one with a block of that id: a copy of the
+// document, or a second dashboard copied from the first (the Glutbohne case study, chapter 12:
+// the packing team's Late turned up already picked). main.js sets the scope once it knows both.
+let rememberScope = () => '';
+export function setRememberScope(fn) { rememberScope = typeof fn === 'function' ? fn : () => ''; }
+function storeKey(blockId) {
+  let scope = '';
+  try { scope = String(rememberScope() || ''); } catch { /* no scope: the plain key */ }
+  return STORE_PREFIX + (scope ? scope + ':' : '') + blockId;
+}
 function readRemembered(blockId, store) {
-  try { const raw = store?.getItem(STORE_PREFIX + blockId); return raw ? JSON.parse(raw) : null; } catch { return null; }
+  try { const raw = store?.getItem(storeKey(blockId)); return raw ? JSON.parse(raw) : null; } catch { return null; }
 }
 export function rememberSelection(blockId, store = storage()) {
-  try { store?.setItem(STORE_PREFIX + blockId, JSON.stringify([...getSelection(blockId)])); } catch { /* private mode, full, blocked */ }
+  try { store?.setItem(storeKey(blockId), JSON.stringify([...getSelection(blockId)])); } catch { /* private mode, full, blocked */ }
 }
 export function forgetSelection(blockId, store = storage()) {
-  try { store?.removeItem(STORE_PREFIX + blockId); } catch { /* same */ }
+  try { store?.removeItem(storeKey(blockId)); } catch { /* same */ }
 }
 
 // readerChoice: false while the author edits. The editor shows the page as it opens, with the author's defaults picked (it used to

@@ -12,6 +12,7 @@ import { askDashboardForWidget } from './builder/dashboard-choice.js';
 import { TEMPLATES } from './data/templates/index.js';
 import { TEMPLATE_SAMPLE_DATA } from './data/templates/sample-data.js';
 import { renderSite } from './render/site.js';
+import { setRememberScope } from './data/slicer.js';
 import { showConsent } from './consent/modal.js';
 import { VERSION } from './version.js';
 import { installWidgetHost } from './grist/widget-host.js';
@@ -72,6 +73,9 @@ async function boot() {
       // Which dashboard this widget instance shows, then that dashboard's design. A pointer at a
       // dashboard that no longer exists falls back to the main one rather than to a blank page.
       const wanted = await bridge.initDashboard();
+      // a reader's remembered slicer choices belong to this document and the dashboard showing
+      const docId = await bridge.getDocName();
+      setRememberScope(() => `${docId || ''}:${bridge.currentDashboard()}`);
       let saved = await bridge.loadConfig();
       if (!saved && wanted !== 'site') {
         console.warn(`[ANUPRESS] dashboard "${wanted}" has no design; showing the main dashboard`);

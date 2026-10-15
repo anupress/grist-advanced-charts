@@ -263,5 +263,33 @@ eq('editing: defaults taken away, the page opens whole again', [...S.getSelectio
 S.clearAll(); S.resetSlicerDefaults();
 S.clearAll(); S.resetSlicerDefaults();
 
+// 3.10.14: a remembered choice belongs to its document and dashboard, not to every block of that id on this device
+S.clearAll(); S.resetSlicerDefaults();
+const kept = { id: 'k1', type: 'slicer', config: { table: 'Sales', column: 'Region', defaults: ['North'], remember: true } };
+const store3 = fakeStore();
+let scope = 'docA:site';
+S.setRememberScope(() => scope);
+S.setSelection('k1', ['South']); S.rememberSelection('k1', store3);
+eq('the key carries the document and dashboard', [...store3.m.keys()], ['ap-slicer:docA:site:k1']);
+S.clearAll(); S.resetSlicerDefaults();
+scope = 'docB:site';
+S.applySlicerDefaults(tabOf(kept), { store: store3 });
+eq('another document with a block of that id opens on its default', [...S.getSelection('k1')], ['North']);
+S.clearAll(); S.resetSlicerDefaults();
+scope = 'docA:packing-table';
+S.applySlicerDefaults(tabOf(kept), { store: store3 });
+eq('so does a second dashboard copied from the first', [...S.getSelection('k1')], ['North']);
+S.clearAll(); S.resetSlicerDefaults();
+scope = 'docA:site';
+S.applySlicerDefaults(tabOf(kept), { store: store3 });
+eq('the same document and dashboard get the reader\'s choice back', [...S.getSelection('k1')], ['South']);
+S.forgetSelection('k1', store3);
+eq('forgetting removes the scoped key', store3.m.size, 0);
+S.setRememberScope(() => { throw new Error('no document'); });
+S.setSelection('k1', ['South']); S.rememberSelection('k1', store3);
+eq('a scope that fails falls back to the plain key', [...store3.m.keys()], ['ap-slicer:k1']);
+S.setRememberScope(null);
+S.clearAll(); S.resetSlicerDefaults();
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

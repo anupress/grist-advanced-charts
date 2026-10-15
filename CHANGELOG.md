@@ -3,6 +3,18 @@
 All notable changes to Advanced Charts (Grist widget by ANUPRESS).
 This project uses [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`.
 
+## [3.10.14] — 2026-10-15
+
+### Fixed
+
+- **A slicer's remembered choice stays with its own dashboard.** "Remember each
+  reader's last choice on their device" kept the choice under the block's id alone,
+  so it came back in every document on that device with a block of the same id: a
+  copy of the document, or a second dashboard copied from the first, which then
+  opened with a choice nobody had made there. The choice is now kept per document
+  and per dashboard. Choices remembered before this release are not carried over:
+  each slicer opens once on its default, then remembers again.
+
 ## [3.10.13] — 2026-10-14
 
 ### Changed
